@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Eye, EyeOff } from '@lucide/vue';
-import BaseButton from '../../../components/ui/BaseButton.vue';
-import BaseInput from '../../../components/ui/BaseInput.vue';
+import BaseButton from '../../../shared/ui/BaseButton.vue';
+import BaseInput from '../../../shared/ui/BaseInput.vue';
 import { useAuth } from '../composables/useAuth';
-import { isRequired } from '../../../utils/validators';
+import { isRequired } from '../../../shared/lib/validators';
 
 const email = ref('');
 const password = ref('');

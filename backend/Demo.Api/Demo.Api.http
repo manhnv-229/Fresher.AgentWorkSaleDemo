@@ -74,6 +74,21 @@ Content-Type: application/json
   "code": "tenant-three"
 }
 
+### SystemAdmin can list internal agents
+GET {{Demo.Api_HostAddress}}/api/admin/agents/internal
+Authorization: Bearer {{AccessToken}}
+
+### SystemAdmin can create internal agent
+POST {{Demo.Api_HostAddress}}/api/admin/agents/internal
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Internal Operations Assistant",
+  "role": "Operations",
+  "description": "Created from focused internal-agent integration check."
+}
+
 ### Tenant-scoped agent list
 GET {{Demo.Api_HostAddress}}/api/tenants/{{TenantOneId}}/agents
 Authorization: Bearer {{AccessToken}}

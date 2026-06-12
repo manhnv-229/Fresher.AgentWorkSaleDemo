@@ -1,8 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Demo.Application.DTOs.Auth;
-using Demo.Application.Services;
+using Demo.Application.Features.Auth;
 using Demo.Domain.Entities;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;

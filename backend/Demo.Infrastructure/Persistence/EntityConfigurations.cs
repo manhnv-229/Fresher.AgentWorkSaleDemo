@@ -184,11 +184,13 @@ internal sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
         builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
         builder.Property(x => x.Description).HasColumnName("description").HasColumnType("text");
         builder.Property(x => x.Icon).HasColumnName("icon").HasMaxLength(500);
+        builder.Property(x => x.Scope).HasColumnName("scope").HasMaxLength(50).HasConversion<string>().IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasConversion<string>().IsRequired();
         builder.Property(x => x.Role).HasColumnName("role").HasMaxLength(100).IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         builder.HasIndex(x => x.TenantId);
+        builder.HasIndex(x => x.Scope);
         builder.HasOne(x => x.Tenant).WithMany(x => x.Agents).HasForeignKey(x => x.TenantId);
     }
 }

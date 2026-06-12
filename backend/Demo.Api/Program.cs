@@ -1,8 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Demo.Api.Middlewares.Authorization;
-using Demo.Application.Services;
+using Demo.Api.Authorization;
+using Demo.Application.Features.Auth;
 using Demo.Infrastructure;
 using Demo.Infrastructure.Auth;
 using Demo.Infrastructure.Persistence;
@@ -21,7 +21,20 @@ builder.Services.AddCors(options =>
     options.AddPolicy("LocalFrontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173", "http://127.0.0.1:4173")
+            .SetIsOriginAllowed(origin =>
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                return uri.Host is "localhost" or "127.0.0.1" or "[::1]";
+            })
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -162,7 +175,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("LocalFrontend");
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapGet("/", () => Results.Ok(new
@@ -178,6 +194,8 @@ app.MapGet("/", () => Results.Ok(new
         "GET /api/auth/me",
         "GET /api/tenants",
         "POST /api/tenants",
+        "GET /api/admin/agents/internal",
+        "POST /api/admin/agents/internal",
         "GET /api/tenants/{tenantId}/agents",
         "POST /api/tenants/{tenantId}/agents",
         "GET /swagger",

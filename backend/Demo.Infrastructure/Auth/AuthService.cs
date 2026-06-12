@@ -1,5 +1,4 @@
-using Demo.Application.DTOs.Auth;
-using Demo.Application.Services;
+using Demo.Application.Features.Auth;
 using Demo.Application.UseCases.Common;
 using Demo.Domain.Entities;
 using Demo.Domain.Enums;

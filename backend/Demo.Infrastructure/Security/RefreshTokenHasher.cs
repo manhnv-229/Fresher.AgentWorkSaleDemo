@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Demo.Application.DTOs.Auth;
-using Demo.Application.Services;
+using Demo.Application.Features.Auth;
 
 namespace Demo.Infrastructure.Security;
 

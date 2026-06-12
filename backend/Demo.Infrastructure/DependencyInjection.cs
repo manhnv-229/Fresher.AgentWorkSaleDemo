@@ -1,5 +1,5 @@
 using Demo.Application.Authorization;
-using Demo.Application.Services;
+using Demo.Application.Features.Auth;
 using Demo.Infrastructure.Auth;
 using Demo.Infrastructure.Persistence;
 using Demo.Infrastructure.Repositories;

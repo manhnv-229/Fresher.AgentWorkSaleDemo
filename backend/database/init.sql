@@ -106,10 +106,11 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 CREATE TABLE IF NOT EXISTS agents (
     id CHAR(36) PRIMARY KEY,
-    tenant_id CHAR(36) NOT NULL,
+    tenant_id CHAR(36) NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     icon VARCHAR(500),
+    scope VARCHAR(50) NOT NULL DEFAULT 'Tenant',
     status VARCHAR(50) NOT NULL DEFAULT 'Draft',
     role VARCHAR(100) NOT NULL,
     created_at DATETIME NOT NULL,
@@ -147,6 +148,7 @@ CREATE INDEX idx_user_tenants_tenant_id ON user_tenants(tenant_id);
 CREATE INDEX idx_roles_tenant_id ON roles(tenant_id);
 CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
 CREATE INDEX idx_user_roles_tenant_id ON user_roles(tenant_id);
+CREATE INDEX idx_agents_scope ON agents(scope);
 CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
 CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
 CREATE INDEX idx_refresh_tokens_session_id ON refresh_tokens(session_id);

@@ -1,7 +1,7 @@
 import { computed, ref, type ComputedRef, type DeepReadonly, type Ref } from 'vue';
 import { login as loginRequest, logout as logoutRequest, refreshAccessToken } from '../api';
 import { clearAuthState, getAccessToken, readonlyAuthState, setAuthState } from '../store';
-import { setAccessTokenProvider } from '../../../services/interceptors';
+import { setAccessTokenProvider } from '../../../shared/api/interceptors';
 import type { AuthState } from '../types/auth.types';
 
 export interface UseAuthResult {

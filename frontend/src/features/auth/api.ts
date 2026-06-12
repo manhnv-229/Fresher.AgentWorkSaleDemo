@@ -1,4 +1,4 @@
-import { ApiError, httpJson } from '../../services/http';
+import { ApiError, httpJson } from '../../shared/api/http';
 import type { LoginRequest, TokenResponse } from './types/auth.types';
 
 export async function login(payload: LoginRequest): Promise<TokenResponse> {

@@ -1,4 +1,4 @@
-using Demo.Application.Services;
+using Demo.Application.Features.Auth;
 
 namespace Demo.Infrastructure.Security;
 

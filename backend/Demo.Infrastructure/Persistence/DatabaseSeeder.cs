@@ -1,5 +1,5 @@
 using Demo.Application.Authorization;
-using Demo.Application.Services;
+using Demo.Application.Features.Auth;
 using Demo.Domain.Entities;
 using Demo.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -243,19 +243,57 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
 
     private async Task SeedAgentsAsync(CancellationToken cancellationToken)
     {
-        if (await dbContext.Agents.AnyAsync(cancellationToken))
+        await AddAgentAsync(
+            Guid.Parse("55555555-5555-5555-5555-555555555550"),
+            null,
+            "AVA Internal Ticket",
+            "Admin-only internal support agent for operations.",
+            "Operations",
+            AgentScope.Internal,
+            cancellationToken);
+
+        await AddAgentAsync(
+            Guid.Parse("55555555-5555-5555-5555-555555555551"),
+            TenantOneId,
+            "Demo Support Agent",
+            "Demo tenant agent for permission checks.",
+            "Support",
+            AgentScope.Tenant,
+            cancellationToken);
+
+        await AddAgentAsync(
+            Guid.Parse("55555555-5555-5555-5555-555555555552"),
+            TenantTwoId,
+            "Tenant Two Guide",
+            "Demo tenant guide agent for sidebar switching checks.",
+            "Guide",
+            AgentScope.Tenant,
+            cancellationToken);
+    }
+
+    private async Task AddAgentAsync(
+        Guid id,
+        Guid? tenantId,
+        string name,
+        string description,
+        string role,
+        AgentScope scope,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.Agents.AnyAsync(x => x.Id == id, cancellationToken))
         {
             return;
         }
 
         dbContext.Agents.Add(new Agent
         {
-            Id = Guid.Parse("55555555-5555-5555-5555-555555555551"),
-            TenantId = TenantOneId,
-            Name = "Demo Support Agent",
-            Description = "Demo agent for permission checks.",
+            Id = id,
+            TenantId = tenantId,
+            Name = name,
+            Description = description,
+            Scope = scope,
             Status = AgentStatus.Active,
-            Role = "Support",
+            Role = role,
             CreatedAt = DateTime.UtcNow
         });
 
