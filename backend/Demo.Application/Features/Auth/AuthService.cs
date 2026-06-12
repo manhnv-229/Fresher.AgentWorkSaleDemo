@@ -1,28 +1,24 @@
-using Demo.Application.Features.Auth;
 using Demo.Application.UseCases.Common;
 using Demo.Domain.Entities;
 using Demo.Domain.Enums;
-using Demo.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
-namespace Demo.Infrastructure.Auth;
+namespace Demo.Application.Features.Auth;
 
 public sealed class AuthService(
-    DemoDbContext dbContext,
+    IAuthUserRepository authUserRepository,
+    IRefreshTokenRepository refreshTokenRepository,
+    IUserSessionRepository userSessionRepository,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService,
     IRefreshTokenHasher refreshTokenHasher,
-    IOptions<JwtOptions> options) : IAuthService
+    IAuthOptions authOptions) : IAuthService
 {
-    private readonly JwtOptions _options = options.Value;
-
     public async Task<ServiceResult<AuthTokenResult>> LoginAsync(
         LoginRequest request,
         string? ipAddress,
         CancellationToken cancellationToken)
     {
-        var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Email == request.Email, cancellationToken);
+        var user = await authUserRepository.GetByEmailAsync(request.Email, cancellationToken);
         if (user is null || !passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
             return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidCredentials, "Invalid email or password.");
@@ -47,10 +43,7 @@ public sealed class AuthService(
         }
 
         var tokenHash = refreshTokenHasher.HashToken(request.RefreshToken);
-        var refreshToken = await dbContext.RefreshTokens
-            .Include(x => x.User)
-            .Include(x => x.Session)
-            .SingleOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
+        var refreshToken = await refreshTokenRepository.GetByTokenHashWithUserAndSessionAsync(tokenHash, cancellationToken);
 
         if (refreshToken?.User is null ||
             refreshToken.Session is null ||
@@ -77,13 +70,13 @@ public sealed class AuthService(
             UserId = refreshToken.UserId,
             SessionId = refreshToken.SessionId,
             TokenHash = replacement.TokenHash,
-            ExpiresAt = DateTime.UtcNow.AddDays(_options.RefreshTokenDays),
+            ExpiresAt = DateTime.UtcNow.AddDays(authOptions.RefreshTokenDays),
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = ipAddress
         };
 
-        dbContext.RefreshTokens.Add(newRefreshToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        refreshTokenRepository.Add(newRefreshToken);
+        await userSessionRepository.SaveChangesAsync(cancellationToken);
 
         return ServiceResult<AuthTokenResult>.Success(new AuthTokenResult(
             jwt.AccessToken,
@@ -100,9 +93,7 @@ public sealed class AuthService(
         }
 
         var tokenHash = refreshTokenHasher.HashToken(request.RefreshToken);
-        var refreshToken = await dbContext.RefreshTokens
-            .Include(x => x.Session)
-            .SingleOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
+        var refreshToken = await refreshTokenRepository.GetByTokenHashWithSessionAsync(tokenHash, cancellationToken);
         if (refreshToken is null || refreshToken.RevokedAt is not null)
         {
             return;
@@ -119,12 +110,12 @@ public sealed class AuthService(
             refreshToken.Session.ReasonRevoked = "Logout";
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await userSessionRepository.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<ServiceResult<CurrentUserResponse>> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var user = await dbContext.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        var user = await authUserRepository.GetByIdAsync(userId, cancellationToken);
         if (user is null)
         {
             return ServiceResult<CurrentUserResponse>.Failure(AuthErrorCodes.UserNotFound, "User was not found.");
@@ -144,7 +135,7 @@ public sealed class AuthService(
             Id = Guid.NewGuid(),
             UserId = user.Id,
             CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddDays(_options.RefreshTokenDays),
+            ExpiresAt = DateTime.UtcNow.AddDays(authOptions.RefreshTokenDays),
             CreatedByIp = ipAddress
         };
 
@@ -161,9 +152,9 @@ public sealed class AuthService(
             CreatedByIp = ipAddress
         };
 
-        dbContext.UserSessions.Add(session);
-        dbContext.RefreshTokens.Add(refreshTokenEntity);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        userSessionRepository.Add(session);
+        refreshTokenRepository.Add(refreshTokenEntity);
+        await userSessionRepository.SaveChangesAsync(cancellationToken);
 
         return new AuthTokenResult(jwt.AccessToken, refreshToken.RawToken, jwt.ExpiresAt, refreshTokenEntity.ExpiresAt);
     }

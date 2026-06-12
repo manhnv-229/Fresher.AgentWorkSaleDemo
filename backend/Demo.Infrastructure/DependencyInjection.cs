@@ -1,4 +1,6 @@
 using Demo.Application.Authorization;
+using Demo.Application.Features.Agents;
+using Demo.Infrastructure.Agents;
 using Demo.Application.Features.Auth;
 using Demo.Infrastructure.Auth;
 using Demo.Infrastructure.Persistence;
@@ -35,6 +37,13 @@ public static class DependencyInjection
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAuthUserRepository, AuthUserRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IUserSessionRepository, UserSessionRepository>();
+        services.AddSingleton<IAuthOptions, AuthOptions>();
+        services.AddScoped<IAgentCatalogService, AgentCatalogService>();
+        services.AddScoped<IAgentRepository, AgentRepository>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IRefreshTokenHasher, RefreshTokenHasher>();
