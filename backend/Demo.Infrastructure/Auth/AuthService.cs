@@ -18,7 +18,7 @@ public sealed class AuthService(
 {
     private readonly JwtOptions _options = options.Value;
 
-    public async Task<ServiceResult<TokenResponse>> LoginAsync(
+    public async Task<ServiceResult<AuthTokenResult>> LoginAsync(
         LoginRequest request,
         string? ipAddress,
         CancellationToken cancellationToken)
@@ -26,22 +26,27 @@ public sealed class AuthService(
         var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Email == request.Email, cancellationToken);
         if (user is null || !passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
-            return ServiceResult<TokenResponse>.Failure(AuthErrorCodes.InvalidCredentials, "Invalid email or password.");
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidCredentials, "Invalid email or password.");
         }
 
         if (user.Status != RecordStatus.Active)
         {
-            return ServiceResult<TokenResponse>.Failure(AuthErrorCodes.InactiveUser, "User is not active.");
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InactiveUser, "User is not active.");
         }
 
-        return ServiceResult<TokenResponse>.Success(await CreateSessionAsync(user, ipAddress, cancellationToken));
+        return ServiceResult<AuthTokenResult>.Success(await CreateSessionAsync(user, ipAddress, cancellationToken));
     }
 
-    public async Task<ServiceResult<TokenResponse>> RefreshAsync(
+    public async Task<ServiceResult<AuthTokenResult>> RefreshAsync(
         RefreshTokenRequest request,
         string? ipAddress,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidRefreshToken, "Refresh token is invalid.");
+        }
+
         var tokenHash = refreshTokenHasher.HashToken(request.RefreshToken);
         var refreshToken = await dbContext.RefreshTokens
             .Include(x => x.User)
@@ -57,7 +62,7 @@ public sealed class AuthService(
             refreshToken.Session.UserId != refreshToken.UserId ||
             refreshToken.User.Status != RecordStatus.Active)
         {
-            return ServiceResult<TokenResponse>.Failure(AuthErrorCodes.InvalidRefreshToken, "Refresh token is invalid.");
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidRefreshToken, "Refresh token is invalid.");
         }
 
         var replacement = refreshTokenHasher.GenerateToken();
@@ -81,7 +86,7 @@ public sealed class AuthService(
         dbContext.RefreshTokens.Add(newRefreshToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return ServiceResult<TokenResponse>.Success(new TokenResponse(
+        return ServiceResult<AuthTokenResult>.Success(new AuthTokenResult(
             jwt.AccessToken,
             replacement.RawToken,
             jwt.ExpiresAt,
@@ -90,6 +95,11 @@ public sealed class AuthService(
 
     public async Task LogoutAsync(LogoutRequest request, string? ipAddress, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            return;
+        }
+
         var tokenHash = refreshTokenHasher.HashToken(request.RefreshToken);
         var refreshToken = await dbContext.RefreshTokens
             .Include(x => x.Session)
@@ -128,7 +138,7 @@ public sealed class AuthService(
             user.Status.ToString()));
     }
 
-    private async Task<TokenResponse> CreateSessionAsync(User user, string? ipAddress, CancellationToken cancellationToken)
+    private async Task<AuthTokenResult> CreateSessionAsync(User user, string? ipAddress, CancellationToken cancellationToken)
     {
         var session = new UserSession
         {
@@ -156,6 +166,6 @@ public sealed class AuthService(
         dbContext.RefreshTokens.Add(refreshTokenEntity);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new TokenResponse(jwt.AccessToken, refreshToken.RawToken, jwt.ExpiresAt, refreshTokenEntity.ExpiresAt);
+        return new AuthTokenResult(jwt.AccessToken, refreshToken.RawToken, jwt.ExpiresAt, refreshTokenEntity.ExpiresAt);
     }
 }

@@ -2,11 +2,16 @@ namespace Demo.Application.DTOs.Auth;
 
 public sealed record LoginRequest(string Email, string Password);
 
-public sealed record RefreshTokenRequest(string RefreshToken);
+public sealed record RefreshTokenRequest(string? RefreshToken);
 
-public sealed record LogoutRequest(string RefreshToken);
+public sealed record LogoutRequest(string? RefreshToken);
 
 public sealed record TokenResponse(
+    string AccessToken,
+    DateTime AccessTokenExpiresAt,
+    DateTime RefreshTokenExpiresAt);
+
+public sealed record AuthTokenResult(
     string AccessToken,
     string RefreshToken,
     DateTime AccessTokenExpiresAt,

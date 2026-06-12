@@ -2,7 +2,7 @@
 @TenantOneId = 22222222-2222-2222-2222-222222222221
 @TenantTwoId = 22222222-2222-2222-2222-222222222222
 @AccessToken = paste-access-token-here
-@RefreshToken = paste-refresh-token-here
+@RefreshToken = optional-raw-refresh-token-for-manual-demo-only
 
 ### Login as SystemAdmin
 POST {{Demo.Api_HostAddress}}/api/auth/login
@@ -26,7 +26,10 @@ Content-Type: application/json
 GET {{Demo.Api_HostAddress}}/api/auth/me
 Authorization: Bearer {{AccessToken}}
 
-### Refresh token
+### Refresh token with HttpOnly cookie from login
+POST {{Demo.Api_HostAddress}}/api/auth/refresh-token
+
+### Refresh token with optional body fallback for manual API clients
 POST {{Demo.Api_HostAddress}}/api/auth/refresh-token
 Content-Type: application/json
 
@@ -34,7 +37,10 @@ Content-Type: application/json
   "refreshToken": "{{RefreshToken}}"
 }
 
-### Logout
+### Logout with HttpOnly cookie
+POST {{Demo.Api_HostAddress}}/api/auth/logout
+
+### Logout with optional body fallback for manual API clients
 POST {{Demo.Api_HostAddress}}/api/auth/logout
 Content-Type: application/json
 

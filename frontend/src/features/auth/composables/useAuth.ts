@@ -1,11 +1,27 @@
-import { computed, ref } from 'vue';
-import { login as loginRequest } from '../api';
-import { clearAuthState, loadAuthState, saveAuthState } from '../store';
-import type { StoredAuthState } from '../types/auth.types';
+import { computed, ref, type ComputedRef, type DeepReadonly, type Ref } from 'vue';
+import { login as loginRequest, logout as logoutRequest, refreshAccessToken } from '../api';
+import { clearAuthState, getAccessToken, readonlyAuthState, setAuthState } from '../store';
+import { setAccessTokenProvider } from '../../../services/interceptors';
+import type { AuthState } from '../types/auth.types';
 
-const authState = ref<StoredAuthState | null>(loadAuthState());
+export interface UseAuthResult {
+  authState: DeepReadonly<Ref<AuthState | null>>;
+  isAuthenticated: ComputedRef<boolean>;
+  isInitializing: Ref<boolean>;
+  accessTokenPreview: ComputedRef<string>;
+  initializeAuth: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  refresh: () => Promise<void>;
+  logout: () => Promise<void>;
+}
 
-export function useAuth() {
+const isInitializing = ref(false);
+let startupRefreshAttempted = false;
+
+setAccessTokenProvider(getAccessToken);
+
+export function useAuth(): UseAuthResult {
+  const authState = readonlyAuthState;
   const isAuthenticated = computed(() => authState.value !== null);
   const accessTokenPreview = computed(() => {
     const token = authState.value?.accessToken;
@@ -18,19 +34,46 @@ export function useAuth() {
 
   async function login(email: string, password: string) {
     const tokens = await loginRequest({ email, password });
-    authState.value = saveAuthState(tokens);
+    setAuthState(tokens);
   }
 
-  function logout() {
-    clearAuthState();
-    authState.value = null;
+  async function refresh() {
+    const tokens = await refreshAccessToken();
+    setAuthState(tokens);
+  }
+
+  async function initializeAuth() {
+    if (startupRefreshAttempted || authState.value) {
+      return;
+    }
+
+    startupRefreshAttempted = true;
+    isInitializing.value = true;
+    try {
+      await refresh();
+    } catch {
+      clearAuthState();
+    } finally {
+      isInitializing.value = false;
+    }
+  }
+
+  async function logout() {
+    try {
+      await logoutRequest();
+    } finally {
+      clearAuthState();
+    }
   }
 
   return {
     authState,
     isAuthenticated,
+    isInitializing,
     accessTokenPreview,
+    initializeAuth,
     login,
+    refresh,
     logout
   };
 }

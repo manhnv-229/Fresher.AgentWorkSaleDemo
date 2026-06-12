@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import { LogOut } from '@lucide/vue';
+import { onMounted } from 'vue';
 import BaseButton from '../components/ui/BaseButton.vue';
 import LoginForm from '../features/auth/components/LoginForm.vue';
 import { useAuth } from '../features/auth';
 import { formatDate } from '../utils/formatDate';
 
-const { authState, isAuthenticated, accessTokenPreview, logout } = useAuth();
+const { authState, isAuthenticated, isInitializing, accessTokenPreview, initializeAuth, logout } = useAuth();
+
+onMounted(() => {
+  void initializeAuth();
+});
 </script>
 
 <template>
   <main class="app-shell">
-    <LoginForm v-if="!isAuthenticated" />
+    <p v-if="isInitializing" class="message">Đang kiểm tra phiên đăng nhập...</p>
+
+    <LoginForm v-else-if="!isAuthenticated" />
 
     <section v-else class="authenticated-panel" aria-labelledby="auth-title">
       <div>

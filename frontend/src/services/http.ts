@@ -1,4 +1,5 @@
 import type { ApiErrorBody } from '../types/api.types';
+import { getAccessToken } from './interceptors';
 
 export const API_BASE_URL = (__API_BASE_URL__ || 'http://localhost:5066').replace(/\/$/, '');
 
@@ -18,17 +19,29 @@ export async function httpJson<TResponse, TBody = unknown>(
     method?: string;
     body?: TBody;
     headers?: HeadersInit;
+    credentials?: RequestCredentials;
+    auth?: boolean;
   } = {}
 ): Promise<TResponse> {
   let response: Response;
+  const headers = new Headers(options.headers);
+
+  if (options.body !== undefined && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (options.auth) {
+    const accessToken = getAccessToken();
+    if (accessToken && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${accessToken}`);
+    }
+  }
 
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method: options.method ?? 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
+      headers,
+      credentials: options.credentials,
       body: options.body === undefined ? undefined : JSON.stringify(options.body)
     });
   } catch {
@@ -38,6 +51,10 @@ export async function httpJson<TResponse, TBody = unknown>(
   if (!response.ok) {
     const body = await readErrorBody(response);
     throw new ApiError(body?.message || 'Yêu cầu không thành công. Vui lòng thử lại.', response.status, body);
+  }
+
+  if (response.status === 204) {
+    return undefined as TResponse;
   }
 
   return response.json() as Promise<TResponse>;

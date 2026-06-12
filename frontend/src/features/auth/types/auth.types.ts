@@ -5,11 +5,13 @@ export interface LoginRequest {
 
 export interface TokenResponse {
   accessToken: string;
-  refreshToken: string;
   accessTokenExpiresAt: string;
   refreshTokenExpiresAt: string;
 }
 
-export interface StoredAuthState extends TokenResponse {
-  savedAt: string;
+export interface AuthState {
+  accessToken: string;
+  accessTokenExpiresAt: string;
+  refreshTokenExpiresAt: string;
+  receivedAt: string;
 }

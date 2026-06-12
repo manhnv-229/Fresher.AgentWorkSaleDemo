@@ -19,7 +19,8 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         var result = await authService.LoginAsync(request, ClientIp(), cancellationToken);
         if (result.Succeeded && result.Value is not null)
         {
-            return Ok(result.Value);
+            RefreshTokenCookie.Append(HttpContext, result.Value);
+            return Ok(RefreshTokenCookie.ToResponse(result.Value));
         }
 
         return Unauthorized(new ApiErrorResponse(result.ErrorCode ?? AuthErrorCodes.InvalidCredentials, result.ErrorMessage ?? "Login failed."));
@@ -27,12 +28,14 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
     [HttpPost("refresh-token")]
     [AllowAnonymous]
-    public async Task<ActionResult<TokenResponse>> Refresh(RefreshTokenRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<TokenResponse>> Refresh([FromBody] RefreshTokenRequest? request, CancellationToken cancellationToken)
     {
-        var result = await authService.RefreshAsync(request, ClientIp(), cancellationToken);
+        var refreshToken = RefreshTokenCookie.Resolve(HttpContext, request?.RefreshToken);
+        var result = await authService.RefreshAsync(new RefreshTokenRequest(refreshToken), ClientIp(), cancellationToken);
         if (result.Succeeded && result.Value is not null)
         {
-            return Ok(result.Value);
+            RefreshTokenCookie.Append(HttpContext, result.Value);
+            return Ok(RefreshTokenCookie.ToResponse(result.Value));
         }
 
         return Unauthorized(new ApiErrorResponse(result.ErrorCode ?? AuthErrorCodes.InvalidRefreshToken, result.ErrorMessage ?? "Refresh failed."));
@@ -40,9 +43,11 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
     [HttpPost("logout")]
     [AllowAnonymous]
-    public async Task<IActionResult> Logout(LogoutRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest? request, CancellationToken cancellationToken)
     {
-        await authService.LogoutAsync(request, ClientIp(), cancellationToken);
+        var refreshToken = RefreshTokenCookie.Resolve(HttpContext, request?.RefreshToken);
+        await authService.LogoutAsync(new LogoutRequest(refreshToken), ClientIp(), cancellationToken);
+        RefreshTokenCookie.Delete(HttpContext);
         return NoContent();
     }
 

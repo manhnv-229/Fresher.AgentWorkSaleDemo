@@ -1,5 +1,5 @@
-import { loadAuthState } from '../features/auth/store';
+import { getAccessToken } from '../features/auth/store';
 
 export function isAuthenticatedRoute() {
-  return loadAuthState() !== null;
+  return getAccessToken() !== null;
 }
