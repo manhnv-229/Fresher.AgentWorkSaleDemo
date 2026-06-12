@@ -14,6 +14,4 @@ public interface IAgentRepository
         CancellationToken cancellationToken);
 
     void Add(Agent agent);
-
-    Task SaveChangesAsync(CancellationToken cancellationToken);
 }

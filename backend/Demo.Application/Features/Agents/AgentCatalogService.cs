@@ -6,7 +6,8 @@ namespace Demo.Application.Features.Agents;
 
 public sealed class AgentCatalogService(
     IAgentRepository agentRepository,
-    ITenantRepository tenantRepository) : IAgentCatalogService
+    ITenantRepository tenantRepository,
+    IUnitOfWork unitOfWork) : IAgentCatalogService
 {
     public async Task<ServiceResult<IReadOnlyList<AgentListItem>>> GetInternalAgentsAsync(
         AgentListFilters filters,
@@ -51,7 +52,7 @@ public sealed class AgentCatalogService(
 
         var agent = CreateAgent(command, tenantId: null, AgentScope.Internal);
         agentRepository.Add(agent);
-        await agentRepository.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ServiceResult<AgentListItem>.Success(MapAgent(agent));
     }
@@ -77,7 +78,7 @@ public sealed class AgentCatalogService(
 
         var agent = CreateAgent(command, tenantId, AgentScope.Tenant);
         agentRepository.Add(agent);
-        await agentRepository.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ServiceResult<AgentListItem>.Success(MapAgent(agent));
     }

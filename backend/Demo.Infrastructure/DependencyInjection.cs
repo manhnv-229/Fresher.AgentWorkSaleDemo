@@ -1,10 +1,13 @@
 using Demo.Application.Authorization;
 using Demo.Application.Features.Agents;
+using Demo.Application.Features.Tenants;
 using Demo.Infrastructure.Agents;
 using Demo.Application.Features.Auth;
+using Demo.Application.UseCases.Common;
 using Demo.Infrastructure.Auth;
 using Demo.Infrastructure.Persistence;
 using Demo.Infrastructure.Repositories;
+using Demo.Infrastructure.Tenants;
 using Demo.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -36,6 +39,7 @@ public static class DependencyInjection
         services.AddDbContext<DemoDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAuthUserRepository, AuthUserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
@@ -43,7 +47,9 @@ public static class DependencyInjection
         services.AddSingleton<IAuthOptions, AuthOptions>();
         services.AddScoped<IAgentCatalogService, AgentCatalogService>();
         services.AddScoped<IAgentRepository, AgentRepository>();
-        services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<Demo.Application.Features.Agents.ITenantRepository, Demo.Infrastructure.Agents.TenantRepository>();
+        services.AddScoped<ITenantCatalogService, TenantCatalogService>();
+        services.AddScoped<ITenantCatalogRepository, Demo.Infrastructure.Tenants.TenantRepository>();
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IRefreshTokenHasher, RefreshTokenHasher>();

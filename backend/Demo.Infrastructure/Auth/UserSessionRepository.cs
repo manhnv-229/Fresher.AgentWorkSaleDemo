@@ -10,9 +10,4 @@ public sealed class UserSessionRepository(DemoDbContext dbContext) : IUserSessio
     {
         dbContext.UserSessions.Add(session);
     }
-
-    public Task SaveChangesAsync(CancellationToken cancellationToken)
-    {
-        return dbContext.SaveChangesAsync(cancellationToken);
-    }
 }

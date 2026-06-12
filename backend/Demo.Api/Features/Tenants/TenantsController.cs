@@ -1,52 +1,38 @@
 using Demo.Api.Authorization;
 using Demo.Api.Common;
 using Demo.Application.Authorization;
-using Demo.Domain.Entities;
-using Demo.Domain.Enums;
-using Demo.Infrastructure.Persistence;
+using Demo.Application.Features.Tenants;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Api.Features.Tenants;
 
 [ApiController]
 [Route("api/tenants")]
-public sealed class TenantsController(DemoDbContext dbContext) : ControllerBase
+public sealed class TenantsController(ITenantCatalogService tenantCatalogService) : ControllerBase
 {
     [HttpGet]
     [HasPermission(PermissionCodes.TenantView)]
     public async Task<ActionResult<IReadOnlyList<object>>> GetTenants(CancellationToken cancellationToken)
     {
-        var tenants = await dbContext.Tenants
-            .AsNoTracking()
-            .OrderBy(x => x.Name)
-            .Select(x => new { x.Id, x.Name, x.Code, Status = x.Status.ToString() })
-            .ToListAsync(cancellationToken);
-
-        return Ok(tenants);
+        var result = await tenantCatalogService.GetTenantsAsync(cancellationToken);
+        return Ok(result.Value ?? []);
     }
 
     [HttpPost]
     [HasPermission(PermissionCodes.TenantCreate)]
     public async Task<ActionResult<object>> CreateTenant(CreateTenantRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Code))
+        var result = await tenantCatalogService.CreateTenantAsync(
+            new CreateTenantCommand(request.Name, request.Code),
+            cancellationToken);
+
+        if (!result.Succeeded || result.Value is null)
         {
-            return BadRequest(new ApiErrorResponse("validation_error", "Name and code are required."));
+            return BadRequest(new ApiErrorResponse(
+                result.ErrorCode ?? TenantErrorCodes.ValidationError,
+                result.ErrorMessage ?? "Name and code are required."));
         }
 
-        var tenant = new Tenant
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Code = request.Code.Trim(),
-            Status = RecordStatus.Active,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        dbContext.Tenants.Add(tenant);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return CreatedAtAction(nameof(GetTenants), new { id = tenant.Id }, new { tenant.Id, tenant.Name, tenant.Code, Status = tenant.Status.ToString() });
+        return CreatedAtAction(nameof(GetTenants), new { id = result.Value.Id }, result.Value);
     }
 }

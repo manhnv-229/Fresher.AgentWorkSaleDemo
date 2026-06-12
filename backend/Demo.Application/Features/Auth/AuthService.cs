@@ -11,7 +11,8 @@ public sealed class AuthService(
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService,
     IRefreshTokenHasher refreshTokenHasher,
-    IAuthOptions authOptions) : IAuthService
+    IAuthOptions authOptions,
+    IUnitOfWork unitOfWork) : IAuthService
 {
     public async Task<ServiceResult<AuthTokenResult>> LoginAsync(
         LoginRequest request,
@@ -76,7 +77,7 @@ public sealed class AuthService(
         };
 
         refreshTokenRepository.Add(newRefreshToken);
-        await userSessionRepository.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ServiceResult<AuthTokenResult>.Success(new AuthTokenResult(
             jwt.AccessToken,
@@ -110,7 +111,7 @@ public sealed class AuthService(
             refreshToken.Session.ReasonRevoked = "Logout";
         }
 
-        await userSessionRepository.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<ServiceResult<CurrentUserResponse>> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken)
@@ -154,7 +155,7 @@ public sealed class AuthService(
 
         userSessionRepository.Add(session);
         refreshTokenRepository.Add(refreshTokenEntity);
-        await userSessionRepository.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AuthTokenResult(jwt.AccessToken, refreshToken.RawToken, jwt.ExpiresAt, refreshTokenEntity.ExpiresAt);
     }

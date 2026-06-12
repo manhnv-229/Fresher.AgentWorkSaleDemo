@@ -43,12 +43,6 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
     {
         dbContext.Agents.Add(agent);
     }
-
-    public Task SaveChangesAsync(CancellationToken cancellationToken)
-    {
-        return dbContext.SaveChangesAsync(cancellationToken);
-    }
-
     private static IQueryable<Agent> ApplyFilters(IQueryable<Agent> query, AgentQueryFilters filters)
     {
         if (filters.Status is not null)
