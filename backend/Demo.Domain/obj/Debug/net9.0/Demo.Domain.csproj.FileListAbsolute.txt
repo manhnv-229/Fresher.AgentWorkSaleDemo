@@ -1,0 +1,12 @@
+/home/gornerrobin/demo/backend/Demo.Domain/bin/Debug/net9.0/Demo.Domain.deps.json
+/home/gornerrobin/demo/backend/Demo.Domain/bin/Debug/net9.0/Demo.Domain.dll
+/home/gornerrobin/demo/backend/Demo.Domain/bin/Debug/net9.0/Demo.Domain.pdb
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/Demo.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/Demo.Domain.AssemblyInfoInputs.cache
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/Demo.Domain.AssemblyInfo.cs
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/Demo.Domain.csproj.CoreCompileInputs.cache
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/Demo.Domain.sourcelink.json
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/Demo.Domain.dll
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/refint/Demo.Domain.dll
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/Demo.Domain.pdb
+/home/gornerrobin/demo/backend/Demo.Domain/obj/Debug/net9.0/ref/Demo.Domain.dll

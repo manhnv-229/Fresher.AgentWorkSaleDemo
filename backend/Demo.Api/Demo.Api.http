@@ -1,6 +1,95 @@
 @Demo.Api_HostAddress = http://localhost:5066
+@TenantOneId = 22222222-2222-2222-2222-222222222221
+@TenantTwoId = 22222222-2222-2222-2222-222222222222
+@AccessToken = paste-access-token-here
+@RefreshToken = paste-refresh-token-here
 
-GET {{Demo.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Login as SystemAdmin
+POST {{Demo.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
 
-###
+{
+  "email": "admin@example.com",
+  "password": "Password123!"
+}
+
+### Invalid login
+POST {{Demo.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "wrong"
+}
+
+### Current user
+GET {{Demo.Api_HostAddress}}/api/auth/me
+Authorization: Bearer {{AccessToken}}
+
+### Refresh token
+POST {{Demo.Api_HostAddress}}/api/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{RefreshToken}}"
+}
+
+### Logout
+POST {{Demo.Api_HostAddress}}/api/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{RefreshToken}}"
+}
+
+### Current user after logout should return 401 with old access token
+GET {{Demo.Api_HostAddress}}/api/auth/me
+Authorization: Bearer {{AccessToken}}
+
+### Refresh after logout should return 401 with old refresh token
+POST {{Demo.Api_HostAddress}}/api/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{RefreshToken}}"
+}
+
+### SystemAdmin can list tenants
+GET {{Demo.Api_HostAddress}}/api/tenants
+Authorization: Bearer {{AccessToken}}
+
+### SystemAdmin can create tenants
+POST {{Demo.Api_HostAddress}}/api/tenants
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Tenant Three",
+  "code": "tenant-three"
+}
+
+### Tenant-scoped agent list
+GET {{Demo.Api_HostAddress}}/api/tenants/{{TenantOneId}}/agents
+Authorization: Bearer {{AccessToken}}
+
+### Tenant-scoped agent create
+POST {{Demo.Api_HostAddress}}/api/tenants/{{TenantOneId}}/agents
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Branch Assistant",
+  "role": "Assistant",
+  "description": "Created from focused integration check."
+}
+
+### AgentManager denied create in Tenant Two after logging in as manager@example.com
+POST {{Demo.Api_HostAddress}}/api/tenants/{{TenantTwoId}}/agents
+Authorization: Bearer {{AccessToken}}
+Content-Type: application/json
+
+{
+  "name": "Should Be Forbidden",
+  "role": "Assistant",
+  "description": "Manager only has AgentViewer in Tenant Two."
+}

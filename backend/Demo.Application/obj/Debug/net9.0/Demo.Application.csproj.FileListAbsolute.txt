@@ -1,0 +1,16 @@
+/home/gornerrobin/demo/backend/Demo.Application/bin/Debug/net9.0/Demo.Application.deps.json
+/home/gornerrobin/demo/backend/Demo.Application/bin/Debug/net9.0/Demo.Application.dll
+/home/gornerrobin/demo/backend/Demo.Application/bin/Debug/net9.0/Demo.Application.pdb
+/home/gornerrobin/demo/backend/Demo.Application/bin/Debug/net9.0/Demo.Domain.dll
+/home/gornerrobin/demo/backend/Demo.Application/bin/Debug/net9.0/Demo.Domain.pdb
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.Application.csproj.AssemblyReference.cache
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.Application.GeneratedMSBuildEditorConfig.editorconfig
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.Application.AssemblyInfoInputs.cache
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.Application.AssemblyInfo.cs
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.Application.csproj.CoreCompileInputs.cache
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.Application.sourcelink.json
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.App.371CD7EF.Up2Date
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.Application.dll
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/refint/Demo.Application.dll
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/Demo.Application.pdb
+/home/gornerrobin/demo/backend/Demo.Application/obj/Debug/net9.0/ref/Demo.Application.dll

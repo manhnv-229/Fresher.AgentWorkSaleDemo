@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "VLntVxU1Wgc=",
+  "dgSpecHash": "KVygN8HSU78=",
   "success": true,
   "projectFilePath": "/home/gornerrobin/demo/backend/Demo.Infrastructure/Demo.Infrastructure.csproj",
   "expectedPackageFiles": [
+    "/home/gornerrobin/.nuget/packages/bcrypt.net-next/4.0.3/bcrypt.net-next.4.0.3.nupkg.sha512",
     "/home/gornerrobin/.nuget/packages/fluentvalidation/12.1.1/fluentvalidation.12.1.1.nupkg.sha512",
     "/home/gornerrobin/.nuget/packages/mediatr/14.1.0/mediatr.14.1.0.nupkg.sha512",
     "/home/gornerrobin/.nuget/packages/mediatr.contracts/2.0.1/mediatr.contracts.2.0.1.nupkg.sha512",
@@ -26,7 +27,8 @@
     "/home/gornerrobin/.nuget/packages/microsoft.identitymodel.tokens/8.14.0/microsoft.identitymodel.tokens.8.14.0.nupkg.sha512",
     "/home/gornerrobin/.nuget/packages/mysqlconnector/2.4.0/mysqlconnector.2.4.0.nupkg.sha512",
     "/home/gornerrobin/.nuget/packages/pomelo.entityframeworkcore.mysql/9.0.0/pomelo.entityframeworkcore.mysql.9.0.0.nupkg.sha512",
-    "/home/gornerrobin/.nuget/packages/system.diagnostics.diagnosticsource/10.0.0/system.diagnostics.diagnosticsource.10.0.0.nupkg.sha512"
+    "/home/gornerrobin/.nuget/packages/system.diagnostics.diagnosticsource/10.0.0/system.diagnostics.diagnosticsource.10.0.0.nupkg.sha512",
+    "/home/gornerrobin/.nuget/packages/system.identitymodel.tokens.jwt/8.12.1/system.identitymodel.tokens.jwt.8.12.1.nupkg.sha512"
   ],
   "logs": []
 }
