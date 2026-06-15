@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Infrastructure.Repositories;
 
-public sealed class TenantRepository(DemoDbContext dbContext) : ITenantCatalogRepository
+public sealed class TenantCatalogRepository(DemoDbContext dbContext) : ITenantCatalogRepository
 {
     public async Task<IReadOnlyList<Tenant>> GetAllAsync(CancellationToken cancellationToken)
     {

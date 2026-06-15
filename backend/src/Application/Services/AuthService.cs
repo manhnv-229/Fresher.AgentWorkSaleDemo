@@ -30,7 +30,7 @@ public sealed class AuthService(
             return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidCredentials, "Invalid email or password.");
         }
 
-        if (user.Status != RecordStatus.Active)
+        if (user.Status != AccountStatus.Active)
         {
             return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InactiveUser, "User is not active.");
         }
@@ -58,7 +58,7 @@ public sealed class AuthService(
             refreshToken.Session.RevokedAt is not null ||
             refreshToken.Session.ExpiresAt <= DateTime.UtcNow ||
             refreshToken.Session.UserId != refreshToken.UserId ||
-            refreshToken.User.Status != RecordStatus.Active)
+            refreshToken.User.Status != AccountStatus.Active)
         {
             return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidRefreshToken, "Refresh token is invalid.");
         }

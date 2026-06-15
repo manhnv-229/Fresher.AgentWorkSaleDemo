@@ -2,6 +2,7 @@ namespace Demo.Application.DTOs;
 
 public sealed record AgentListItem(
     Guid Id,
+    string Code,
     string Name,
     string? Description,
     string? Icon,

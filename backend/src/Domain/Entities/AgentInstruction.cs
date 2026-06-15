@@ -22,7 +22,7 @@ public sealed class AgentInstruction
     {
         get; set;
     }
-    public DateTime? UpdatedAt
+    public DateTime? ModifiedAt
     {
         get; set;
     }

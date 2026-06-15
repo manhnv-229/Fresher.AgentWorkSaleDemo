@@ -24,7 +24,7 @@ public sealed class Role
     {
         get; set;
     }
-    public DateTime? UpdatedAt
+    public DateTime? ModifiedAt
     {
         get; set;
     }

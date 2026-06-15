@@ -18,6 +18,9 @@ public sealed class DemoDbContext(DbContextOptions<DemoDbContext> options) : DbC
     public DbSet<Agent> Agents => Set<Agent>();
     public DbSet<AgentBranchInfo> AgentBranchInfos => Set<AgentBranchInfo>();
     public DbSet<AgentInstruction> AgentInstructions => Set<AgentInstruction>();
+    public DbSet<AgentKnowledgeFolder> AgentKnowledgeFolders => Set<AgentKnowledgeFolder>();
+    public DbSet<AgentKnowledgeFile> AgentKnowledgeFiles => Set<AgentKnowledgeFile>();
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

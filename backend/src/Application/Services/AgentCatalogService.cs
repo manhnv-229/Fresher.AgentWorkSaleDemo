@@ -45,6 +45,7 @@ public sealed class AgentCatalogService(
     }
 
     public async Task<ServiceResult<AgentListItem>> CreateInternalAgentAsync(
+        Guid createdByUserId,
         CreateAgentCommand command,
         CancellationToken cancellationToken)
     {
@@ -54,7 +55,7 @@ public sealed class AgentCatalogService(
             return validation;
         }
 
-        var agent = CreateAgent(command, tenantId: null, AgentScope.Internal);
+        var agent = CreateAgent(command, tenantId: null, AgentScope.Internal, createdByUserId);
         agentRepository.Add(agent);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -63,6 +64,7 @@ public sealed class AgentCatalogService(
 
     public async Task<ServiceResult<AgentListItem>> CreateTenantAgentAsync(
         Guid tenantId,
+        Guid createdByUserId,
         CreateAgentCommand command,
         CancellationToken cancellationToken)
     {
@@ -80,18 +82,22 @@ public sealed class AgentCatalogService(
                 "Tenant was not found.");
         }
 
-        var agent = CreateAgent(command, tenantId, AgentScope.Tenant);
+        var agent = CreateAgent(command, tenantId, AgentScope.Tenant, createdByUserId);
         agentRepository.Add(agent);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ServiceResult<AgentListItem>.Success(MapAgent(agent));
     }
 
-    private static Agent CreateAgent(CreateAgentCommand command, Guid? tenantId, AgentScope scope) =>
-        new()
+    private static Agent CreateAgent(CreateAgentCommand command, Guid? tenantId, AgentScope scope, Guid createdByUserId)
+    {
+        var id = Guid.NewGuid();
+        return new Agent
         {
-            Id = Guid.NewGuid(),
+            Id = id,
             TenantId = tenantId,
+            CreatedByUserId = createdByUserId,
+            Code = CreateAgentCode(command.Name, id),
             Scope = scope,
             Name = command.Name.Trim(),
             Role = command.Role.Trim(),
@@ -100,10 +106,19 @@ public sealed class AgentCatalogService(
             Status = AgentStatus.Draft,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    private static string CreateAgentCode(string name, Guid id)
+    {
+        var normalized = new string(name.Trim().ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
+        var prefix = string.IsNullOrWhiteSpace(normalized) ? "AGENT" : normalized[..Math.Min(normalized.Length, 10)];
+        return $"{prefix}-{id.ToString("N")[..8]}";
+    }
 
     private static AgentListItem MapAgent(Agent agent) =>
         new(
             agent.Id,
+            agent.Code,
             agent.Name,
             agent.Description,
             agent.Icon,

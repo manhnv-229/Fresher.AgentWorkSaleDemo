@@ -41,7 +41,7 @@ public sealed class PermissionService(DemoDbContext dbContext) : IPermissionServ
             .AnyAsync(x =>
                 x.UserId == userId &&
                 x.TenantId == tenantId &&
-                x.Status == RecordStatus.Active,
+                x.Status == MembershipStatus.Active,
                 cancellationToken);
 
         if (!hasActiveTenantMembership)

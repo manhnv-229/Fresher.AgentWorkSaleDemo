@@ -16,11 +16,13 @@ public interface IAgentCatalogService
         CancellationToken cancellationToken);
 
     Task<ServiceResult<AgentListItem>> CreateInternalAgentAsync(
+        Guid createdByUserId,
         CreateAgentCommand command,
         CancellationToken cancellationToken);
 
     Task<ServiceResult<AgentListItem>> CreateTenantAgentAsync(
         Guid tenantId,
+        Guid createdByUserId,
         CreateAgentCommand command,
         CancellationToken cancellationToken);
 }

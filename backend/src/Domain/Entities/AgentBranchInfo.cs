@@ -41,7 +41,7 @@ public sealed class AgentBranchInfo
     {
         get; set;
     }
-    public DateTime? UpdatedAt
+    public DateTime? ModifiedAt
     {
         get; set;
     }

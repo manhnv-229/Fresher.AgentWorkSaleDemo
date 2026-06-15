@@ -16,8 +16,12 @@ public sealed class UserTenant
     {
         get; set;
     }
-    public RecordStatus Status { get; set; } = RecordStatus.Active;
+    public MembershipStatus Status { get; set; } = MembershipStatus.Active;
     public DateTime CreatedAt
+    {
+        get; set;
+    }
+    public DateTime? ModifiedAt
     {
         get; set;
     }

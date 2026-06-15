@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
+using Demo.Application.DTOs;
 using Demo.Domain.Interfaces.Service;
 using Demo.Domain.Entities;
 using Demo.Infrastructure.Options;

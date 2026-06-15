@@ -34,7 +34,7 @@ public sealed class TenantCatalogService(
             Id = Guid.NewGuid(),
             Name = command.Name.Trim(),
             Code = command.Code.Trim(),
-            Status = RecordStatus.Active,
+            Status = TenantStatus.Active,
             CreatedAt = DateTime.UtcNow
         };
 

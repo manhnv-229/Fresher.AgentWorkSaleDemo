@@ -10,12 +10,12 @@ public sealed class Tenant
     }
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
-    public RecordStatus Status { get; set; } = RecordStatus.Active;
+    public TenantStatus Status { get; set; } = TenantStatus.Active;
     public DateTime CreatedAt
     {
         get; set;
     }
-    public DateTime? UpdatedAt
+    public DateTime? ModifiedAt
     {
         get; set;
     }

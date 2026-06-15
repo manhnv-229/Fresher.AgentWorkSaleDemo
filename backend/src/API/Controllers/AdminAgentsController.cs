@@ -6,6 +6,8 @@ using Demo.Application.Errors;
 using Demo.Domain.Authorization;
 using Demo.Domain.Interfaces.Service;
 
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.Mvc;
 
 namespace Demo.Api.Controllers;
@@ -39,7 +41,14 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
     [HasPermission(PermissionCodes.AgentCreate)]
     public async Task<ActionResult<object>> CreateInternalAgent(CreateAgentRequest request, CancellationToken cancellationToken)
     {
+        var userId = CurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
+        }
+
         var result = await agentService.CreateInternalAgentAsync(
+            userId.Value,
             new CreateAgentCommand(request.Name, request.Role, request.Description, request.Icon),
             cancellationToken);
 
@@ -51,5 +60,11 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
         }
 
         return CreatedAtAction(nameof(GetInternalAgents), routeValues: null, value: result.Value);
+    }
+
+    private Guid? CurrentUserId()
+    {
+        var userIdValue = User.FindFirstValue("userId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(userIdValue, out var userId) ? userId : null;
     }
 }

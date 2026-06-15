@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Infrastructure.Repositories;
 
-public sealed class TenantRepository(DemoDbContext dbContext) : ITenantRepository
+public sealed class AgentTenantRepository(DemoDbContext dbContext) : ITenantRepository
 {
     public Task<bool> ExistsAsync(Guid tenantId, CancellationToken cancellationToken)
     {

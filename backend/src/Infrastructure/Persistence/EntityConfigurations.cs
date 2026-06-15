@@ -16,8 +16,9 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.PasswordHash).HasColumnName("password_hash").HasColumnType("text").IsRequired();
         builder.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(255);
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasConversion<string>().IsRequired();
+        builder.Property(x => x.PasswordChangedAt).HasColumnName("password_changed_at");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
         builder.HasIndex(x => x.Email).IsUnique();
     }
 }
@@ -33,7 +34,7 @@ internal sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(x => x.Code).HasColumnName("code").HasMaxLength(100).IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasConversion<string>().IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
         builder.HasIndex(x => x.Code).IsUnique();
     }
 }
@@ -49,6 +50,7 @@ internal sealed class UserTenantConfiguration : IEntityTypeConfiguration<UserTen
         builder.Property(x => x.TenantId).HasColumnName("tenant_id").HasMaxLength(36);
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasConversion<string>().IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
         builder.HasIndex(x => x.UserId);
         builder.HasIndex(x => x.TenantId);
         builder.HasIndex(x => new { x.UserId, x.TenantId }).IsUnique();
@@ -70,7 +72,7 @@ internal sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(x => x.Description).HasColumnName("description").HasMaxLength(500);
         builder.Property(x => x.IsSystemRole).HasColumnName("is_system_role").IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
         builder.HasIndex(x => x.TenantId);
         builder.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
         builder.HasOne(x => x.Tenant).WithMany(x => x.Roles).HasForeignKey(x => x.TenantId);
@@ -119,6 +121,7 @@ internal sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
         builder.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(36);
         builder.Property(x => x.RoleId).HasColumnName("role_id").HasMaxLength(36);
         builder.Property(x => x.TenantId).HasColumnName("tenant_id").HasMaxLength(36);
+        builder.Property(x => x.AssignedAt).HasColumnName("assigned_at");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.HasIndex(x => x.UserId);
         builder.HasIndex(x => x.TenantId);
@@ -182,17 +185,25 @@ internal sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(36);
         builder.Property(x => x.TenantId).HasColumnName("tenant_id").HasMaxLength(36);
+        builder.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.ModifiedByUserId).HasColumnName("modified_by_user_id").HasMaxLength(36);
+        builder.Property(x => x.Code).HasColumnName("code").HasMaxLength(100).IsRequired();
         builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
         builder.Property(x => x.Description).HasColumnName("description").HasColumnType("text");
         builder.Property(x => x.Icon).HasColumnName("icon").HasMaxLength(500);
         builder.Property(x => x.Scope).HasColumnName("scope").HasMaxLength(50).HasConversion<string>().IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasConversion<string>().IsRequired();
         builder.Property(x => x.Role).HasColumnName("role").HasMaxLength(100).IsRequired();
+        builder.Property(x => x.PublishedAt).HasColumnName("published_at");
+        builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
         builder.HasIndex(x => x.TenantId);
         builder.HasIndex(x => x.Scope);
+        builder.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
         builder.HasOne(x => x.Tenant).WithMany(x => x.Agents).HasForeignKey(x => x.TenantId);
+        builder.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.ModifiedByUser).WithMany().HasForeignKey(x => x.ModifiedByUserId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -212,7 +223,7 @@ internal sealed class AgentBranchInfoConfiguration : IEntityTypeConfiguration<Ag
         builder.Property(x => x.District).HasColumnName("district").HasMaxLength(100);
         builder.Property(x => x.OpeningHourType).HasColumnName("opening_hour_type").HasMaxLength(50).HasConversion<string>().IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
         builder.HasIndex(x => x.AgentId);
         builder.HasOne(x => x.Agent).WithOne(x => x.BranchInfo).HasForeignKey<AgentBranchInfo>(x => x.AgentId);
     }
@@ -229,8 +240,86 @@ internal sealed class AgentInstructionConfiguration : IEntityTypeConfiguration<A
         builder.Property(x => x.PrePrompt).HasColumnName("pre_prompt").HasColumnType("text");
         builder.Property(x => x.RegionalAccent).HasColumnName("regional_accent").HasMaxLength(100);
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
-        builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
         builder.HasIndex(x => x.AgentId);
         builder.HasOne(x => x.Agent).WithOne(x => x.Instruction).HasForeignKey<AgentInstruction>(x => x.AgentId);
+    }
+}
+
+internal sealed class AgentKnowledgeFolderConfiguration : IEntityTypeConfiguration<AgentKnowledgeFolder>
+{
+    public void Configure(EntityTypeBuilder<AgentKnowledgeFolder> builder)
+    {
+        builder.ToTable("agent_knowledge_folders");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(36);
+        builder.Property(x => x.AgentId).HasColumnName("agent_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.ParentFolderId).HasColumnName("parent_folder_id").HasMaxLength(36);
+        builder.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
+        builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        builder.HasIndex(x => x.AgentId);
+        builder.HasIndex(x => x.ParentFolderId);
+        builder.HasIndex(x => x.CreatedByUserId);
+        builder.HasIndex(x => new { x.AgentId, x.ParentFolderId, x.Name }).IsUnique();
+        builder.HasOne(x => x.Agent).WithMany(x => x.KnowledgeFolders).HasForeignKey(x => x.AgentId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.ParentFolder).WithMany(x => x.ChildFolders).HasForeignKey(x => x.ParentFolderId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class AgentKnowledgeFileConfiguration : IEntityTypeConfiguration<AgentKnowledgeFile>
+{
+    public void Configure(EntityTypeBuilder<AgentKnowledgeFile> builder)
+    {
+        builder.ToTable("agent_knowledge_files");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(36);
+        builder.Property(x => x.AgentId).HasColumnName("agent_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.FolderId).HasColumnName("folder_id").HasMaxLength(36);
+        builder.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.OriginalName).HasColumnName("original_name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(150).IsRequired();
+        builder.Property(x => x.Extension).HasColumnName("extension").HasMaxLength(20);
+        builder.Property(x => x.StorageKey).HasColumnName("storage_key").HasMaxLength(500).IsRequired();
+        builder.Property(x => x.SizeBytes).HasColumnName("size_bytes").IsRequired();
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
+        builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        builder.HasIndex(x => x.AgentId);
+        builder.HasIndex(x => x.FolderId);
+        builder.HasIndex(x => x.CreatedByUserId);
+        builder.HasIndex(x => x.StorageKey).IsUnique();
+        builder.HasOne(x => x.Agent).WithMany(x => x.KnowledgeFiles).HasForeignKey(x => x.AgentId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Folder).WithMany(x => x.Files).HasForeignKey(x => x.FolderId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry>
+{
+    public void Configure(EntityTypeBuilder<AuditLogEntry> builder)
+    {
+        builder.ToTable("audit_logs");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(36);
+        builder.Property(x => x.UserId).HasColumnName("user_id").HasMaxLength(36);
+        builder.Property(x => x.TenantId).HasColumnName("tenant_id").HasMaxLength(36);
+        builder.Property(x => x.Action).HasColumnName("action").HasMaxLength(100).IsRequired();
+        builder.Property(x => x.UserName).HasColumnName("user_name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.TargetType).HasColumnName("target_type").HasMaxLength(100);
+        builder.Property(x => x.TargetId).HasColumnName("target_id").HasMaxLength(100);
+        builder.Property(x => x.IPAddress).HasColumnName("ip_address").HasMaxLength(100);
+        builder.Property(x => x.Description).HasColumnName("description").HasColumnType("text").IsRequired();
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.HasIndex(x => x.UserId);
+        builder.HasIndex(x => x.TenantId);
+        builder.HasIndex(x => x.CreatedAt);
+        builder.HasIndex(x => x.Action);
+        builder.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.SetNull);
     }
 }

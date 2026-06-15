@@ -14,12 +14,16 @@ public sealed class User
     {
         get; set;
     }
-    public RecordStatus Status { get; set; } = RecordStatus.Active;
+    public AccountStatus Status { get; set; } = AccountStatus.Active;
+    public DateTime? PasswordChangedAt
+    {
+        get; set;
+    }
     public DateTime CreatedAt
     {
         get; set;
     }
-    public DateTime? UpdatedAt
+    public DateTime? ModifiedAt
     {
         get; set;
     }

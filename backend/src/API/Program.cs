@@ -165,21 +165,14 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 
-    if (app.Configuration.GetValue<bool>("Database:EnsureCreatedOnStartup") ||
-        app.Configuration.GetValue<bool>("Database:SeedOnStartup"))
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<DemoDbContext>();
+
+    await dbContext.Database.MigrateAsync();
+
+    if (app.Configuration.GetValue<bool>("Database:SeedOnStartup"))
     {
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<DemoDbContext>();
-
-        if (app.Configuration.GetValue<bool>("Database:EnsureCreatedOnStartup"))
-        {
-            await dbContext.Database.EnsureCreatedAsync();
-        }
-
-        if (app.Configuration.GetValue<bool>("Database:SeedOnStartup"))
-        {
-            await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
-        }
+        await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
     }
 }
 

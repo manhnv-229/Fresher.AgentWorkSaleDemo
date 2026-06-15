@@ -18,6 +18,11 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
     private static readonly Guid AdminUserId = Guid.Parse("44444444-4444-4444-4444-444444444441");
     private static readonly Guid ManagerUserId = Guid.Parse("44444444-4444-4444-4444-444444444442");
     private static readonly Guid ViewerUserId = Guid.Parse("44444444-4444-4444-4444-444444444443");
+    private static readonly Guid InternalAgentId = Guid.Parse("55555555-5555-5555-5555-555555555550");
+    private static readonly Guid TenantOneAgentId = Guid.Parse("55555555-5555-5555-5555-555555555551");
+    private static readonly Guid TenantTwoAgentId = Guid.Parse("55555555-5555-5555-5555-555555555552");
+    private static readonly Guid TenantOneRootFolderId = Guid.Parse("66666666-6666-6666-6666-666666666661");
+    private static readonly Guid TenantOneGuideFileId = Guid.Parse("77777777-7777-7777-7777-777777777771");
 
     private static readonly (string Code, string Name, string Group)[] Permissions =
     [
@@ -47,6 +52,8 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         await SeedUsersAsync(cancellationToken);
         await SeedMembershipsAsync(cancellationToken);
         await SeedAgentsAsync(cancellationToken);
+        await SeedKnowledgeAsync(cancellationToken);
+        await SeedAuditLogsAsync(cancellationToken);
     }
 
     private async Task SeedPermissionsAsync(CancellationToken cancellationToken)
@@ -89,7 +96,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             Id = id,
             Name = name,
             Code = code,
-            Status = RecordStatus.Active,
+            Status = TenantStatus.Active,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -185,7 +192,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             Email = email,
             FullName = fullName,
             PasswordHash = passwordHasher.HashPassword("Password123!"),
-            Status = RecordStatus.Active,
+            Status = AccountStatus.Active,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -216,7 +223,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             Id = StableGuid("user-tenant", $"{userId}:{tenantId}"),
             UserId = userId,
             TenantId = tenantId,
-            Status = RecordStatus.Active,
+            Status = MembershipStatus.Active,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -245,7 +252,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
     private async Task SeedAgentsAsync(CancellationToken cancellationToken)
     {
         await AddAgentAsync(
-            Guid.Parse("55555555-5555-5555-5555-555555555550"),
+            InternalAgentId,
             null,
             "AVA Internal Ticket",
             "Admin-only internal support agent for operations.",
@@ -254,7 +261,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             cancellationToken);
 
         await AddAgentAsync(
-            Guid.Parse("55555555-5555-5555-5555-555555555551"),
+            TenantOneAgentId,
             TenantOneId,
             "Demo Support Agent",
             "Demo tenant agent for permission checks.",
@@ -263,7 +270,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             cancellationToken);
 
         await AddAgentAsync(
-            Guid.Parse("55555555-5555-5555-5555-555555555552"),
+            TenantTwoAgentId,
             TenantTwoId,
             "Tenant Two Guide",
             "Demo tenant guide agent for sidebar switching checks.",
@@ -290,6 +297,8 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         {
             Id = id,
             TenantId = tenantId,
+            CreatedByUserId = AdminUserId,
+            Code = CreateAgentCode(name, id),
             Name = name,
             Description = description,
             Scope = scope,
@@ -301,9 +310,144 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task SeedKnowledgeAsync(CancellationToken cancellationToken)
+    {
+        await AddKnowledgeFolderAsync(TenantOneRootFolderId, TenantOneAgentId, null, AdminUserId, "Guides", cancellationToken);
+        await AddKnowledgeFileAsync(
+            TenantOneGuideFileId,
+            TenantOneAgentId,
+            TenantOneRootFolderId,
+            AdminUserId,
+            "tenant-one-guide",
+            "Tenant One Guide.pdf",
+            "seed/tenant-one-guide.pdf",
+            "application/pdf",
+            ".pdf",
+            1024L,
+            cancellationToken);
+    }
+
+    private async Task AddKnowledgeFolderAsync(
+        Guid id,
+        Guid agentId,
+        Guid? parentFolderId,
+        Guid createdByUserId,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.AgentKnowledgeFolders.AnyAsync(x => x.Id == id, cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.AgentKnowledgeFolders.Add(new AgentKnowledgeFolder
+        {
+            Id = id,
+            AgentId = agentId,
+            ParentFolderId = parentFolderId,
+            CreatedByUserId = createdByUserId,
+            Name = name,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task AddKnowledgeFileAsync(
+        Guid id,
+        Guid agentId,
+        Guid? folderId,
+        Guid createdByUserId,
+        string name,
+        string originalName,
+        string storageKey,
+        string contentType,
+        string? extension,
+        long sizeBytes,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.AgentKnowledgeFiles.AnyAsync(x => x.Id == id, cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.AgentKnowledgeFiles.Add(new AgentKnowledgeFile
+        {
+            Id = id,
+            AgentId = agentId,
+            FolderId = folderId,
+            CreatedByUserId = createdByUserId,
+            Name = name,
+            OriginalName = originalName,
+            ContentType = contentType,
+            Extension = extension,
+            StorageKey = storageKey,
+            SizeBytes = sizeBytes,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task SeedAuditLogsAsync(CancellationToken cancellationToken)
+    {
+        await AddAuditLogAsync(
+            Guid.Parse("88888888-8888-8888-8888-888888888881"),
+            AdminUserId,
+            null,
+            "agent.create",
+            "Admin User",
+            "Agent",
+            InternalAgentId.ToString(),
+            "127.0.0.1",
+            "Seeded internal agent for demo access.",
+            cancellationToken);
+    }
+
+    private async Task AddAuditLogAsync(
+        Guid id,
+        Guid? userId,
+        Guid? tenantId,
+        string action,
+        string userName,
+        string? targetType,
+        string? targetId,
+        string? ipAddress,
+        string description,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.Set<AuditLogEntry>().AnyAsync(x => x.Id == id, cancellationToken))
+        {
+            return;
+        }
+
+        dbContext.Set<AuditLogEntry>().Add(new AuditLogEntry
+        {
+            Id = id,
+            UserId = userId,
+            TenantId = tenantId,
+            Action = action,
+            UserName = userName,
+            TargetType = targetType,
+            TargetId = targetId,
+            IPAddress = ipAddress,
+            Description = description,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private static Guid StableGuid(string scope, string value)
     {
         var bytes = System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes($"{scope}:{value}"));
         return new Guid(bytes);
+    }
+
+    private static string CreateAgentCode(string name, Guid id)
+    {
+        var normalized = new string(name.Trim().ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
+        var prefix = string.IsNullOrWhiteSpace(normalized) ? "AGENT" : normalized[..Math.Min(normalized.Length, 10)];
+        return $"{prefix}-{id.ToString("N")[..8]}";
     }
 }

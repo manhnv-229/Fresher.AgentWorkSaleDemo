@@ -18,6 +18,10 @@ public sealed class UserRole
     {
         get; set;
     }
+    public DateTime? AssignedAt
+    {
+        get; set;
+    }
     public DateTime CreatedAt
     {
         get; set;

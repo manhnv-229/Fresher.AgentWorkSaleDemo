@@ -54,6 +54,7 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
         if (filters.Search is not null)
         {
             query = query.Where(agent =>
+                agent.Code.Contains(filters.Search) ||
                 agent.Name.Contains(filters.Search) ||
                 ((agent.Description != null) && agent.Description.Contains(filters.Search)) ||
                 agent.Role.Contains(filters.Search));
