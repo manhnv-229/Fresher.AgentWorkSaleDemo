@@ -44,6 +44,7 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
+builder.Services.AddSwaggerGen();
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, _, _) =>
@@ -163,6 +164,8 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseSwagger();
+    app.UseSwaggerUI();
     app.MapOpenApi();
 
     using var scope = app.Services.CreateScope();
@@ -183,55 +186,6 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapGet("/", () => Results.Ok(new
-{
-    name = "Demo API",
-    status = "Running",
-    endpoints = new[]
-    {
-        "GET /health",
-        "POST /api/auth/login",
-        "POST /api/auth/refresh-token",
-        "POST /api/auth/logout",
-        "GET /api/auth/me",
-        "GET /api/tenants",
-        "POST /api/tenants",
-        "GET /api/admin/agents/internal",
-        "POST /api/admin/agents/internal",
-        "GET /api/tenants/{tenantId}/agents",
-        "POST /api/tenants/{tenantId}/agents",
-        "GET /swagger",
-        "GET /openapi/v1.json"
-    }
-}));
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy", utcNow = DateTime.UtcNow }));
-app.MapGet("/swagger", () => Results.Content("""
-    <!doctype html>
-    <html lang="en">
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>Demo API Swagger</title>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
-      <style>
-        body { margin: 0; background: #f7f8fa; }
-        .swagger-ui .topbar { display: none; }
-      </style>
-    </head>
-    <body>
-      <div id="swagger-ui"></div>
-      <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-      <script>
-        window.ui = SwaggerUIBundle({
-          url: '/openapi/v1.json',
-          dom_id: '#swagger-ui',
-          deepLinking: true,
-          persistAuthorization: true
-        });
-      </script>
-    </body>
-    </html>
-    """, "text/html"));
 app.MapControllers();
 
 app.Run();
