@@ -14,6 +14,22 @@
   margin: 0 auto;
 }
 
+.auth-shell {
+  width: min(100%, 360px);
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.auth-shell__notice {
+  padding: 12px 14px;
+  border: 1px solid rgba(48, 96, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #2446b8;
+  box-shadow: var(--shadow-panel);
+}
+
 .login-form {
   display: grid;
   gap: 10px;
@@ -287,6 +303,12 @@
   margin-bottom: 24px;
 }
 
+.security-grid {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
 .filter-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 220px;
@@ -322,6 +344,33 @@
   min-height: 420px;
 }
 
+.user-panel {
+  min-height: auto;
+  display: grid;
+  gap: 14px;
+}
+
+.user-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.user-panel__header h3 {
+  margin: 0;
+  color: #162032;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 26px;
+}
+
+.user-panel__header p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .loading-row,
 .empty-card,
 .state-card {
@@ -337,6 +386,108 @@
 .empty-card,
 .state-card {
   align-items: flex-start;
+}
+
+.table-shell {
+  overflow-x: auto;
+}
+
+.table-shell table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-shell th,
+.table-shell td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(222, 229, 239, 0.9);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table-shell th {
+  color: #5a677d;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.table-shell tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.user-cell {
+  display: grid;
+  gap: 2px;
+}
+
+.user-cell strong {
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.user-cell span {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.table-actions {
+  text-align: right;
+}
+
+.table-actions .button--secondary {
+  width: auto;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 82px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #324573;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-chip--success {
+  background: #e7f8ef;
+  color: #157347;
+}
+
+.status-chip--danger {
+  background: #fdecec;
+  color: #c03333;
+}
+
+.empty-card--tight {
+  padding: 18px;
+}
+
+.state-card--compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.state-card__icon {
+  width: 44px;
+  height: 44px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(47, 104, 255, 0.12), rgba(91, 107, 255, 0.18));
+  color: #2446b8;
+}
+
+.state-card__body {
+  flex: 1;
+  display: grid;
+  gap: 4px;
 }
 
 .agent-grid {
@@ -512,6 +663,12 @@
   .workspace__content {
     order: 1;
   }
+
+  .state-card--compact,
+  .user-panel__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 640px) {
@@ -524,6 +681,10 @@
   .agent-card__top,
   .create-agent__actions {
     flex-direction: column;
+  }
+
+  .table-actions {
+    text-align: left;
   }
 
   .filter-bar {

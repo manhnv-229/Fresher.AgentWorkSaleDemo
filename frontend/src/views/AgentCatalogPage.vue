@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { Building2, CircleAlert, LoaderCircle, LogOut, Plus, RefreshCw, Shield } from '@lucide/vue';
+import { Building2, CircleAlert, LoaderCircle, Lock, LogOut, Plus, RefreshCw, Shield, ShieldAlert, ShieldCheck } from '@lucide/vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
 import BaseModal from '../components/BaseModal.vue';
+import BaseTable from '../components/BaseTable.vue';
 import LoginForm from '../components/auth/LoginForm.vue';
 import { useAuth } from '../composables/useAuth';
 import {
+  changePassword,
   createInternalAgent,
   getInternalAgents,
   getTenantAgents,
   getTenants,
+  getUsers,
+  lockUser,
+  unlockUser,
+  type AdminUserSummary,
   type AgentListFilters,
   type AgentStatusFilter,
   type AgentSummary,
@@ -48,7 +54,7 @@ const statusOptions: StatusOption[] = [
   { value: 'Inactive', label: 'Inactive' }
 ];
 
-const { authState, isAuthenticated, isInitializing, initializeAuth, logout } = useAuth();
+const { authState, isAuthenticated, isInitializing, initializeAuth, logout, changePassword: submitPasswordChangeRequest, clearSession } = useAuth();
 
 const activeScope = ref<AgentScopeView>('internal');
 const tenants = ref<TenantSummary[]>([]);
@@ -59,10 +65,17 @@ const tenantAgents = ref<AgentSummary[]>([]);
 const isLoadingDashboard = ref(false);
 const isLoadingTenantAgents = ref(false);
 const isSavingInternalAgent = ref(false);
+const isLoadingUsers = ref(false);
+const activeUserActionId = ref('');
+const isPasswordModalOpen = ref(false);
+const isChangingPassword = ref(false);
 
 const sidebarError = ref('');
 const internalAgentsError = ref('');
 const tenantAgentsError = ref('');
+const userManagementError = ref('');
+const passwordChangeError = ref('');
+const authNotice = ref('');
 
 const isCreateModalOpen = ref(false);
 const createName = ref('');
@@ -72,6 +85,9 @@ const createIcon = ref(avatarOptions[0]?.id ?? 'mint');
 const createError = ref('');
 const searchText = ref('');
 const statusFilter = ref<'' | AgentStatusFilter>('');
+const users = ref<AdminUserSummary[]>([]);
+const currentPassword = ref('');
+const newPassword = ref('');
 
 const selectedTenant = computed(() => tenants.value.find((tenant) => tenant.id === selectedTenantId.value) ?? null);
 const hasGlobalWorkspaceAccess = computed(() => !sidebarError.value && !internalAgentsError.value);
@@ -107,6 +123,7 @@ watch(
   isAuthenticated,
   (authenticated) => {
     if (authenticated) {
+      authNotice.value = '';
       void loadDashboard();
       return;
     }
@@ -143,9 +160,14 @@ async function loadDashboard() {
   isLoadingDashboard.value = true;
   sidebarError.value = '';
   internalAgentsError.value = '';
+  userManagementError.value = '';
 
   try {
-    const [tenantResult, internalAgentResult] = await Promise.allSettled([getTenants(), getInternalAgents(activeFilters.value)]);
+    const [tenantResult, internalAgentResult, userResult] = await Promise.allSettled([
+      getTenants(),
+      getInternalAgents(activeFilters.value),
+      loadUsers(true)
+    ]);
 
     if (tenantResult.status === 'fulfilled') {
       tenants.value = tenantResult.value;
@@ -160,8 +182,16 @@ async function loadDashboard() {
     if (internalAgentResult.status === 'fulfilled') {
       internalAgents.value = internalAgentResult.value;
     } else {
+      if (handleAuthFailure(internalAgentResult.reason)) {
+        return;
+      }
+
       internalAgents.value = [];
       internalAgentsError.value = normalizeError(internalAgentResult.reason, 'Không tải được danh sách agent nội bộ.');
+    }
+
+    if (userResult.status === 'rejected' && !handleAuthFailure(userResult.reason)) {
+      userManagementError.value = normalizeError(userResult.reason, 'Không tải được danh sách tài khoản.');
     }
 
     if (!sidebarError.value && activeScope.value === 'tenant' && selectedTenantId.value) {
@@ -193,6 +223,10 @@ async function loadTenantAgents(tenantId: string) {
   try {
     tenantAgents.value = await getTenantAgents(tenantId, activeFilters.value);
   } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+
     tenantAgents.value = [];
     tenantAgentsError.value = normalizeError(error, 'Không tải được agent của đơn vị đã chọn.');
   } finally {
@@ -207,6 +241,10 @@ async function loadInternalAgents() {
   try {
     internalAgents.value = await getInternalAgents(activeFilters.value);
   } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+
     internalAgents.value = [];
     internalAgentsError.value = normalizeError(error, 'Không tải được danh sách agent nội bộ.');
   } finally {
@@ -217,6 +255,29 @@ async function loadInternalAgents() {
 async function showInternalScope() {
   activeScope.value = 'internal';
   await loadInternalAgents();
+}
+
+async function loadUsers(silent = false) {
+  if (!silent) {
+    isLoadingUsers.value = true;
+  }
+
+  try {
+    users.value = await getUsers();
+    userManagementError.value = '';
+    return users.value;
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return [];
+    }
+
+    userManagementError.value = normalizeError(error, 'Không tải được danh sách tài khoản.');
+    throw error;
+  } finally {
+    if (!silent) {
+      isLoadingUsers.value = false;
+    }
+  }
 }
 
 function openCreateModal() {
@@ -259,9 +320,77 @@ async function submitCreateInternalAgent() {
     closeCreateModal(true);
     await loadInternalAgents();
   } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+
     createError.value = normalizeError(error, 'Không tạo được agent nội bộ.');
   } finally {
     isSavingInternalAgent.value = false;
+  }
+}
+
+function openPasswordModal() {
+  passwordChangeError.value = '';
+  currentPassword.value = '';
+  newPassword.value = '';
+  isPasswordModalOpen.value = true;
+}
+
+function closePasswordModal(force = false) {
+  if (isChangingPassword.value && !force) {
+    return;
+  }
+
+  isPasswordModalOpen.value = false;
+  passwordChangeError.value = '';
+  currentPassword.value = '';
+  newPassword.value = '';
+}
+
+async function submitPasswordChange() {
+  passwordChangeError.value = '';
+
+  if (!currentPassword.value || !newPassword.value) {
+    passwordChangeError.value = 'Vui lòng nhập đủ mật khẩu hiện tại và mật khẩu mới.';
+    return;
+  }
+
+  if (currentPassword.value === newPassword.value) {
+    passwordChangeError.value = 'Mật khẩu mới cần khác mật khẩu hiện tại.';
+    return;
+  }
+
+  isChangingPassword.value = true;
+  try {
+    await submitPasswordChangeRequest(currentPassword.value, newPassword.value);
+    authNotice.value = 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại với mật khẩu mới.';
+    closePasswordModal(true);
+  } catch (error) {
+    passwordChangeError.value = normalizeError(error, 'Không thể đổi mật khẩu lúc này.');
+  } finally {
+    isChangingPassword.value = false;
+  }
+}
+
+async function toggleUserLock(user: AdminUserSummary) {
+  userManagementError.value = '';
+  activeUserActionId.value = user.id;
+
+  try {
+    const updatedUser = user.status === 'Locked'
+      ? await unlockUser(user.id)
+      : await lockUser(user.id);
+
+    users.value = users.value.map((item) => (item.id === updatedUser.id ? updatedUser : item));
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+
+    userManagementError.value = normalizeError(error, 'Không thể cập nhật trạng thái tài khoản.');
+  } finally {
+    activeUserActionId.value = '';
   }
 }
 
@@ -271,16 +400,27 @@ function resetWorkspace() {
   selectedTenantId.value = '';
   internalAgents.value = [];
   tenantAgents.value = [];
+  users.value = [];
   sidebarError.value = '';
   internalAgentsError.value = '';
   tenantAgentsError.value = '';
+  userManagementError.value = '';
   closeCreateModal(true);
+  closePasswordModal(true);
   searchText.value = '';
   statusFilter.value = '';
 }
 
 function normalizeError(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
+    if (error.status === 401 && error.body?.code === 'locked_account') {
+      return 'Tài khoản đang bị khóa.';
+    }
+
+    if (error.status === 401 && error.body?.code === 'session_revoked') {
+      return 'Phiên đăng nhập đã bị thu hồi. Vui lòng đăng nhập lại.';
+    }
+
     if (error.status === 403) {
       return 'Tài khoản này chưa có quyền truy cập khu vực quản lý agent.';
     }
@@ -289,6 +429,18 @@ function normalizeError(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function handleAuthFailure(error: unknown) {
+  if (!(error instanceof ApiError) || error.status !== 401) {
+    return false;
+  }
+
+  authNotice.value = error.body?.code === 'locked_account'
+    ? 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.'
+    : 'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.';
+  clearSession();
+  return true;
 }
 
 function avatarStyle(icon: string | null | undefined) {
@@ -307,19 +459,34 @@ function avatarLabel(agent: AgentSummary) {
     .map((part) => part.charAt(0).toUpperCase())
     .join('');
 }
+
+function statusTone(status: string) {
+  if (status === 'Locked') {
+    return 'status-chip status-chip--danger';
+  }
+
+  if (status === 'Active') {
+    return 'status-chip status-chip--success';
+  }
+
+  return 'status-chip';
+}
 </script>
 
 <template>
   <main class="app-shell">
     <p v-if="isInitializing" class="message">Đang kiểm tra phiên đăng nhập...</p>
 
-    <LoginForm v-else-if="!isAuthenticated" />
+    <section v-else-if="!isAuthenticated" class="auth-shell">
+      <p v-if="authNotice" class="message auth-shell__notice">{{ authNotice }}</p>
+      <LoginForm />
+    </section>
 
     <section v-else class="workspace" aria-labelledby="workspace-title">
       <aside class="workspace__sidebar">
         <div class="sidebar__brand">
           <p class="sidebar__eyebrow">Nhân viên AI</p>
-          <h1 id="workspace-title">Bảng điều khiển agent</h1>
+          <h1 id="workspace-title">Bảng điều khiển </h1>
           <!-- <p v-if="accessTokenExpiresAt" class="sidebar__meta"> -->
             <!-- Phiên hết hạn: {{ formatDate(accessTokenExpiresAt) }} -->
           <!-- </p> -->
@@ -333,7 +500,7 @@ function avatarLabel(agent: AgentSummary) {
             @click="showInternalScope"
           >
             <Shield :size="17" aria-hidden="true" />
-            Nội bộ
+            Nhân viên AI
           </button>
         </nav>
 
@@ -407,6 +574,79 @@ function avatarLabel(agent: AgentSummary) {
               Thêm agent
             </BaseButton>
           </header>
+
+          <section class="security-grid" aria-label="Quản lý bảo mật tài khoản">
+            <article class="state-card state-card--compact">
+              <div class="state-card__icon">
+                <ShieldAlert :size="22" aria-hidden="true" />
+              </div>
+              <div class="state-card__body">
+                <h2>Bảo mật tài khoản</h2>
+                <p>Đổi mật khẩu hiện tại để thu hồi toàn bộ phiên cũ và buộc đăng nhập lại.</p>
+              </div>
+              <BaseButton variant="secondary" type="button" @click="openPasswordModal">
+                Đổi mật khẩu
+              </BaseButton>
+            </article>
+
+            <article class="content-panel user-panel">
+              <div class="user-panel__header">
+                <div>
+                  <p class="content-header__eyebrow">Admin controls</p>
+                  <h3>Khóa tài khoản</h3>
+                  <p>Khóa tài khoản sẽ chặn đăng nhập mới và thu hồi các phiên còn hoạt động.</p>
+                </div>
+                <button class="icon-button" type="button" :disabled="isLoadingUsers" @click="loadUsers()">
+                  <RefreshCw :size="16" :class="{ 'spin': isLoadingUsers }" aria-hidden="true" />
+                </button>
+              </div>
+
+              <p v-if="userManagementError" class="message message--error">{{ userManagementError }}</p>
+              <div v-else-if="isLoadingUsers && users.length === 0" class="loading-row">
+                <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+                <span>Đang tải danh sách tài khoản...</span>
+              </div>
+              <div v-else-if="users.length === 0" class="empty-card empty-card--tight">
+                <h3>Chưa có tài khoản</h3>
+                <p>Danh sách người dùng quản trị sẽ xuất hiện tại đây khi backend trả dữ liệu.</p>
+              </div>
+              <BaseTable v-else>
+                <thead>
+                  <tr>
+                    <th>Tài khoản</th>
+                    <th>Trạng thái</th>
+                    <th>Đổi mật khẩu</th>
+                    <th class="table-actions">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="user in users" :key="user.id">
+                    <td>
+                      <div class="user-cell">
+                        <strong>{{ user.fullName || user.email }}</strong>
+                        <span>{{ user.email }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span :class="statusTone(user.status)">{{ user.status }}</span>
+                    </td>
+                    <td>{{ user.passwordChangedAt ? formatDate(user.passwordChangedAt) : 'Chưa cập nhật' }}</td>
+                    <td class="table-actions">
+                      <BaseButton
+                        variant="secondary"
+                        type="button"
+                        :disabled="activeUserActionId === user.id"
+                        @click="toggleUserLock(user)"
+                      >
+                        <component :is="user.status === 'Locked' ? ShieldCheck : Lock" :size="16" aria-hidden="true" />
+                        {{ activeUserActionId === user.id ? 'Đang xử lý...' : user.status === 'Locked' ? 'Mở khóa' : 'Khóa' }}
+                      </BaseButton>
+                    </td>
+                  </tr>
+                </tbody>
+              </BaseTable>
+            </article>
+          </section>
 
           <div class="filter-bar">
             <BaseInput v-model="searchText" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
@@ -556,6 +796,43 @@ function avatarLabel(agent: AgentSummary) {
           </BaseButton>
         </div>
       </div>
+    </BaseModal>
+
+    <BaseModal :open="isPasswordModalOpen" title="Đổi mật khẩu" @close="closePasswordModal">
+      <form class="create-agent" @submit.prevent="submitPasswordChange">
+        <div class="create-agent__group">
+          <p class="create-agent__label">Mật khẩu hiện tại</p>
+          <BaseInput
+            v-model="currentPassword"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Nhập mật khẩu hiện tại"
+            label="Mật khẩu hiện tại"
+          />
+        </div>
+
+        <div class="create-agent__group">
+          <p class="create-agent__label">Mật khẩu mới</p>
+          <BaseInput
+            v-model="newPassword"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Nhập mật khẩu mới"
+            label="Mật khẩu mới"
+          />
+        </div>
+
+        <p v-if="passwordChangeError" class="message message--error">{{ passwordChangeError }}</p>
+
+        <div class="create-agent__actions">
+          <BaseButton variant="secondary" type="button" :disabled="isChangingPassword" @click="closePasswordModal">
+            Hủy
+          </BaseButton>
+          <BaseButton type="submit" :disabled="isChangingPassword">
+            {{ isChangingPassword ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
+          </BaseButton>
+        </div>
+      </form>
     </BaseModal>
   </main>
 </template>

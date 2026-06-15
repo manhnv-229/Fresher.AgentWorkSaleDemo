@@ -1,5 +1,5 @@
 import { ApiError, httpJson } from './http';
-import type { LoginRequest, TokenResponse } from './auth.types';
+import type { ChangePasswordRequest, LoginRequest, TokenResponse } from './auth.types';
 
 export async function login(payload: LoginRequest): Promise<TokenResponse> {
   try {
@@ -10,7 +10,28 @@ export async function login(payload: LoginRequest): Promise<TokenResponse> {
     });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
+      if (error.body?.code === 'locked_account') {
+        throw new ApiError('Tài khoản đang bị khóa.', error.status, error.body);
+      }
+
       throw new ApiError('Email hoặc mật khẩu không đúng.', error.status, error.body);
+    }
+
+    throw error;
+  }
+}
+
+export async function changePassword(payload: ChangePasswordRequest): Promise<void> {
+  try {
+    await httpJson<void, ChangePasswordRequest>('/api/auth/change-password', {
+      method: 'POST',
+      body: payload,
+      credentials: 'include',
+      auth: true
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 400 && error.body?.code === 'invalid_current_password') {
+      throw new ApiError('Mật khẩu hiện tại không đúng.', error.status, error.body);
     }
 
     throw error;

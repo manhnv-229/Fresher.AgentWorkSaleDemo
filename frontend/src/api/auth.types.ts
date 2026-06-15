@@ -3,6 +3,11 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface TokenResponse {
   accessToken: string;
   accessTokenExpiresAt: string;
@@ -14,4 +19,12 @@ export interface AuthState {
   accessTokenExpiresAt: string;
   refreshTokenExpiresAt: string;
   receivedAt: string;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  fullName: string | null;
+  status: string;
+  passwordChangedAt: string | null;
 }

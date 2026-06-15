@@ -1,5 +1,5 @@
 import { computed, ref, type ComputedRef, type DeepReadonly, type Ref } from 'vue';
-import { login as loginRequest, logout as logoutRequest, refreshAccessToken } from '../api';
+import { changePassword as changePasswordRequest, login as loginRequest, logout as logoutRequest, refreshAccessToken } from '../api';
 import { clearAuthState, getAccessToken, readonlyAuthState, setAuthState } from '../stores/auth';
 import { setAccessTokenProvider } from '../api/interceptors';
 import type { AuthState } from '../api/auth.types';
@@ -11,8 +11,10 @@ export interface UseAuthResult {
   accessTokenPreview: ComputedRef<string>;
   initializeAuth: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   refresh: () => Promise<void>;
   logout: () => Promise<void>;
+  clearSession: () => void;
 }
 
 const isInitializing = ref(false);
@@ -40,6 +42,11 @@ export function useAuth(): UseAuthResult {
   async function refresh() {
     const tokens = await refreshAccessToken();
     setAuthState(tokens);
+  }
+
+  async function changePassword(currentPassword: string, newPassword: string) {
+    await changePasswordRequest({ currentPassword, newPassword });
+    clearAuthState();
   }
 
   async function initializeAuth() {
@@ -73,7 +80,9 @@ export function useAuth(): UseAuthResult {
     accessTokenPreview,
     initializeAuth,
     login,
+    changePassword,
     refresh,
-    logout
+    logout,
+    clearSession: clearAuthState
   };
 }

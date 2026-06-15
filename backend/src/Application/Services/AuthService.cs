@@ -30,12 +30,44 @@ public sealed class AuthService(
             return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidCredentials, "Invalid email or password.");
         }
 
+        if (user.Status == AccountStatus.Locked)
+        {
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.LockedAccount, "User account is locked.");
+        }
+
         if (user.Status != AccountStatus.Active)
         {
             return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InactiveUser, "User is not active.");
         }
 
         return ServiceResult<AuthTokenResult>.Success(await CreateSessionAsync(user, ipAddress, cancellationToken));
+    }
+
+    public async Task<ServiceResult<bool>> ChangePasswordAsync(
+        Guid userId,
+        ChangePasswordRequest request,
+        string? ipAddress,
+        CancellationToken cancellationToken)
+    {
+        var user = await authUserRepository.GetForUpdateByIdAsync(userId, cancellationToken);
+        if (user is null)
+        {
+            return ServiceResult<bool>.Failure(AuthErrorCodes.UserNotFound, "User was not found.");
+        }
+
+        if (!passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
+        {
+            return ServiceResult<bool>.Failure(AuthErrorCodes.InvalidCurrentPassword, "Current password is incorrect.");
+        }
+
+        user.PasswordHash = passwordHasher.HashPassword(request.NewPassword);
+        user.PasswordChangedAt = DateTime.UtcNow;
+        user.ModifiedAt = DateTime.UtcNow;
+
+        await RevokeActiveSessionsAsync(user.Id, ipAddress, "PasswordChanged", cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ServiceResult<bool>.Success(true);
     }
 
     public async Task<ServiceResult<AuthTokenResult>> RefreshAsync(
@@ -51,16 +83,31 @@ public sealed class AuthService(
         var tokenHash = refreshTokenHasher.HashToken(request.RefreshToken);
         var refreshToken = await refreshTokenRepository.GetByTokenHashWithUserAndSessionAsync(tokenHash, cancellationToken);
 
-        if (refreshToken?.User is null ||
-            refreshToken.Session is null ||
-            refreshToken.ExpiresAt <= DateTime.UtcNow ||
-            refreshToken.RevokedAt is not null ||
-            refreshToken.Session.RevokedAt is not null ||
-            refreshToken.Session.ExpiresAt <= DateTime.UtcNow ||
-            refreshToken.Session.UserId != refreshToken.UserId ||
-            refreshToken.User.Status != AccountStatus.Active)
+        if (refreshToken?.User is null || refreshToken.Session is null)
         {
             return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidRefreshToken, "Refresh token is invalid.");
+        }
+
+        if (refreshToken.User.Status == AccountStatus.Locked)
+        {
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.LockedAccount, "User account is locked.");
+        }
+
+        if (refreshToken.User.Status != AccountStatus.Active)
+        {
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InactiveUser, "User is not active.");
+        }
+
+        if (refreshToken.ExpiresAt <= DateTime.UtcNow || refreshToken.RevokedAt is not null)
+        {
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InvalidRefreshToken, "Refresh token is invalid.");
+        }
+
+        if (refreshToken.Session.RevokedAt is not null ||
+            refreshToken.Session.ExpiresAt <= DateTime.UtcNow ||
+            refreshToken.Session.UserId != refreshToken.UserId)
+        {
+            return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.SessionRevoked, "Session is no longer active.");
         }
 
         var replacement = refreshTokenHasher.GenerateToken();
@@ -132,6 +179,21 @@ public sealed class AuthService(
             user.Email,
             user.FullName,
             user.Status.ToString()));
+    }
+
+    private async Task RevokeActiveSessionsAsync(
+        Guid userId,
+        string? ipAddress,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        var activeSessions = await userSessionRepository.GetActiveByUserIdAsync(userId, cancellationToken);
+        foreach (var session in activeSessions)
+        {
+            session.RevokedAt ??= DateTime.UtcNow;
+            session.RevokedByIp = ipAddress;
+            session.ReasonRevoked = reason;
+        }
     }
 
     private async Task<AuthTokenResult> CreateSessionAsync(User user, string? ipAddress, CancellationToken cancellationToken)

@@ -2,6 +2,8 @@ namespace Demo.Application.DTOs;
 
 public sealed record LoginRequest(string Email, string Password);
 
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+
 public sealed record RefreshTokenRequest(string? RefreshToken);
 
 public sealed record LogoutRequest(string? RefreshToken);
@@ -22,6 +24,13 @@ public sealed record CurrentUserResponse(
     string Email,
     string? FullName,
     string Status);
+
+public sealed record AdminUserSummary(
+    Guid Id,
+    string Email,
+    string? FullName,
+    string Status,
+    DateTime? PasswordChangedAt);
 
 public sealed record JwtTokenResult(
     string AccessToken,

@@ -54,6 +54,33 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        var userIdValue = User.FindFirstValue("userId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdValue, out var userId))
+        {
+            return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
+        }
+
+        var result = await authService.ChangePasswordAsync(userId, request, ClientIp(), cancellationToken);
+        if (result.Succeeded)
+        {
+            RefreshTokenCookie.Delete(HttpContext);
+            return NoContent();
+        }
+
+        if (result.ErrorCode == AuthErrorCodes.UserNotFound)
+        {
+            return NotFound(new ApiErrorResponse(result.ErrorCode, result.ErrorMessage ?? "User was not found."));
+        }
+
+        return BadRequest(new ApiErrorResponse(
+            result.ErrorCode ?? AuthErrorCodes.InvalidCurrentPassword,
+            result.ErrorMessage ?? "Password change failed."));
+    }
+
     [HttpGet("me")]
     [Authorize]
     public async Task<ActionResult<CurrentUserResponse>> Me(CancellationToken cancellationToken)
