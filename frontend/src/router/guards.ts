@@ -1,4 +1,4 @@
-import { getAccessToken } from '../features/auth/store';
+import { getAccessToken } from '../stores/auth';
 
 export function isAuthenticatedRoute() {
   return getAccessToken() !== null;

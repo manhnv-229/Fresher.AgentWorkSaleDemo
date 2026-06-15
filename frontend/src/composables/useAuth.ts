@@ -1,0 +1,79 @@
+import { computed, ref, type ComputedRef, type DeepReadonly, type Ref } from 'vue';
+import { login as loginRequest, logout as logoutRequest, refreshAccessToken } from '../api';
+import { clearAuthState, getAccessToken, readonlyAuthState, setAuthState } from '../stores/auth';
+import { setAccessTokenProvider } from '../api/interceptors';
+import type { AuthState } from '../api/auth.types';
+
+export interface UseAuthResult {
+  authState: DeepReadonly<Ref<AuthState | null>>;
+  isAuthenticated: ComputedRef<boolean>;
+  isInitializing: Ref<boolean>;
+  accessTokenPreview: ComputedRef<string>;
+  initializeAuth: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  refresh: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const isInitializing = ref(false);
+let startupRefreshAttempted = false;
+
+setAccessTokenProvider(getAccessToken);
+
+export function useAuth(): UseAuthResult {
+  const authState = readonlyAuthState;
+  const isAuthenticated = computed(() => authState.value !== null);
+  const accessTokenPreview = computed(() => {
+    const token = authState.value?.accessToken;
+    if (!token) {
+      return '';
+    }
+
+    return `${token.slice(0, 18)}...${token.slice(-12)}`;
+  });
+
+  async function login(email: string, password: string) {
+    const tokens = await loginRequest({ email, password });
+    setAuthState(tokens);
+  }
+
+  async function refresh() {
+    const tokens = await refreshAccessToken();
+    setAuthState(tokens);
+  }
+
+  async function initializeAuth() {
+    if (startupRefreshAttempted || authState.value) {
+      return;
+    }
+
+    startupRefreshAttempted = true;
+    isInitializing.value = true;
+    try {
+      await refresh();
+    } catch {
+      clearAuthState();
+    } finally {
+      isInitializing.value = false;
+    }
+  }
+
+  async function logout() {
+    try {
+      await logoutRequest();
+    } finally {
+      clearAuthState();
+    }
+  }
+
+  return {
+    authState,
+    isAuthenticated,
+    isInitializing,
+    accessTokenPreview,
+    initializeAuth,
+    login,
+    refresh,
+    logout
+  };
+}

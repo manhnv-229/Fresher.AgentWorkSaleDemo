@@ -1,1 +1,1 @@
-export { useAuth as useAuthStore } from '../features/auth';
+export { useAuth as useAuthStore } from '../composables/useAuth';
