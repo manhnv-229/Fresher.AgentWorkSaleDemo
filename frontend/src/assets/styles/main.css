@@ -167,6 +167,10 @@
   min-height: calc(100vh - 48px);
 }
 
+.workspace--settings {
+  grid-template-columns: 288px 240px minmax(0, 1fr);
+}
+
 .workspace__sidebar,
 .workspace__content {
   border: 1px solid rgba(210, 218, 232, 0.9);
@@ -183,11 +187,24 @@
   padding: 24px 18px;
 }
 
+.workspace__settings-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border: 1px solid rgba(210, 218, 232, 0.9);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(12px);
+  padding: 24px 18px;
+}
+
 .sidebar__brand h1,
 .content-header h2,
 .agent-card__top h3,
 .empty-card h3,
-.state-card h2 {
+.state-card h2,
+.settings-brand h2 {
   margin: 0;
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
 }
@@ -214,9 +231,19 @@
 }
 
 .sidebar__nav,
-.tenant-list {
+.tenant-list,
+.settings-nav {
   display: grid;
   gap: 12px;
+}
+
+.settings-brand {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-brand h2 {
+  font-size: 28px;
 }
 
 .scope-link,
@@ -295,6 +322,10 @@
   padding: 28px;
 }
 
+.workspace__content > .state-card {
+  min-height: 220px;
+}
+
 .content-header {
   display: flex;
   align-items: flex-start;
@@ -342,6 +373,18 @@
 
 .content-panel {
   min-height: 420px;
+}
+
+.settings-form-panel {
+  display: grid;
+  gap: 18px;
+  min-height: auto;
+}
+
+.settings-form-panel__lead {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .user-panel {
@@ -662,6 +705,14 @@
 
   .workspace__content {
     order: 1;
+  }
+
+  .workspace--settings {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace__settings-sidebar {
+    order: 3;
   }
 
   .state-card--compact,

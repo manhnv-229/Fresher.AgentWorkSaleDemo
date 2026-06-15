@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Building2, CircleAlert, LoaderCircle, Lock, LogOut, Plus, RefreshCw, Shield, ShieldAlert, ShieldCheck } from '@lucide/vue';
+import { Building2, CircleAlert, LoaderCircle, Lock, LogOut, Plus, RefreshCw, Settings2, Shield, ShieldCheck } from '@lucide/vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
@@ -27,6 +27,8 @@ import { ApiError } from '../api/http';
 import { formatDate } from '../utils/formatDate';
 
 type AgentScopeView = 'internal' | 'tenant';
+type WorkspaceView = AgentScopeView | 'settings';
+type SettingsSection = 'members' | 'password';
 
 interface AvatarOption {
   id: string;
@@ -56,7 +58,8 @@ const statusOptions: StatusOption[] = [
 
 const { authState, isAuthenticated, isInitializing, initializeAuth, logout, changePassword: submitPasswordChangeRequest, clearSession } = useAuth();
 
-const activeScope = ref<AgentScopeView>('internal');
+const activeWorkspace = ref<WorkspaceView>('internal');
+const activeSettingsSection = ref<SettingsSection>('members');
 const tenants = ref<TenantSummary[]>([]);
 const selectedTenantId = ref<string>('');
 const internalAgents = ref<AgentSummary[]>([]);
@@ -67,7 +70,6 @@ const isLoadingTenantAgents = ref(false);
 const isSavingInternalAgent = ref(false);
 const isLoadingUsers = ref(false);
 const activeUserActionId = ref('');
-const isPasswordModalOpen = ref(false);
 const isChangingPassword = ref(false);
 
 const sidebarError = ref('');
@@ -90,17 +92,27 @@ const currentPassword = ref('');
 const newPassword = ref('');
 
 const selectedTenant = computed(() => tenants.value.find((tenant) => tenant.id === selectedTenantId.value) ?? null);
-const hasGlobalWorkspaceAccess = computed(() => !sidebarError.value && !internalAgentsError.value);
+const hasGlobalWorkspaceAccess = computed(() => (isSettingsWorkspace.value ? true : !sidebarError.value));
+const isSettingsWorkspace = computed(() => activeWorkspace.value === 'settings');
 const accessTokenExpiresAt = computed(() => authState.value?.accessTokenExpiresAt ?? '');
 const hasActiveFilters = computed(() => Boolean(statusFilter.value || searchText.value.trim()));
 const activeFilters = computed<AgentListFilters>(() => ({
   status: statusFilter.value,
   search: searchText.value
 }));
+const workspaceEyebrow = computed(() => (isSettingsWorkspace.value ? 'Thiết lập' : activeWorkspace.value === 'internal' ? 'Khu vực nội bộ' : 'Danh sách theo đơn vị'));
+const workspaceTitle = computed(() =>
+  isSettingsWorkspace.value
+    ? 'Thiết lập'
+    : activeWorkspace.value === 'internal'
+      ? 'Agent nội bộ'
+      : selectedTenant.value?.name || 'Chọn một đơn vị'
+);
+const settingsSectionTitle = computed(() => (activeSettingsSection.value === 'members' ? 'Quản lý thành viên' : 'Đổi mật khẩu'));
 const emptyStateTitle = computed(() =>
   hasActiveFilters.value
     ? 'Không có agent phù hợp với bộ lọc'
-    : activeScope.value === 'internal'
+    : activeWorkspace.value === 'internal'
       ? 'Chưa có agent nội bộ'
       : `${selectedTenant.value?.name ?? 'Đơn vị này'} chưa có agent`);
 const emptyStateDescription = computed(() => {
@@ -108,7 +120,7 @@ const emptyStateDescription = computed(() => {
     return 'Hãy thử đổi trạng thái hoặc từ khóa tìm kiếm để xem thêm kết quả.';
   }
 
-  if (activeScope.value === 'internal') {
+  if (activeWorkspace.value === 'internal') {
     return 'Tạo agent đầu tiên để admin có thể dùng riêng trong khu vực nội bộ.';
   }
 
@@ -139,12 +151,12 @@ watch([searchText, statusFilter], (_, __, onCleanup) => {
   }
 
   const timeoutId = window.setTimeout(() => {
-    if (activeScope.value === 'internal') {
+    if (activeWorkspace.value === 'internal') {
       void loadInternalAgents();
       return;
     }
 
-    if (selectedTenantId.value) {
+    if (activeWorkspace.value === 'tenant' && selectedTenantId.value) {
       void loadTenantAgents(selectedTenantId.value);
     }
   }, 250);
@@ -194,7 +206,7 @@ async function loadDashboard() {
       userManagementError.value = normalizeError(userResult.reason, 'Không tải được danh sách tài khoản.');
     }
 
-    if (!sidebarError.value && activeScope.value === 'tenant' && selectedTenantId.value) {
+    if (!sidebarError.value && activeWorkspace.value === 'tenant' && selectedTenantId.value) {
       await loadTenantAgents(selectedTenantId.value);
     }
   } finally {
@@ -204,19 +216,19 @@ async function loadDashboard() {
 
 async function refreshDashboard() {
   tenantAgentsError.value = '';
-  if (activeScope.value === 'internal') {
+  if (activeWorkspace.value === 'internal') {
     await loadInternalAgents();
     return;
   }
 
-  if (selectedTenantId.value) {
+  if (activeWorkspace.value === 'tenant' && selectedTenantId.value) {
     await loadTenantAgents(selectedTenantId.value);
   }
 }
 
 async function loadTenantAgents(tenantId: string) {
   selectedTenantId.value = tenantId;
-  activeScope.value = 'tenant';
+  activeWorkspace.value = 'tenant';
   tenantAgentsError.value = '';
   isLoadingTenantAgents.value = true;
 
@@ -253,8 +265,16 @@ async function loadInternalAgents() {
 }
 
 async function showInternalScope() {
-  activeScope.value = 'internal';
+  activeWorkspace.value = 'internal';
   await loadInternalAgents();
+}
+
+async function showSettings(section: SettingsSection = 'members') {
+  activeWorkspace.value = 'settings';
+  activeSettingsSection.value = section;
+  if (section === 'members' && users.value.length === 0 && !isLoadingUsers.value) {
+    await loadUsers();
+  }
 }
 
 async function loadUsers(silent = false) {
@@ -316,7 +336,7 @@ async function submitCreateInternalAgent() {
   isSavingInternalAgent.value = true;
   try {
     await createInternalAgent(payload);
-    activeScope.value = 'internal';
+    activeWorkspace.value = 'internal';
     closeCreateModal(true);
     await loadInternalAgents();
   } catch (error) {
@@ -328,24 +348,6 @@ async function submitCreateInternalAgent() {
   } finally {
     isSavingInternalAgent.value = false;
   }
-}
-
-function openPasswordModal() {
-  passwordChangeError.value = '';
-  currentPassword.value = '';
-  newPassword.value = '';
-  isPasswordModalOpen.value = true;
-}
-
-function closePasswordModal(force = false) {
-  if (isChangingPassword.value && !force) {
-    return;
-  }
-
-  isPasswordModalOpen.value = false;
-  passwordChangeError.value = '';
-  currentPassword.value = '';
-  newPassword.value = '';
 }
 
 async function submitPasswordChange() {
@@ -365,12 +367,18 @@ async function submitPasswordChange() {
   try {
     await submitPasswordChangeRequest(currentPassword.value, newPassword.value);
     authNotice.value = 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại với mật khẩu mới.';
-    closePasswordModal(true);
+    clearPasswordForm();
   } catch (error) {
     passwordChangeError.value = normalizeError(error, 'Không thể đổi mật khẩu lúc này.');
   } finally {
     isChangingPassword.value = false;
   }
+}
+
+function clearPasswordForm() {
+  currentPassword.value = '';
+  newPassword.value = '';
+  passwordChangeError.value = '';
 }
 
 async function toggleUserLock(user: AdminUserSummary) {
@@ -395,7 +403,8 @@ async function toggleUserLock(user: AdminUserSummary) {
 }
 
 function resetWorkspace() {
-  activeScope.value = 'internal';
+  activeWorkspace.value = 'internal';
+  activeSettingsSection.value = 'members';
   tenants.value = [];
   selectedTenantId.value = '';
   internalAgents.value = [];
@@ -406,7 +415,6 @@ function resetWorkspace() {
   tenantAgentsError.value = '';
   userManagementError.value = '';
   closeCreateModal(true);
-  closePasswordModal(true);
   searchText.value = '';
   statusFilter.value = '';
 }
@@ -441,6 +449,11 @@ function handleAuthFailure(error: unknown) {
     : 'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.';
   clearSession();
   return true;
+}
+
+async function handleLogout() {
+  authNotice.value = '';
+  await logout();
 }
 
 function avatarStyle(icon: string | null | undefined) {
@@ -482,25 +495,33 @@ function statusTone(status: string) {
       <LoginForm />
     </section>
 
-    <section v-else class="workspace" aria-labelledby="workspace-title">
+    <section v-else class="workspace" :class="{ 'workspace--settings': isSettingsWorkspace }" aria-labelledby="workspace-title">
       <aside class="workspace__sidebar">
         <div class="sidebar__brand">
-          <p class="sidebar__eyebrow">Nhân viên AI</p>
-          <h1 id="workspace-title">Bảng điều khiển </h1>
-          <!-- <p v-if="accessTokenExpiresAt" class="sidebar__meta"> -->
-            <!-- Phiên hết hạn: {{ formatDate(accessTokenExpiresAt) }} -->
-          <!-- </p> -->
+          <p class="sidebar__eyebrow">Demo AgentWorkSale</p>
+          <h1 id="workspace-title">{{ workspaceTitle }}</h1>
+          <!-- 
+          <p v-if="accessTokenExpiresAt" class="sidebar__meta">Phiên hết hạn: {{ formatDate(accessTokenExpiresAt) }}</p> -->
         </div>
 
-        <nav class="sidebar__nav" aria-label="Phạm vi agent">
+        <nav class="sidebar__nav" aria-label="Khu vực làm việc">
           <button
             class="scope-link"
-            :class="{ 'scope-link--active': activeScope === 'internal' }"
+            :class="{ 'scope-link--active': activeWorkspace === 'internal' }"
             type="button"
             @click="showInternalScope"
           >
             <Shield :size="17" aria-hidden="true" />
-            Nhân viên AI
+            Nội bộ
+          </button>
+          <button
+            class="scope-link"
+            :class="{ 'scope-link--active': isSettingsWorkspace }"
+            type="button"
+            @click="showSettings()"
+          >
+            <Settings2 :size="17" aria-hidden="true" />
+            Thiết lập
           </button>
         </nav>
 
@@ -519,7 +540,7 @@ function statusTone(status: string) {
               v-for="tenant in tenants"
               :key="tenant.id"
               class="tenant-link"
-              :class="{ 'tenant-link--active': activeScope === 'tenant' && selectedTenantId === tenant.id }"
+              :class="{ 'tenant-link--active': activeWorkspace === 'tenant' && selectedTenantId === tenant.id }"
               type="button"
               @click="loadTenantAgents(tenant.id)"
             >
@@ -531,10 +552,39 @@ function statusTone(status: string) {
           </div>
         </section>
 
-        <BaseButton variant="secondary" type="button" @click="logout">
+        <BaseButton variant="secondary" type="button" @click="handleLogout">
           <LogOut :size="18" aria-hidden="true" />
           Đăng xuất
         </BaseButton>
+      </aside>
+
+      <aside v-if="isSettingsWorkspace" class="workspace__settings-sidebar">
+        <div class="settings-brand">
+          <p class="sidebar__eyebrow">Thiết lập</p>
+          <h2>Thiết lập</h2>
+          <!-- <p class="sidebar__meta">Quản lý thành viên và đổi mật khẩu từ một menu riêng.</p> -->
+        </div>
+
+        <nav class="settings-nav" aria-label="Thiết lập">
+          <button
+            class="scope-link"
+            :class="{ 'scope-link--active': activeSettingsSection === 'members' }"
+            type="button"
+            @click="showSettings('members')"
+          >
+            <ShieldCheck :size="17" aria-hidden="true" />
+            Quản lý thành viên
+          </button>
+          <button
+            class="scope-link"
+            :class="{ 'scope-link--active': activeSettingsSection === 'password' }"
+            type="button"
+            @click="showSettings('password')"
+          >
+            <Lock :size="17" aria-hidden="true" />
+            Đổi mật khẩu
+          </button>
+        </nav>
       </aside>
 
       <section class="workspace__content">
@@ -547,17 +597,17 @@ function statusTone(status: string) {
         </div>
 
         <template v-else>
-          <header class="content-header">
+          <header v-if="!isSettingsWorkspace" class="content-header">
             <div>
               <p class="content-header__eyebrow">
-                {{ activeScope === 'internal' ? 'Khu vực nội bộ' : 'Danh sách theo đơn vị' }}
+                {{ workspaceEyebrow }}
               </p>
               <h2>
-                {{ activeScope === 'internal' ? 'Agent nội bộ' : selectedTenant?.name || 'Chọn một đơn vị' }}
+                {{ workspaceTitle }}
               </h2>
               <p class="content-header__copy">
                 {{
-                  activeScope === 'internal'
+                  activeWorkspace === 'internal'
                     ? 'Chỉ quản trị viên được xem và tạo các agent phục vụ nội bộ.'
                     : 'Mỗi đơn vị có một danh sách agent riêng, tách biệt với agent nội bộ.'
                 }}
@@ -565,7 +615,7 @@ function statusTone(status: string) {
             </div>
 
             <BaseButton
-              v-if="activeScope === 'internal'"
+              v-if="activeWorkspace === 'internal'"
               type="button"
               :disabled="Boolean(internalAgentsError)"
               @click="openCreateModal"
@@ -575,32 +625,33 @@ function statusTone(status: string) {
             </BaseButton>
           </header>
 
-          <section class="security-grid" aria-label="Quản lý bảo mật tài khoản">
-            <article class="state-card state-card--compact">
-              <div class="state-card__icon">
-                <ShieldAlert :size="22" aria-hidden="true" />
+          <template v-if="isSettingsWorkspace">
+            <header class="content-header">
+              <div>
+                <p class="content-header__eyebrow">Thiết lập</p>
+                <h2>{{ settingsSectionTitle }}</h2>
+                <p class="content-header__copy">
+                  {{
+                    activeSettingsSection === 'members'
+                      ? 'Lock/Unlock người dùng'
+                      : 'Đổi mật khẩu sẽ thu hồi phiên cũ'
+                  }}
+                </p>
               </div>
-              <div class="state-card__body">
-                <h2>Bảo mật tài khoản</h2>
-                <p>Đổi mật khẩu hiện tại để thu hồi toàn bộ phiên cũ và buộc đăng nhập lại.</p>
-              </div>
-              <BaseButton variant="secondary" type="button" @click="openPasswordModal">
-                Đổi mật khẩu
+
+              <BaseButton
+                v-if="activeSettingsSection === 'members'"
+                variant="secondary"
+                type="button"
+                :disabled="isLoadingUsers"
+                @click="loadUsers()"
+              >
+                <RefreshCw :size="18" :class="{ spin: isLoadingUsers }" aria-hidden="true" />
+                Tải lại
               </BaseButton>
-            </article>
+            </header>
 
-            <article class="content-panel user-panel">
-              <div class="user-panel__header">
-                <div>
-                  <p class="content-header__eyebrow">Admin controls</p>
-                  <h3>Khóa tài khoản</h3>
-                  <p>Khóa tài khoản sẽ chặn đăng nhập mới và thu hồi các phiên còn hoạt động.</p>
-                </div>
-                <button class="icon-button" type="button" :disabled="isLoadingUsers" @click="loadUsers()">
-                  <RefreshCw :size="16" :class="{ 'spin': isLoadingUsers }" aria-hidden="true" />
-                </button>
-              </div>
-
+            <div v-if="activeSettingsSection === 'members'" class="content-panel user-panel">
               <p v-if="userManagementError" class="message message--error">{{ userManagementError }}</p>
               <div v-else-if="isLoadingUsers && users.length === 0" class="loading-row">
                 <LoaderCircle :size="18" class="spin" aria-hidden="true" />
@@ -645,96 +696,138 @@ function statusTone(status: string) {
                   </tr>
                 </tbody>
               </BaseTable>
-            </article>
-          </section>
-
-          <div class="filter-bar">
-            <BaseInput v-model="searchText" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
-            <label class="filter-select">
-              <span class="sr-only">Lọc theo trạng thái</span>
-              <select v-model="statusFilter" aria-label="Lọc theo trạng thái">
-                <option v-for="option in statusOptions" :key="option.value || 'all'" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
-          </div>
-
-          <div v-if="activeScope === 'internal'" class="content-panel">
-            <p v-if="internalAgentsError" class="message message--error">{{ internalAgentsError }}</p>
-            <div v-else-if="isLoadingDashboard" class="loading-row">
-              <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-              <span>Đang tải agent nội bộ...</span>
             </div>
-            <div v-else-if="internalAgents.length === 0" class="empty-card">
-              <h3>{{ emptyStateTitle }}</h3>
-              <p>{{ emptyStateDescription }}</p>
-            </div>
-            <div v-else class="agent-grid">
-              <article v-for="agent in internalAgents" :key="agent.id" class="agent-card">
-                <div class="agent-card__avatar" :style="avatarStyle(agent.icon)">{{ avatarLabel(agent) }}</div>
-                <div class="agent-card__body">
-                  <div class="agent-card__top">
-                    <div>
-                      <h3>{{ agent.name }}</h3>
-                      <p>{{ agent.description || 'Agent nội bộ chưa có mô tả.' }}</p>
-                    </div>
-                    <span class="agent-status">{{ agent.status }}</span>
-                  </div>
-                  <dl class="agent-meta">
-                    <div>
-                      <dt>Vai trò</dt>
-                      <dd>{{ agent.role }}</dd>
-                    </div>
-                    <div>
-                      <dt>Phạm vi</dt>
-                      <dd>{{ agent.scope }}</dd>
-                    </div>
-                  </dl>
+
+            <div v-else class="content-panel settings-form-panel">
+              <!-- <p class="message settings-form-panel__lead">
+                Hãy nhập mật khẩu hiện tại và mật khẩu mới để cập nhật tài khoản của bạn.
+              </p> -->
+              <form class="create-agent" @submit.prevent="submitPasswordChange">
+                <div class="create-agent__group">
+                  <label class="create-agent__label" for="current-password">Mật khẩu hiện tại</label>
+                  <BaseInput
+                    id="current-password"
+                    v-model="currentPassword"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="Nhập mật khẩu hiện tại"
+                  />
                 </div>
-              </article>
-            </div>
-          </div>
 
-          <div v-else class="content-panel">
-            <p v-if="tenantAgentsError" class="message message--error">{{ tenantAgentsError }}</p>
-            <div v-else-if="isLoadingTenantAgents" class="loading-row">
-              <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-              <span>Đang tải agent của đơn vị...</span>
-            </div>
-            <div v-else-if="!selectedTenant" class="empty-card">
-              <h3>Chưa chọn đơn vị</h3>
-              <p>Chọn một đơn vị ở sidebar để xem các agent dành riêng cho đơn vị đó.</p>
-            </div>
-            <div v-else-if="tenantAgents.length === 0" class="empty-card">
-              <h3>{{ emptyStateTitle }}</h3>
-              <p>{{ emptyStateDescription }}</p>
-            </div>
-            <div v-else class="agent-grid">
-              <article v-for="agent in tenantAgents" :key="agent.id" class="agent-card">
-                <div class="agent-card__avatar" :style="avatarStyle(agent.icon)">{{ avatarLabel(agent) }}</div>
-                <div class="agent-card__body">
-                  <div class="agent-card__top">
-                    <div>
-                      <h3>{{ agent.name }}</h3>
-                      <p>{{ agent.description || 'Agent tenant chưa có mô tả.' }}</p>
-                    </div>
-                    <span class="agent-status">{{ agent.status }}</span>
-                  </div>
-                  <dl class="agent-meta">
-                    <div>
-                      <dt>Vai trò</dt>
-                      <dd>{{ agent.role }}</dd>
-                    </div>
-                    <div>
-                      <dt>Đơn vị</dt>
-                      <dd>{{ selectedTenant.name }}</dd>
-                    </div>
-                  </dl>
+                <div class="create-agent__group">
+                  <label class="create-agent__label" for="new-password">Mật khẩu mới</label>
+                  <BaseInput
+                    id="new-password"
+                    v-model="newPassword"
+                    type="password"
+                    autocomplete="new-password"
+                    placeholder="Nhập mật khẩu mới"
+                  />
                 </div>
-              </article>
+
+                <p v-if="passwordChangeError" class="message message--error">{{ passwordChangeError }}</p>
+
+                <div class="create-agent__actions">
+                  <BaseButton variant="secondary" type="button" :disabled="isChangingPassword" @click="clearPasswordForm">
+                    Xóa
+                  </BaseButton>
+                  <BaseButton type="submit" :disabled="isChangingPassword">
+                    {{ isChangingPassword ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
+                  </BaseButton>
+                </div>
+              </form>
             </div>
-          </div>
+          </template>
+
+          <template v-else>
+            <div class="filter-bar">
+              <BaseInput v-model="searchText" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
+              <label class="filter-select">
+                <span class="sr-only">Lọc theo trạng thái</span>
+                <select v-model="statusFilter" aria-label="Lọc theo trạng thái">
+                  <option v-for="option in statusOptions" :key="option.value || 'all'" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+            </div>
+
+            <div v-if="activeWorkspace === 'internal'" class="content-panel">
+              <p v-if="internalAgentsError" class="message message--error">{{ internalAgentsError }}</p>
+              <div v-else-if="isLoadingDashboard" class="loading-row">
+                <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+                <span>Đang tải agent nội bộ...</span>
+              </div>
+              <div v-else-if="internalAgents.length === 0" class="empty-card">
+                <h3>{{ emptyStateTitle }}</h3>
+                <p>{{ emptyStateDescription }}</p>
+              </div>
+              <div v-else class="agent-grid">
+                <article v-for="agent in internalAgents" :key="agent.id" class="agent-card">
+                  <div class="agent-card__avatar" :style="avatarStyle(agent.icon)">{{ avatarLabel(agent) }}</div>
+                  <div class="agent-card__body">
+                    <div class="agent-card__top">
+                      <div>
+                        <h3>{{ agent.name }}</h3>
+                        <p>{{ agent.description || 'Agent nội bộ chưa có mô tả.' }}</p>
+                      </div>
+                      <span class="agent-status">{{ agent.status }}</span>
+                    </div>
+                    <dl class="agent-meta">
+                      <div>
+                        <dt>Vai trò</dt>
+                        <dd>{{ agent.role }}</dd>
+                      </div>
+                      <div>
+                        <dt>Phạm vi</dt>
+                        <dd>{{ agent.scope }}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div v-else class="content-panel">
+              <p v-if="tenantAgentsError" class="message message--error">{{ tenantAgentsError }}</p>
+              <div v-else-if="isLoadingTenantAgents" class="loading-row">
+                <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+                <span>Đang tải agent của đơn vị...</span>
+              </div>
+              <div v-else-if="!selectedTenant" class="empty-card">
+                <h3>Chưa chọn đơn vị</h3>
+                <p>Chọn một đơn vị ở sidebar để xem các agent dành riêng cho đơn vị đó.</p>
+              </div>
+              <div v-else-if="tenantAgents.length === 0" class="empty-card">
+                <h3>{{ emptyStateTitle }}</h3>
+                <p>{{ emptyStateDescription }}</p>
+              </div>
+              <div v-else class="agent-grid">
+                <article v-for="agent in tenantAgents" :key="agent.id" class="agent-card">
+                  <div class="agent-card__avatar" :style="avatarStyle(agent.icon)">{{ avatarLabel(agent) }}</div>
+                  <div class="agent-card__body">
+                    <div class="agent-card__top">
+                      <div>
+                        <h3>{{ agent.name }}</h3>
+                        <p>{{ agent.description || 'Agent tenant chưa có mô tả.' }}</p>
+                      </div>
+                      <span class="agent-status">{{ agent.status }}</span>
+                    </div>
+                    <dl class="agent-meta">
+                      <div>
+                        <dt>Vai trò</dt>
+                        <dd>{{ agent.role }}</dd>
+                      </div>
+                      <div>
+                        <dt>Đơn vị</dt>
+                        <dd>{{ selectedTenant.name }}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </template>
         </template>
       </section>
     </section>
@@ -796,43 +889,6 @@ function statusTone(status: string) {
           </BaseButton>
         </div>
       </div>
-    </BaseModal>
-
-    <BaseModal :open="isPasswordModalOpen" title="Đổi mật khẩu" @close="closePasswordModal">
-      <form class="create-agent" @submit.prevent="submitPasswordChange">
-        <div class="create-agent__group">
-          <p class="create-agent__label">Mật khẩu hiện tại</p>
-          <BaseInput
-            v-model="currentPassword"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Nhập mật khẩu hiện tại"
-            label="Mật khẩu hiện tại"
-          />
-        </div>
-
-        <div class="create-agent__group">
-          <p class="create-agent__label">Mật khẩu mới</p>
-          <BaseInput
-            v-model="newPassword"
-            type="password"
-            autocomplete="new-password"
-            placeholder="Nhập mật khẩu mới"
-            label="Mật khẩu mới"
-          />
-        </div>
-
-        <p v-if="passwordChangeError" class="message message--error">{{ passwordChangeError }}</p>
-
-        <div class="create-agent__actions">
-          <BaseButton variant="secondary" type="button" :disabled="isChangingPassword" @click="closePasswordModal">
-            Hủy
-          </BaseButton>
-          <BaseButton type="submit" :disabled="isChangingPassword">
-            {{ isChangingPassword ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
-          </BaseButton>
-        </div>
-      </form>
     </BaseModal>
   </main>
 </template>
