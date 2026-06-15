@@ -3,10 +3,11 @@ using System.Security.Claims;
 using System.Text;
 
 using Demo.Api.Authorization;
-using Demo.Application.Features.Auth;
+using Demo.Domain.Interfaces.Service;
 using Demo.Infrastructure;
-using Demo.Infrastructure.Auth;
 using Demo.Infrastructure.Persistence;
+using Demo.Infrastructure.Options;
+using Demo.Infrastructure.Services;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;

@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-using Demo.Application.Authorization;
+using Demo.Domain.Interfaces.Service;
 
 using Microsoft.AspNetCore.Authorization;
 

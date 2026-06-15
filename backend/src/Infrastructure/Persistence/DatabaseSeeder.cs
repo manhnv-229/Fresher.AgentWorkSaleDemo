@@ -1,7 +1,7 @@
-using Demo.Application.Authorization;
-using Demo.Application.Features.Auth;
+using Demo.Domain.Authorization;
 using Demo.Domain.Entities;
 using Demo.Domain.Enums;
+using Demo.Domain.Interfaces.Service;
 
 using Microsoft.EntityFrameworkCore;
 

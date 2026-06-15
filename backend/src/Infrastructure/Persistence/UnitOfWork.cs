@@ -1,4 +1,4 @@
-using Demo.Application.UseCases.Common;
+using Demo.Domain.Interfaces.Repository;
 
 namespace Demo.Infrastructure.Persistence;
 
