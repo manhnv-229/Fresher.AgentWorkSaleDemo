@@ -10,6 +10,11 @@ public static class PermissionCodes
     public const string AgentCreate = "agent.create";
     public const string AgentUpdate = "agent.update";
     public const string AgentDelete = "agent.delete";
+    public const string DocumentView = "document.view";
+    public const string DocumentCreate = "document.create";
+    public const string DocumentUpdate = "document.update";
+    public const string DocumentDelete = "document.delete";
+    public const string ReportView = "report.view";
     public const string UserView = "user.view";
     public const string UserInvite = "user.invite";
     public const string UserUpdate = "user.update";

@@ -12,12 +12,11 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
     private static readonly Guid SystemAdminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid TenantOneId = Guid.Parse("22222222-2222-2222-2222-222222222221");
     private static readonly Guid TenantTwoId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-    private static readonly Guid TenantAdminRoleId = Guid.Parse("33333333-3333-3333-3333-333333333331");
-    private static readonly Guid AgentManagerRoleId = Guid.Parse("33333333-3333-3333-3333-333333333332");
-    private static readonly Guid AgentViewerRoleId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid TenantManagerRoleId = Guid.Parse("33333333-3333-3333-3333-333333333301");
+    private static readonly Guid StaffRoleId = Guid.Parse("33333333-3333-3333-3333-333333333302");
     private static readonly Guid AdminUserId = Guid.Parse("44444444-4444-4444-4444-444444444441");
-    private static readonly Guid ManagerUserId = Guid.Parse("44444444-4444-4444-4444-444444444442");
-    private static readonly Guid ViewerUserId = Guid.Parse("44444444-4444-4444-4444-444444444443");
+    private static readonly Guid TenantUserId = Guid.Parse("44444444-4444-4444-4444-444444444442");
+    private static readonly Guid StaffUserId = Guid.Parse("44444444-4444-4444-4444-444444444443");
     private static readonly Guid InternalAgentId = Guid.Parse("55555555-5555-5555-5555-555555555550");
     private static readonly Guid TenantOneAgentId = Guid.Parse("55555555-5555-5555-5555-555555555551");
     private static readonly Guid TenantTwoAgentId = Guid.Parse("55555555-5555-5555-5555-555555555552");
@@ -34,6 +33,11 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         (PermissionCodes.AgentCreate, "Create agents", "Agent"),
         (PermissionCodes.AgentUpdate, "Update agents", "Agent"),
         (PermissionCodes.AgentDelete, "Delete agents", "Agent"),
+        (PermissionCodes.DocumentView, "View documents", "Document"),
+        (PermissionCodes.DocumentCreate, "Create documents", "Document"),
+        (PermissionCodes.DocumentUpdate, "Update documents", "Document"),
+        (PermissionCodes.DocumentDelete, "Delete documents", "Document"),
+        (PermissionCodes.ReportView, "View reports", "Report"),
         (PermissionCodes.UserView, "View users", "User"),
         (PermissionCodes.UserInvite, "Invite users", "User"),
         (PermissionCodes.UserUpdate, "Update users", "User"),
@@ -45,6 +49,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
+        await CleanLegacyDataAsync(cancellationToken);
         await SeedPermissionsAsync(cancellationToken);
         await SeedTenantsAsync(cancellationToken);
         await SeedRolesAsync(cancellationToken);
@@ -54,6 +59,36 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         await SeedAgentsAsync(cancellationToken);
         await SeedKnowledgeAsync(cancellationToken);
         await SeedAuditLogsAsync(cancellationToken);
+    }
+
+    private async Task CleanLegacyDataAsync(CancellationToken cancellationToken)
+    {
+        // Remove old roles that are no longer used
+        var legacyRoleCodes = new[] { "TenantAdmin", "AgentManager", "AgentViewer" };
+        var legacyRoles = await dbContext.Roles
+            .Where(x => legacyRoleCodes.Contains(x.Code))
+            .ToListAsync(cancellationToken);
+
+        if (legacyRoles.Count > 0)
+        {
+            // Remove role permissions for legacy roles
+            var legacyRoleIds = legacyRoles.Select(x => x.Id).ToList();
+            var legacyRolePermissions = await dbContext.RolePermissions
+                .Where(x => legacyRoleIds.Contains(x.RoleId))
+                .ToListAsync(cancellationToken);
+            dbContext.RolePermissions.RemoveRange(legacyRolePermissions);
+
+            // Remove user roles for legacy roles
+            var legacyUserRoles = await dbContext.UserRoles
+                .Where(x => legacyRoleIds.Contains(x.RoleId))
+                .ToListAsync(cancellationToken);
+            dbContext.UserRoles.RemoveRange(legacyUserRoles);
+
+            // Remove legacy roles
+            dbContext.Roles.RemoveRange(legacyRoles);
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private async Task SeedPermissionsAsync(CancellationToken cancellationToken)
@@ -105,10 +140,9 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
 
     private async Task SeedRolesAsync(CancellationToken cancellationToken)
     {
-        await AddRoleAsync(SystemAdminRoleId, null, "SystemAdmin", "SystemAdmin", true, cancellationToken);
-        await AddRoleAsync(TenantAdminRoleId, TenantOneId, "TenantAdmin", "TenantAdmin", false, cancellationToken);
-        await AddRoleAsync(AgentManagerRoleId, TenantOneId, "AgentManager", "AgentManager", false, cancellationToken);
-        await AddRoleAsync(AgentViewerRoleId, TenantTwoId, "AgentViewer", "AgentViewer", false, cancellationToken);
+        await AddRoleAsync(SystemAdminRoleId, null, "SystemAdmin", "SystemAdmin", "System administrator with full access", true, cancellationToken);
+        await AddRoleAsync(TenantManagerRoleId, null, "Tenant", "Tenant", "Agent manager", true, cancellationToken);
+        await AddRoleAsync(StaffRoleId, null, "Staff", "Staff", "Staff member with limited access", true, cancellationToken);
     }
 
     private async Task AddRoleAsync(
@@ -116,6 +150,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         Guid? tenantId,
         string name,
         string code,
+        string description,
         bool isSystemRole,
         CancellationToken cancellationToken)
     {
@@ -130,7 +165,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             TenantId = tenantId,
             Name = name,
             Code = code,
-            Description = name,
+            Description = description,
             IsSystemRole = isSystemRole,
             CreatedAt = DateTime.UtcNow
         });
@@ -141,10 +176,18 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
     private async Task SeedRolePermissionsAsync(CancellationToken cancellationToken)
     {
         var allPermissions = await dbContext.Permissions.ToListAsync(cancellationToken);
+
+        // SystemAdmin: ALL permissions
         await AddPermissionsAsync(SystemAdminRoleId, allPermissions.Select(x => x.Code), cancellationToken);
-        await AddPermissionsAsync(TenantAdminRoleId, allPermissions.Where(x => x.GroupName != "Tenant").Select(x => x.Code), cancellationToken);
-        await AddPermissionsAsync(AgentManagerRoleId, [PermissionCodes.AgentView, PermissionCodes.AgentCreate, PermissionCodes.AgentUpdate], cancellationToken);
-        await AddPermissionsAsync(AgentViewerRoleId, [PermissionCodes.AgentView], cancellationToken);
+
+        // TenantManager: agent.*, document.*, user.*, report.view (no tenant.* or role.*)
+        var tenantManagerPermissions = allPermissions
+            .Where(x => x.GroupName is "Agent" or "Document" or "Report" or "User")
+            .Select(x => x.Code);
+        await AddPermissionsAsync(TenantManagerRoleId, tenantManagerPermissions, cancellationToken);
+
+        // Staff: no permissions for now (empty set)
+        await AddPermissionsAsync(StaffRoleId, [], cancellationToken);
     }
 
     private async Task AddPermissionsAsync(Guid roleId, IEnumerable<string> permissionCodes, CancellationToken cancellationToken)
@@ -175,8 +218,8 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
     private async Task SeedUsersAsync(CancellationToken cancellationToken)
     {
         await AddUserAsync(AdminUserId, "admin@example.com", "Admin User", cancellationToken);
-        await AddUserAsync(ManagerUserId, "manager@example.com", "Manager User", cancellationToken);
-        await AddUserAsync(ViewerUserId, "viewer@example.com", "Viewer User", cancellationToken);
+        await AddUserAsync(TenantUserId, "tenant@example.com", "Tenant User", cancellationToken);
+        await AddUserAsync(StaffUserId, "staff@example.com", "Staff User", cancellationToken);
     }
 
     private async Task AddUserAsync(Guid id, string email, string fullName, CancellationToken cancellationToken)
@@ -201,14 +244,13 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
 
     private async Task SeedMembershipsAsync(CancellationToken cancellationToken)
     {
-        await AddUserTenantAsync(ManagerUserId, TenantOneId, cancellationToken);
-        await AddUserTenantAsync(ManagerUserId, TenantTwoId, cancellationToken);
-        await AddUserTenantAsync(ViewerUserId, TenantTwoId, cancellationToken);
+        await AddUserTenantAsync(TenantUserId, TenantOneId, cancellationToken);
+        await AddUserTenantAsync(TenantUserId, TenantTwoId, cancellationToken);
+        await AddUserTenantAsync(StaffUserId, TenantOneId, cancellationToken);
 
         await AddUserRoleAsync(AdminUserId, SystemAdminRoleId, null, cancellationToken);
-        await AddUserRoleAsync(ManagerUserId, AgentManagerRoleId, TenantOneId, cancellationToken);
-        await AddUserRoleAsync(ManagerUserId, AgentViewerRoleId, TenantTwoId, cancellationToken);
-        await AddUserRoleAsync(ViewerUserId, AgentViewerRoleId, TenantTwoId, cancellationToken);
+        await AddUserRoleAsync(TenantUserId, TenantManagerRoleId, TenantOneId, cancellationToken);
+        await AddUserRoleAsync(StaffUserId, StaffRoleId, TenantOneId, cancellationToken);
     }
 
     private async Task AddUserTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken)
