@@ -13,7 +13,7 @@ export function useAgentList() {
   const searchText = ref('');
   const statusFilter = ref<'' | AgentStatusFilter>('');
   const currentPage = ref(1);
-  const pageSize = ref(20);
+  const pageSize = ref(9);
 
   const hasActiveFilters = computed(() => Boolean(statusFilter.value || searchText.value.trim()));
   const activeFilters = computed<AgentListFilters>(() => ({
@@ -32,7 +32,7 @@ export function useAgentList() {
 }
 
 export function useInternalAgents(filters: ReturnType<typeof useAgentList>) {
-  const agents = ref<PagedResult<AgentSummary>>({ items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 });
+  const agents = ref<PagedResult<AgentSummary>>({ items: [], page: 1, pageSize: 9, totalCount: 0, totalPages: 0 });
   const isLoading = ref(false);
   const error = ref('');
 
@@ -49,7 +49,7 @@ export function useInternalAgents(filters: ReturnType<typeof useAgentList>) {
       if (err instanceof ApiError && err.status === 401) {
         throw err;
       }
-      agents.value = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 };
+      agents.value = { items: [], page: 1, pageSize: 9, totalCount: 0, totalPages: 0 };
       error.value = err instanceof ApiError ? err.message : 'Không tải được danh sách agent nội bộ.';
     } finally {
       isLoading.value = false;
@@ -60,7 +60,7 @@ export function useInternalAgents(filters: ReturnType<typeof useAgentList>) {
 }
 
 export function useTenantAgents(filters: ReturnType<typeof useAgentList>) {
-  const agents = ref<PagedResult<AgentSummary>>({ items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 });
+  const agents = ref<PagedResult<AgentSummary>>({ items: [], page: 1, pageSize: 9, totalCount: 0, totalPages: 0 });
   const isLoading = ref(false);
   const error = ref('');
 
@@ -77,7 +77,7 @@ export function useTenantAgents(filters: ReturnType<typeof useAgentList>) {
       if (err instanceof ApiError && err.status === 401) {
         throw err;
       }
-      agents.value = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 };
+      agents.value = { items: [], page: 1, pageSize: 9, totalCount: 0, totalPages: 0 };
       error.value = err instanceof ApiError ? err.message : 'Không tải được agent của đơn vị.';
     } finally {
       isLoading.value = false;

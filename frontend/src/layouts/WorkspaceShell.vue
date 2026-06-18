@@ -66,7 +66,7 @@ async function handleLogout() {
   </main>
 
   <main v-else-if="!isAuthenticated" class="app-shell">
-    <RouterView />
+    <p class="message">Đang chuyển tới trang đăng nhập...</p>
   </main>
 
   <section v-else class="workspace" :class="{ 'workspace--settings': isSettingsRoute }" aria-labelledby="workspace-title">
