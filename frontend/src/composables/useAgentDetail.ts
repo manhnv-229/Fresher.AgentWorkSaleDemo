@@ -1,0 +1,80 @@
+import { ref } from 'vue';
+import {
+  getInternalAgentDetail,
+  getTenantAgentDetail,
+  updateInternalAgent,
+  updateTenantAgent,
+  deleteInternalAgent,
+  deleteTenantAgent,
+  type AgentDetail,
+  type UpdateAgentPayload
+} from '../api';
+import { ApiError } from '../api/http';
+
+export function useAgentDetail() {
+  const agent = ref<AgentDetail | null>(null);
+  const isLoading = ref(false);
+  const error = ref('');
+
+  async function loadInternal(agentId: string) {
+    error.value = '';
+    isLoading.value = true;
+    agent.value = null;
+    try {
+      agent.value = await getInternalAgentDetail(agentId);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) throw err;
+      error.value = err instanceof ApiError ? err.message : 'Không tải được chi tiết agent.';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function loadTenant(tenantId: string, agentId: string) {
+    error.value = '';
+    isLoading.value = true;
+    agent.value = null;
+    try {
+      agent.value = await getTenantAgentDetail(tenantId, agentId);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) throw err;
+      error.value = err instanceof ApiError ? err.message : 'Không tải được chi tiết agent.';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function saveInternal(agentId: string, payload: UpdateAgentPayload) {
+    return updateInternalAgent(agentId, payload);
+  }
+
+  async function saveTenant(tenantId: string, agentId: string, payload: UpdateAgentPayload) {
+    return updateTenantAgent(tenantId, agentId, payload);
+  }
+
+  async function removeInternal(agentId: string) {
+    return deleteInternalAgent(agentId);
+  }
+
+  async function removeTenant(tenantId: string, agentId: string) {
+    return deleteTenantAgent(tenantId, agentId);
+  }
+
+  function clear() {
+    agent.value = null;
+    error.value = '';
+  }
+
+  return {
+    agent,
+    isLoading,
+    error,
+    loadInternal,
+    loadTenant,
+    saveInternal,
+    saveTenant,
+    removeInternal,
+    removeTenant,
+    clear
+  };
+}

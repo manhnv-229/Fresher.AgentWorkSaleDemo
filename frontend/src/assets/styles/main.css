@@ -265,6 +265,7 @@
   color: #30405d;
   padding: 12px 14px;
   text-align: left;
+  text-decoration: none;
   transition:
     background 120ms ease,
     color 120ms ease,
@@ -589,6 +590,77 @@
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.agent-card__actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.card-menu-wrapper {
+  position: relative;
+}
+
+.card-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  color: #6c757d;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.agent-card:hover .card-menu-trigger {
+  opacity: 1;
+}
+
+.card-menu-trigger:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.card-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  min-width: 150px;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 0.25rem 0;
+}
+
+.card-menu__item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: #212529;
+}
+
+.card-menu__item:hover {
+  background-color: #f8f9fa;
+}
+
+.card-menu__item--danger {
+  color: #dc3545;
+}
+
+.card-menu__item--danger:hover {
+  background-color: #fff5f5;
 }
 
 .agent-meta {

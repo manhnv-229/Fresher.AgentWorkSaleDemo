@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Building2, CircleAlert, LoaderCircle, Lock, LogOut, Plus, RefreshCw, Settings2, Shield, ShieldCheck } from '@lucide/vue';
+import { Building2, CircleAlert, LoaderCircle, Lock, LogOut, MoreVertical, Plus, RefreshCw, Settings2, Shield, ShieldCheck } from '@lucide/vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
@@ -44,6 +44,10 @@ type AgentScopeView = 'internal' | 'tenant';
 type WorkspaceView = AgentScopeView | 'settings' | 'detail';
 type SettingsSection = 'members' | 'password';
 type ViewMode = 'list' | 'detail' | 'edit';
+
+interface CardMenuState {
+  openId: string | null;
+}
 
 interface AvatarOption {
   id: string;
@@ -127,6 +131,9 @@ const editIcon = ref(avatarOptions[0]?.id ?? 'mint');
 const editStatus = ref('Draft');
 const editError = ref('');
 
+const activeAgentScope = ref<'internal' | 'tenant'>('internal');
+const cardMenu = ref<CardMenuState>({ openId: null });
+
 const isDeleteConfirmModalOpen = ref(false);
 const agentToDelete = ref<AgentSummary | null>(null);
 
@@ -179,6 +186,7 @@ const emptyStateDescription = computed(() => {
 
 onMounted(() => {
   void initializeAuth();
+  restoreFromQueryParams();
 });
 
 watch(
@@ -557,9 +565,13 @@ function goToPage(page: number) {
 
 async function openAgentDetail(agent: AgentSummary, scope: 'internal' | 'tenant') {
   viewMode.value = 'detail';
+  activeAgentScope.value = scope;
   agentDetailError.value = '';
   isLoadingAgentDetail.value = true;
   selectedAgent.value = null;
+  closeAllCardMenus();
+
+  updateQueryState({ agentId: agent.id, scope });
 
   try {
     if (scope === 'internal') {
@@ -586,6 +598,7 @@ function startEditAgent() {
   editStatus.value = selectedAgent.value.status;
   editError.value = '';
   viewMode.value = 'edit';
+  updateQueryState({ agentId: selectedAgent.value.id, scope: activeAgentScope.value, edit: true });
 }
 
 function cancelEdit() {
@@ -618,6 +631,7 @@ async function submitUpdateAgent() {
       await updateTenantAgent(selectedTenantId.value, selectedAgent.value.id, payload);
     }
     viewMode.value = 'detail';
+    updateQueryState({ edit: null });
     await Promise.all([refreshCurrentAgent(), refreshActiveAgentList()]);
   } catch (error) {
     if (handleAuthFailure(error)) {
@@ -674,8 +688,7 @@ async function confirmDeleteAgent() {
       await deleteTenantAgent(selectedTenantId.value, agentToDelete.value.id);
     }
     closeDeleteConfirm();
-    viewMode.value = 'list';
-    selectedAgent.value = null;
+    backToList();
     if (activeWorkspace.value === 'internal') {
       await loadInternalAgents();
     } else if (activeWorkspace.value === 'tenant' && selectedTenantId.value) {
@@ -694,6 +707,106 @@ function backToList() {
   viewMode.value = 'list';
   selectedAgent.value = null;
   agentDetailError.value = '';
+  activeAgentScope.value = 'internal';
+  updateQueryState({ agentId: null, scope: null, edit: null });
+}
+
+function updateQueryState(params: { agentId?: string | null; scope?: string | null; edit?: boolean | null }) {
+  const url = new URL(window.location.href);
+
+  if (params.agentId != null) {
+    if (params.agentId) {
+      url.searchParams.set('agentId', params.agentId);
+    } else {
+      url.searchParams.delete('agentId');
+    }
+  }
+
+  if (params.scope != null) {
+    if (params.scope) {
+      url.searchParams.set('scope', params.scope);
+    } else {
+      url.searchParams.delete('scope');
+    }
+  }
+
+  if (params.edit != null) {
+    if (params.edit) {
+      url.searchParams.set('edit', '1');
+    } else {
+      url.searchParams.delete('edit');
+    }
+  }
+
+  window.history.pushState({}, '', url.toString());
+}
+
+function restoreFromQueryParams() {
+  const params = new URLSearchParams(window.location.search);
+  const agentId = params.get('agentId');
+  const scope = params.get('scope') as 'internal' | 'tenant' | null;
+  const edit = params.get('edit') === '1';
+
+  if (agentId && scope) {
+    viewMode.value = edit ? 'edit' : 'detail';
+    activeAgentScope.value = scope;
+    void openAgentDetail({ id: agentId, name: '', role: '', scope: scope === 'internal' ? 'Internal' : 'Tenant', status: '' } as AgentSummary, scope);
+  }
+}
+
+function toggleCardMenu(agentId: string) {
+  cardMenu.value.openId = cardMenu.value.openId === agentId ? null : agentId;
+}
+
+function closeAllCardMenus() {
+  cardMenu.value.openId = null;
+}
+
+function handleCardMenuAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete', event: Event) {
+  event.stopPropagation();
+  event.preventDefault();
+  closeAllCardMenus();
+
+  if (action === 'view') {
+    void openAgentDetail(agent, agent.scope === 'Internal' ? 'internal' : 'tenant');
+  } else if (action === 'edit') {
+    void openAgentDetailForEdit(agent, agent.scope === 'Internal' ? 'internal' : 'tenant');
+  } else if (action === 'delete') {
+    openDeleteConfirm(agent);
+  }
+}
+
+async function openAgentDetailForEdit(agent: AgentSummary, scope: 'internal' | 'tenant') {
+  viewMode.value = 'edit';
+  activeAgentScope.value = scope;
+  agentDetailError.value = '';
+  isLoadingAgentDetail.value = true;
+  selectedAgent.value = null;
+
+  updateQueryState({ agentId: agent.id, scope, edit: true });
+
+  try {
+    if (scope === 'internal') {
+      selectedAgent.value = await getInternalAgentDetail(agent.id);
+    } else {
+      selectedAgent.value = await getTenantAgentDetail(selectedTenantId.value, agent.id);
+    }
+    if (selectedAgent.value) {
+      editName.value = selectedAgent.value.name;
+      editRole.value = selectedAgent.value.role;
+      editDescription.value = selectedAgent.value.description ?? '';
+      editIcon.value = selectedAgent.value.icon ?? avatarOptions[0]?.id ?? 'mint';
+      editStatus.value = selectedAgent.value.status;
+      editError.value = '';
+    }
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+    agentDetailError.value = normalizeError(error, 'Không tải được chi tiết agent.');
+  } finally {
+    isLoadingAgentDetail.value = false;
+  }
 }
 
 async function openTenantDetail(tenantId: string) {
@@ -799,7 +912,7 @@ async function loadTenantsList() {
       <LoginForm />
     </section>
 
-    <section v-else class="workspace" :class="{ 'workspace--settings': isSettingsWorkspace }" aria-labelledby="workspace-title">
+    <section v-else class="workspace" :class="{ 'workspace--settings': isSettingsWorkspace }" @click="closeAllCardMenus" aria-labelledby="workspace-title">
       <aside class="workspace__sidebar">
         <div class="sidebar__brand">
           <p class="sidebar__eyebrow">Demo AgentWorkSale</p>
@@ -1053,6 +1166,125 @@ async function loadTenantsList() {
             </div>
           </template>
 
+          <template v-else-if="viewMode !== 'list'">
+            <div class="content-panel agent-detail-panel">
+              <div v-if="isLoadingAgentDetail" class="loading-row">
+                <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+                <span>Đang tải chi tiết agent...</span>
+              </div>
+              <div v-else-if="agentDetailError" class="message message--error">{{ agentDetailError }}</div>
+              <template v-else-if="selectedAgent">
+                <template v-if="viewMode === 'detail'">
+                  <div class="agent-detail">
+                    <div class="agent-detail__header">
+                      <div class="agent-card__avatar" :style="avatarStyle(selectedAgent.icon)">{{ avatarLabel(selectedAgent) }}</div>
+                      <div>
+                        <h3>{{ selectedAgent.name }}</h3>
+                        <p>{{ selectedAgent.description || 'Chưa có mô tả.' }}</p>
+                      </div>
+                    </div>
+                    <dl class="agent-detail__fields">
+                      <div>
+                        <dt>Mã agent</dt>
+                        <dd>{{ selectedAgent.code }}</dd>
+                      </div>
+                      <div>
+                        <dt>Vai trò</dt>
+                        <dd>{{ selectedAgent.role }}</dd>
+                      </div>
+                      <div>
+                        <dt>Phạm vi</dt>
+                        <dd>{{ selectedAgent.scope }}</dd>
+                      </div>
+                      <div>
+                        <dt>Trạng thái</dt>
+                        <dd><span :class="statusTone(selectedAgent.status)">{{ selectedAgent.status }}</span></dd>
+                      </div>
+                      <div>
+                        <dt>Ngày tạo</dt>
+                        <dd>{{ formatDate(selectedAgent.createdAt) }}</dd>
+                      </div>
+                      <div v-if="selectedAgent.modifiedAt">
+                        <dt>Sửa lần cuối</dt>
+                        <dd>{{ formatDate(selectedAgent.modifiedAt) }}</dd>
+                      </div>
+                    </dl>
+                    <div class="agent-detail__actions">
+                      <BaseButton variant="secondary" type="button" @click="backToList">Quay lại</BaseButton>
+                      <BaseButton variant="secondary" type="button" @click="startEditAgent">Chỉnh sửa</BaseButton>
+                      <BaseButton variant="danger" type="button" @click="openDeleteConfirm(selectedAgent)">Xóa</BaseButton>
+                    </div>
+                  </div>
+                </template>
+                <template v-else-if="viewMode === 'edit'">
+                  <div class="create-agent">
+                    <div class="create-agent__group">
+                      <p class="create-agent__label">Hình đại diện</p>
+                      <div class="avatar-picker">
+                        <button
+                          v-for="option in avatarOptions"
+                          :key="option.id"
+                          class="avatar-choice"
+                          :class="{ 'avatar-choice--active': editIcon === option.id }"
+                          :style="{ background: option.accent }"
+                          type="button"
+                          @click="editIcon = option.id"
+                        >
+                          {{ option.label }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="create-agent__group">
+                      <label class="create-agent__label" for="edit-name">Tên</label>
+                      <BaseInput id="edit-name" v-model="editName" placeholder="Nhập tên" />
+                    </div>
+
+                    <div class="create-agent__group">
+                      <label class="create-agent__label" for="edit-role">Vai trò</label>
+                      <textarea
+                        id="edit-role"
+                        v-model="editRole"
+                        class="agent-textarea"
+                        rows="3"
+                        placeholder="Nhập mô tả vai trò"
+                      />
+                    </div>
+
+                    <div class="create-agent__group">
+                      <label class="create-agent__label" for="edit-description">Mô tả</label>
+                      <textarea
+                        id="edit-description"
+                        v-model="editDescription"
+                        class="agent-textarea"
+                        rows="4"
+                        placeholder="Mô tả ngắn về nhiệm vụ hoặc chuyên môn của agent"
+                      />
+                    </div>
+
+                    <div class="create-agent__group">
+                      <label class="create-agent__label" for="edit-status">Trạng thái</label>
+                      <select id="edit-status" v-model="editStatus" class="agent-select">
+                        <option v-for="option in allStatusOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </option>
+                      </select>
+                    </div>
+
+                    <p v-if="editError" class="message message--error">{{ editError }}</p>
+
+                    <div class="create-agent__actions">
+                      <BaseButton variant="secondary" type="button" :disabled="isSavingAgent" @click="cancelEdit">Hủy</BaseButton>
+                      <BaseButton type="button" :disabled="isSavingAgent" @click="submitUpdateAgent">
+                        {{ isSavingAgent ? 'Đang lưu...' : 'Lưu' }}
+                      </BaseButton>
+                    </div>
+                  </div>
+                </template>
+              </template>
+            </div>
+          </template>
+
           <template v-else>
             <div class="filter-bar">
               <BaseInput v-model="searchText" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
@@ -1085,7 +1317,30 @@ async function loadTenantsList() {
                         <h3>{{ agent.name }}</h3>
                         <p>{{ agent.description || 'Agent nội bộ chưa có mô tả.' }}</p>
                       </div>
-                      <span class="agent-status">{{ agent.status }}</span>
+                      <div class="agent-card__actions" @click.stop>
+                        <span class="agent-status">{{ agent.status }}</span>
+                        <div class="card-menu-wrapper">
+                          <button
+                            type="button"
+                            class="card-menu-trigger"
+                            title="Hành động"
+                            @click.stop="toggleCardMenu(agent.id)"
+                          >
+                            <MoreVertical :size="16" aria-hidden="true" />
+                          </button>
+                          <div v-if="cardMenu.openId === agent.id" class="card-menu" @click.stop>
+                            <button type="button" class="card-menu__item" @click="handleCardMenuAction(agent, 'view', $event)">
+                              Xem chi tiết
+                            </button>
+                            <button type="button" class="card-menu__item" @click="handleCardMenuAction(agent, 'edit', $event)">
+                              Sửa
+                            </button>
+                            <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardMenuAction(agent, 'delete', $event)">
+                              Xóa
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <dl class="agent-meta">
                       <div>
@@ -1144,7 +1399,30 @@ async function loadTenantsList() {
                         <h3>{{ agent.name }}</h3>
                         <p>{{ agent.description || 'Agent tenant chưa có mô tả.' }}</p>
                       </div>
-                      <span class="agent-status">{{ agent.status }}</span>
+                      <div class="agent-card__actions" @click.stop>
+                        <span class="agent-status">{{ agent.status }}</span>
+                        <div class="card-menu-wrapper">
+                          <button
+                            type="button"
+                            class="card-menu-trigger"
+                            title="Hành động"
+                            @click.stop="toggleCardMenu(agent.id)"
+                          >
+                            <MoreVertical :size="16" aria-hidden="true" />
+                          </button>
+                          <div v-if="cardMenu.openId === agent.id" class="card-menu" @click.stop>
+                            <button type="button" class="card-menu__item" @click="handleCardMenuAction(agent, 'view', $event)">
+                              Xem chi tiết
+                            </button>
+                            <button type="button" class="card-menu__item" @click="handleCardMenuAction(agent, 'edit', $event)">
+                              Sửa
+                            </button>
+                            <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardMenuAction(agent, 'delete', $event)">
+                              Xóa
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <dl class="agent-meta">
                       <div>
@@ -1243,123 +1521,6 @@ async function loadTenantsList() {
       </div>
     </BaseModal>
 
-    <BaseModal :open="viewMode !== 'list' && activeWorkspace !== 'settings'" title="" @close="backToList">
-      <div v-if="isLoadingAgentDetail" class="loading-row">
-        <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-        <span>Đang tải chi tiết agent...</span>
-      </div>
-      <div v-else-if="agentDetailError" class="message message--error">{{ agentDetailError }}</div>
-      <template v-else-if="selectedAgent">
-        <template v-if="viewMode === 'detail'">
-          <div class="agent-detail">
-            <div class="agent-detail__header">
-              <div class="agent-card__avatar" :style="avatarStyle(selectedAgent.icon)">{{ avatarLabel(selectedAgent) }}</div>
-              <div>
-                <h3>{{ selectedAgent.name }}</h3>
-                <p>{{ selectedAgent.description || 'Chưa có mô tả.' }}</p>
-              </div>
-            </div>
-            <dl class="agent-detail__fields">
-              <div>
-                <dt>Mã agent</dt>
-                <dd>{{ selectedAgent.code }}</dd>
-              </div>
-              <div>
-                <dt>Vai trò</dt>
-                <dd>{{ selectedAgent.role }}</dd>
-              </div>
-              <div>
-                <dt>Phạm vi</dt>
-                <dd>{{ selectedAgent.scope }}</dd>
-              </div>
-              <div>
-                <dt>Trạng thái</dt>
-                <dd><span :class="statusTone(selectedAgent.status)">{{ selectedAgent.status }}</span></dd>
-              </div>
-              <div>
-                <dt>Ngày tạo</dt>
-                <dd>{{ formatDate(selectedAgent.createdAt) }}</dd>
-              </div>
-              <div v-if="selectedAgent.modifiedAt">
-                <dt>Sửa lần cuối</dt>
-                <dd>{{ formatDate(selectedAgent.modifiedAt) }}</dd>
-              </div>
-            </dl>
-            <div class="agent-detail__actions">
-              <BaseButton variant="secondary" type="button" @click="backToList">Quay lại</BaseButton>
-              <BaseButton variant="secondary" type="button" @click="startEditAgent">Chỉnh sửa</BaseButton>
-              <BaseButton variant="danger" type="button" @click="openDeleteConfirm(selectedAgent)">Xóa</BaseButton>
-            </div>
-          </div>
-        </template>
-        <template v-else-if="viewMode === 'edit'">
-          <div class="create-agent">
-            <div class="create-agent__group">
-              <p class="create-agent__label">Hình đại diện</p>
-              <div class="avatar-picker">
-                <button
-                  v-for="option in avatarOptions"
-                  :key="option.id"
-                  class="avatar-choice"
-                  :class="{ 'avatar-choice--active': editIcon === option.id }"
-                  :style="{ background: option.accent }"
-                  type="button"
-                  @click="editIcon = option.id"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-            </div>
-
-            <div class="create-agent__group">
-              <label class="create-agent__label" for="edit-name">Tên</label>
-              <BaseInput id="edit-name" v-model="editName" placeholder="Nhập tên" />
-            </div>
-
-            <div class="create-agent__group">
-              <label class="create-agent__label" for="edit-role">Vai trò</label>
-              <textarea
-                id="edit-role"
-                v-model="editRole"
-                class="agent-textarea"
-                rows="3"
-                placeholder="Nhập mô tả vai trò"
-              />
-            </div>
-
-            <div class="create-agent__group">
-              <label class="create-agent__label" for="edit-description">Mô tả</label>
-              <textarea
-                id="edit-description"
-                v-model="editDescription"
-                class="agent-textarea"
-                rows="4"
-                placeholder="Mô tả ngắn về nhiệm vụ hoặc chuyên môn của agent"
-              />
-            </div>
-
-            <div class="create-agent__group">
-              <label class="create-agent__label" for="edit-status">Trạng thái</label>
-              <select id="edit-status" v-model="editStatus" class="agent-select">
-                <option v-for="option in allStatusOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
-            </div>
-
-            <p v-if="editError" class="message message--error">{{ editError }}</p>
-
-            <div class="create-agent__actions">
-              <BaseButton variant="secondary" type="button" :disabled="isSavingAgent" @click="cancelEdit">Hủy</BaseButton>
-              <BaseButton type="button" :disabled="isSavingAgent" @click="submitUpdateAgent">
-                {{ isSavingAgent ? 'Đang lưu...' : 'Lưu' }}
-              </BaseButton>
-            </div>
-          </div>
-        </template>
-      </template>
-    </BaseModal>
-
     <BaseModal :open="isDeleteConfirmModalOpen" title="Xác nhận xóa" @close="closeDeleteConfirm">
       <div class="delete-confirm">
         <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
@@ -1452,6 +1613,86 @@ async function loadTenantsList() {
 .agent-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.agent-card__actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.card-menu-wrapper {
+  position: relative;
+}
+
+.card-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  color: #6c757d;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.agent-card:hover .card-menu-trigger {
+  opacity: 1;
+}
+
+.card-menu-trigger:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.card-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  min-width: 150px;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 0.25rem 0;
+}
+
+.card-menu__item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: #212529;
+}
+
+.card-menu__item:hover {
+  background-color: #f8f9fa;
+}
+
+.card-menu__item--danger {
+  color: #dc3545;
+}
+
+.card-menu__item--danger:hover {
+  background-color: #fff5f5;
+}
+
+.agent-detail-panel {
+  max-width: 720px;
+}
+
+.agent-status {
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .pagination {
