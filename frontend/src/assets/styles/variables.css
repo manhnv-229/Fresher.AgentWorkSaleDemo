@@ -1,0 +1,20 @@
+:root {
+  --color-bg: #f5f7fb;
+  --color-text: #172033;
+  --color-muted: #5d6677;
+  --color-border: #dfe3ea;
+  --color-border-strong: #d0d7e2;
+  --color-surface: #ffffff;
+  --color-primary: #126bff;
+  --color-primary-hover: #075ee6;
+  --color-primary-soft: #eef4ff;
+  --color-success: #0b7a55;
+  --color-danger: #c9252d;
+  --shadow-panel: 0 16px 40px rgba(15, 23, 42, 0.08);
+  --radius-sm: 4px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
