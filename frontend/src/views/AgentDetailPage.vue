@@ -211,3 +211,9 @@ function goBack() {
     </div>
   </BaseModal>
 </template>
+
+<style scoped>
+.agent-select {
+  width: 200px;
+}
+</style>
