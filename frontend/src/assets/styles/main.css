@@ -15,10 +15,14 @@
 }
 
 .auth-shell {
-  width: min(100%, 360px);
-  margin: 0 auto;
-  display: grid;
-  gap: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(18, 107, 255, 0.08), transparent 28%),
+    linear-gradient(180deg, #f6f8fc 0%, #eef2f8 100%);
 }
 
 .auth-shell__notice {
@@ -162,41 +166,30 @@
 
 .workspace {
   display: grid;
-  grid-template-columns: 288px minmax(0, 1fr);
-  gap: 20px;
-  min-height: calc(100vh - 48px);
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-height: 100vh;
 }
 
 .workspace--settings {
-  grid-template-columns: 288px 240px minmax(0, 1fr);
-}
-
-.workspace__sidebar,
-.workspace__content {
-  border: 1px solid rgba(210, 218, 232, 0.9);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--shadow-panel);
-  backdrop-filter: blur(12px);
+  grid-template-columns: 260px 220px minmax(0, 1fr);
 }
 
 .workspace__sidebar {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 24px 18px;
+  gap: 20px;
+  padding: 24px 16px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
 }
 
 .workspace__settings-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  border: 1px solid rgba(210, 218, 232, 0.9);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--shadow-panel);
-  backdrop-filter: blur(12px);
-  padding: 24px 18px;
+  gap: 14px;
+  padding: 24px 16px;
+  background: #fafbfc;
+  border-right: 1px solid #e5e7eb;
 }
 
 .sidebar__brand h1,
@@ -260,16 +253,16 @@
   width: 100%;
   align-items: center;
   gap: 10px;
-  border-radius: 16px;
+  border-radius: 8px;
   background: transparent;
   color: #30405d;
-  padding: 12px 14px;
+  padding: 10px 12px;
   text-align: left;
   text-decoration: none;
+  font-size: 14px;
   transition:
     background 120ms ease,
-    color 120ms ease,
-    transform 120ms ease;
+    color 120ms ease;
 }
 
 .scope-link:hover,
@@ -280,9 +273,9 @@
 
 .scope-link--active,
 .tenant-link--active {
-  background: linear-gradient(135deg, #eef2ff, #dbe7ff);
+  background: #eef2ff;
   color: #2146c7;
-  transform: translateX(2px);
+  font-weight: 600;
 }
 
 .tenant-list__header {
@@ -320,7 +313,15 @@
 }
 
 .workspace__content {
-  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: #f6f8fc;
+}
+
+.workspace__page {
+  flex: 1;
+  padding: 24px 28px;
 }
 
 .workspace__content > .state-card {
@@ -773,6 +774,8 @@
 
   .workspace__sidebar {
     order: 2;
+    border-right: none;
+    border-top: 1px solid #e5e7eb;
   }
 
   .workspace__content {
@@ -785,6 +788,8 @@
 
   .workspace__settings-sidebar {
     order: 3;
+    border-right: none;
+    border-top: 1px solid #e5e7eb;
   }
 
   .state-card--compact,
@@ -795,7 +800,7 @@
 }
 
 @media (max-width: 640px) {
-  .app-shell {
+  .auth-shell {
     padding: 16px;
   }
 
@@ -814,8 +819,10 @@
     grid-template-columns: 1fr;
   }
 
-  .workspace__content,
-  .workspace__sidebar,
+  .workspace__page {
+    padding: 16px;
+  }
+
   .modal {
     padding: 20px;
   }

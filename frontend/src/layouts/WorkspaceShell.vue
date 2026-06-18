@@ -148,7 +148,9 @@ async function handleLogout() {
     </aside>
 
     <section class="workspace__content">
-      <RouterView />
+      <div class="workspace__page">
+        <RouterView />
+      </div>
     </section>
   </section>
 </template>
