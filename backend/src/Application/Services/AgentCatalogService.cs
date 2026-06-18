@@ -13,35 +13,82 @@ public sealed class AgentCatalogService(
     ITenantRepository tenantRepository,
     IUnitOfWork unitOfWork) : IAgentCatalogService
 {
-    public async Task<ServiceResult<IReadOnlyList<AgentListItem>>> GetInternalAgentsAsync(
+    public async Task<ServiceResult<PagedResult<AgentListItem>>> GetInternalAgentsPagedAsync(
         AgentListFilters filters,
         CancellationToken cancellationToken)
     {
         if (!TryCreateQueryFilters(filters, out var queryFilters))
         {
-            return ServiceResult<IReadOnlyList<AgentListItem>>.Failure(
+            return ServiceResult<PagedResult<AgentListItem>>.Failure(
                 AgentErrorCodes.ValidationError,
                 "Status filter is invalid.");
         }
 
-        var agents = await agentRepository.GetInternalAgentsAsync(queryFilters, cancellationToken);
-        return ServiceResult<IReadOnlyList<AgentListItem>>.Success(agents.Select(MapAgent).ToList());
+        var pagedResult = await agentRepository.GetInternalAgentsPagedAsync(queryFilters, cancellationToken);
+        var items = pagedResult.Items.Select(MapAgent).ToList();
+        var result = new PagedResult<AgentListItem>(
+            items,
+            pagedResult.Page,
+            pagedResult.PageSize,
+            pagedResult.TotalCount,
+            pagedResult.TotalPages);
+
+        return ServiceResult<PagedResult<AgentListItem>>.Success(result);
     }
 
-    public async Task<ServiceResult<IReadOnlyList<AgentListItem>>> GetTenantAgentsAsync(
+    public async Task<ServiceResult<PagedResult<AgentListItem>>> GetTenantAgentsPagedAsync(
         Guid tenantId,
         AgentListFilters filters,
         CancellationToken cancellationToken)
     {
         if (!TryCreateQueryFilters(filters, out var queryFilters))
         {
-            return ServiceResult<IReadOnlyList<AgentListItem>>.Failure(
+            return ServiceResult<PagedResult<AgentListItem>>.Failure(
                 AgentErrorCodes.ValidationError,
                 "Status filter is invalid.");
         }
 
-        var agents = await agentRepository.GetTenantAgentsAsync(tenantId, queryFilters, cancellationToken);
-        return ServiceResult<IReadOnlyList<AgentListItem>>.Success(agents.Select(MapAgent).ToList());
+        var pagedResult = await agentRepository.GetTenantAgentsPagedAsync(tenantId, queryFilters, cancellationToken);
+        var items = pagedResult.Items.Select(MapAgent).ToList();
+        var result = new PagedResult<AgentListItem>(
+            items,
+            pagedResult.Page,
+            pagedResult.PageSize,
+            pagedResult.TotalCount,
+            pagedResult.TotalPages);
+
+        return ServiceResult<PagedResult<AgentListItem>>.Success(result);
+    }
+
+    public async Task<ServiceResult<AgentDetailItem>> GetInternalAgentDetailAsync(
+        Guid agentId,
+        CancellationToken cancellationToken)
+    {
+        var agent = await agentRepository.GetInternalAgentDetailByIdAsync(agentId, cancellationToken);
+        if (agent is null)
+        {
+            return ServiceResult<AgentDetailItem>.Failure(
+                AgentErrorCodes.AgentNotFound,
+                "Agent was not found.");
+        }
+
+        return ServiceResult<AgentDetailItem>.Success(MapAgentDetail(agent));
+    }
+
+    public async Task<ServiceResult<AgentDetailItem>> GetTenantAgentDetailAsync(
+        Guid tenantId,
+        Guid agentId,
+        CancellationToken cancellationToken)
+    {
+        var agent = await agentRepository.GetTenantAgentDetailByIdAsync(tenantId, agentId, cancellationToken);
+        if (agent is null)
+        {
+            return ServiceResult<AgentDetailItem>.Failure(
+                AgentErrorCodes.AgentNotFound,
+                "Agent was not found.");
+        }
+
+        return ServiceResult<AgentDetailItem>.Success(MapAgentDetail(agent));
     }
 
     public async Task<ServiceResult<AgentListItem>> CreateInternalAgentAsync(
@@ -89,6 +136,104 @@ public sealed class AgentCatalogService(
         return ServiceResult<AgentListItem>.Success(MapAgent(agent));
     }
 
+    public async Task<ServiceResult<AgentListItem>> UpdateInternalAgentAsync(
+        Guid agentId,
+        Guid modifiedByUserId,
+        UpdateAgentCommand command,
+        CancellationToken cancellationToken)
+    {
+        var agent = await agentRepository.GetInternalAgentByIdAsync(agentId, cancellationToken);
+        if (agent is null)
+        {
+            return ServiceResult<AgentListItem>.Failure(
+                AgentErrorCodes.AgentNotFound,
+                "Agent was not found.");
+        }
+
+        var validation = ValidateUpdateCommand(command);
+        if (validation is not null)
+        {
+            return validation;
+        }
+
+        UpdateAgentFromCommand(agent, command, modifiedByUserId);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ServiceResult<AgentListItem>.Success(MapAgent(agent));
+    }
+
+    public async Task<ServiceResult<AgentListItem>> UpdateTenantAgentAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid modifiedByUserId,
+        UpdateAgentCommand command,
+        CancellationToken cancellationToken)
+    {
+        var agent = await agentRepository.GetTenantAgentByIdAsync(tenantId, agentId, cancellationToken);
+        if (agent is null)
+        {
+            return ServiceResult<AgentListItem>.Failure(
+                AgentErrorCodes.AgentNotFound,
+                "Agent was not found.");
+        }
+
+        var validation = ValidateUpdateCommand(command);
+        if (validation is not null)
+        {
+            return validation;
+        }
+
+        UpdateAgentFromCommand(agent, command, modifiedByUserId);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ServiceResult<AgentListItem>.Success(MapAgent(agent));
+    }
+
+    public async Task<ServiceResult<bool>> DeleteInternalAgentAsync(
+        Guid agentId,
+        Guid modifiedByUserId,
+        CancellationToken cancellationToken)
+    {
+        var agent = await agentRepository.GetInternalAgentByIdAsync(agentId, cancellationToken);
+        if (agent is null)
+        {
+            return ServiceResult<bool>.Failure(
+                AgentErrorCodes.AgentNotFound,
+                "Agent was not found.");
+        }
+
+        agent.Status = AgentStatus.Deleted;
+        agent.DeletedAt = DateTime.UtcNow;
+        agent.ModifiedAt = DateTime.UtcNow;
+        agent.ModifiedByUserId = modifiedByUserId;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ServiceResult<bool>.Success(true);
+    }
+
+    public async Task<ServiceResult<bool>> DeleteTenantAgentAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid modifiedByUserId,
+        CancellationToken cancellationToken)
+    {
+        var agent = await agentRepository.GetTenantAgentByIdAsync(tenantId, agentId, cancellationToken);
+        if (agent is null)
+        {
+            return ServiceResult<bool>.Failure(
+                AgentErrorCodes.AgentNotFound,
+                "Agent was not found.");
+        }
+
+        agent.Status = AgentStatus.Deleted;
+        agent.DeletedAt = DateTime.UtcNow;
+        agent.ModifiedAt = DateTime.UtcNow;
+        agent.ModifiedByUserId = modifiedByUserId;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ServiceResult<bool>.Success(true);
+    }
+
     private static Agent CreateAgent(CreateAgentCommand command, Guid? tenantId, AgentScope scope, Guid createdByUserId)
     {
         var id = Guid.NewGuid();
@@ -106,6 +251,17 @@ public sealed class AgentCatalogService(
             Status = AgentStatus.Draft,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    private static void UpdateAgentFromCommand(Agent agent, UpdateAgentCommand command, Guid modifiedByUserId)
+    {
+        agent.Name = command.Name.Trim();
+        agent.Role = command.Role.Trim();
+        agent.Description = command.Description?.Trim();
+        agent.Icon = command.Icon?.Trim();
+        agent.Status = Enum.Parse<AgentStatus>(command.Status, true);
+        agent.ModifiedAt = DateTime.UtcNow;
+        agent.ModifiedByUserId = modifiedByUserId;
     }
 
     private static string CreateAgentCode(string name, Guid id)
@@ -126,6 +282,20 @@ public sealed class AgentCatalogService(
             agent.Scope.ToString(),
             agent.Status.ToString());
 
+    private static AgentDetailItem MapAgentDetail(Agent agent) =>
+        new(
+            agent.Id,
+            agent.Code,
+            agent.Name,
+            agent.Description,
+            agent.Icon,
+            agent.Role,
+            agent.Scope.ToString(),
+            agent.Status.ToString(),
+            agent.CreatedAt,
+            agent.ModifiedAt,
+            agent.DeletedAt);
+
     private static ServiceResult<AgentListItem>? ValidateCreateCommand(CreateAgentCommand command)
     {
         if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Role))
@@ -138,10 +308,31 @@ public sealed class AgentCatalogService(
         return null;
     }
 
+    private static ServiceResult<AgentListItem>? ValidateUpdateCommand(UpdateAgentCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Role))
+        {
+            return ServiceResult<AgentListItem>.Failure(
+                AgentErrorCodes.ValidationError,
+                "Name and role are required.");
+        }
+
+        if (!Enum.TryParse<AgentStatus>(command.Status, true, out _))
+        {
+            return ServiceResult<AgentListItem>.Failure(
+                AgentErrorCodes.InvalidStatus,
+                "Status value is invalid.");
+        }
+
+        return null;
+    }
+
     private static bool TryCreateQueryFilters(AgentListFilters filters, out AgentQueryFilters queryFilters)
     {
         var hasValidStatus = TryParseStatus(filters.Status, out var status);
-        queryFilters = new AgentQueryFilters(status, NormalizeSearch(filters.Search));
+        var page = filters.Page ?? 1;
+        var pageSize = filters.PageSize ?? 20;
+        queryFilters = new AgentQueryFilters(status, NormalizeSearch(filters.Search), page, pageSize);
         return hasValidStatus;
     }
 

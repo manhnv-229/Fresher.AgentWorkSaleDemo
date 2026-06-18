@@ -1,14 +1,28 @@
 export { API_BASE_URL, ApiError, httpJson } from './http';
 export { setAccessTokenProvider, getAccessToken } from './interceptors';
 export { changePassword, login, logout, refreshAccessToken } from './auth';
-export { createInternalAgent, getInternalAgents, getTenantAgents, getTenants } from './agents';
+export {
+  createInternalAgent,
+  deleteInternalAgent,
+  deleteTenantAgent,
+  getInternalAgentDetail,
+  getInternalAgents,
+  getTenantAgentDetail,
+  getTenantAgents,
+  getTenants,
+  updateInternalAgent,
+  updateTenantAgent
+} from './agents';
 export { getUsers, lockUser, unlockUser } from './users';
 export type { ApiErrorBody } from './api.types';
 export type { AdminUserSummary, ChangePasswordRequest, LoginRequest, TokenResponse, AuthState } from './auth.types';
 export type {
+  AgentDetail,
   AgentListFilters,
   AgentStatusFilter,
   AgentSummary,
   CreateAgentPayload,
-  TenantSummary
+  PagedResult,
+  TenantSummary,
+  UpdateAgentPayload
 } from './agents';

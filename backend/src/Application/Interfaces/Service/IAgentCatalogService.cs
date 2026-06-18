@@ -1,18 +1,28 @@
 using Demo.Application.Common;
 using Demo.Application.DTOs;
 using Demo.Application.Errors;
+using Demo.Domain.Interfaces.Repository;
 
 namespace Demo.Domain.Interfaces.Service;
 
 public interface IAgentCatalogService
 {
-    Task<ServiceResult<IReadOnlyList<AgentListItem>>> GetInternalAgentsAsync(
+    Task<ServiceResult<PagedResult<AgentListItem>>> GetInternalAgentsPagedAsync(
         AgentListFilters filters,
         CancellationToken cancellationToken);
 
-    Task<ServiceResult<IReadOnlyList<AgentListItem>>> GetTenantAgentsAsync(
+    Task<ServiceResult<PagedResult<AgentListItem>>> GetTenantAgentsPagedAsync(
         Guid tenantId,
         AgentListFilters filters,
+        CancellationToken cancellationToken);
+
+    Task<ServiceResult<AgentDetailItem>> GetInternalAgentDetailAsync(
+        Guid agentId,
+        CancellationToken cancellationToken);
+
+    Task<ServiceResult<AgentDetailItem>> GetTenantAgentDetailAsync(
+        Guid tenantId,
+        Guid agentId,
         CancellationToken cancellationToken);
 
     Task<ServiceResult<AgentListItem>> CreateInternalAgentAsync(
@@ -24,5 +34,29 @@ public interface IAgentCatalogService
         Guid tenantId,
         Guid createdByUserId,
         CreateAgentCommand command,
+        CancellationToken cancellationToken);
+
+    Task<ServiceResult<AgentListItem>> UpdateInternalAgentAsync(
+        Guid agentId,
+        Guid modifiedByUserId,
+        UpdateAgentCommand command,
+        CancellationToken cancellationToken);
+
+    Task<ServiceResult<AgentListItem>> UpdateTenantAgentAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid modifiedByUserId,
+        UpdateAgentCommand command,
+        CancellationToken cancellationToken);
+
+    Task<ServiceResult<bool>> DeleteInternalAgentAsync(
+        Guid agentId,
+        Guid modifiedByUserId,
+        CancellationToken cancellationToken);
+
+    Task<ServiceResult<bool>> DeleteTenantAgentAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid modifiedByUserId,
         CancellationToken cancellationToken);
 }

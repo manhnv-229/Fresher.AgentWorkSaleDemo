@@ -22,11 +22,13 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
         Guid tenantId,
         [FromQuery] string? status,
         [FromQuery] string? search,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
-        var result = await agentService.GetTenantAgentsAsync(
+        var result = await agentService.GetTenantAgentsPagedAsync(
             tenantId,
-            new AgentListFilters(status, search),
+            new AgentListFilters(status, search, page, pageSize),
             cancellationToken);
 
         if (result.Succeeded && result.Value is not null)
@@ -37,6 +39,25 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
         return BadRequest(new ApiErrorResponse(
             result.ErrorCode ?? AgentErrorCodes.ValidationError,
             result.ErrorMessage ?? "Status filter is invalid."));
+    }
+
+    [HttpGet("{agentId:guid}")]
+    [HasPermission(PermissionCodes.AgentView)]
+    public async Task<ActionResult<object>> GetAgentDetail(
+        Guid tenantId,
+        Guid agentId,
+        CancellationToken cancellationToken)
+    {
+        var result = await agentService.GetTenantAgentDetailAsync(tenantId, agentId, cancellationToken);
+
+        if (result.Succeeded && result.Value is not null)
+        {
+            return Ok(result.Value);
+        }
+
+        return NotFound(new ApiErrorResponse(
+            result.ErrorCode ?? AgentErrorCodes.AgentNotFound,
+            result.ErrorMessage ?? "Agent was not found."));
     }
 
     [HttpPost]
@@ -69,10 +90,77 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
                 result.ErrorMessage ?? "Name and role are required."));
         }
 
-        return CreatedAtAction(nameof(GetAgents), new
+        return CreatedAtAction(nameof(GetAgentDetail), new { tenantId, agentId = result.Value.Id }, result.Value);
+    }
+
+    [HttpPut("{agentId:guid}")]
+    [HasPermission(PermissionCodes.AgentUpdate)]
+    public async Task<ActionResult<object>> UpdateAgent(
+        Guid tenantId,
+        Guid agentId,
+        UpdateAgentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (userId is null)
         {
-            tenantId
-        }, result.Value);
+            return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
+        }
+
+        var result = await agentService.UpdateTenantAgentAsync(
+            tenantId,
+            agentId,
+            userId.Value,
+            new UpdateAgentCommand(request.Name, request.Role, request.Description, request.Icon, request.Status),
+            cancellationToken);
+
+        if (!result.Succeeded || result.Value is null)
+        {
+            if (result.ErrorCode == AgentErrorCodes.AgentNotFound)
+            {
+                return NotFound(new ApiErrorResponse(
+                    result.ErrorCode,
+                    result.ErrorMessage ?? "Agent was not found."));
+            }
+
+            return BadRequest(new ApiErrorResponse(
+                result.ErrorCode ?? AgentErrorCodes.ValidationError,
+                result.ErrorMessage ?? "Invalid update request."));
+        }
+
+        return Ok(result.Value);
+    }
+
+    [HttpDelete("{agentId:guid}")]
+    [HasPermission(PermissionCodes.AgentDelete)]
+    public async Task<ActionResult> DeleteAgent(
+        Guid tenantId,
+        Guid agentId,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
+        }
+
+        var result = await agentService.DeleteTenantAgentAsync(tenantId, agentId, userId.Value, cancellationToken);
+
+        if (!result.Succeeded)
+        {
+            if (result.ErrorCode == AgentErrorCodes.AgentNotFound)
+            {
+                return NotFound(new ApiErrorResponse(
+                    result.ErrorCode,
+                    result.ErrorMessage ?? "Agent was not found."));
+            }
+
+            return BadRequest(new ApiErrorResponse(
+                result.ErrorCode ?? AgentErrorCodes.ValidationError,
+                result.ErrorMessage ?? "Failed to delete agent."));
+        }
+
+        return NoContent();
     }
 
     private Guid? CurrentUserId()

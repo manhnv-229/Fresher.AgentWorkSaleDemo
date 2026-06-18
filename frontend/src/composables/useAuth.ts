@@ -1,6 +1,6 @@
 import { computed, ref, type ComputedRef, type DeepReadonly, type Ref } from 'vue';
 import { changePassword as changePasswordRequest, login as loginRequest, logout as logoutRequest, refreshAccessToken } from '../api';
-import { clearAuthState, getAccessToken, readonlyAuthState, setAuthState } from '../stores/auth';
+import { clearAuthState, getAccessToken, getAuthState, readonlyAuthState, setAuthState } from '../stores/auth';
 import { setAccessTokenProvider } from '../api/interceptors';
 import type { AuthState } from '../api/auth.types';
 
@@ -50,13 +50,18 @@ export function useAuth(): UseAuthResult {
   }
 
   async function initializeAuth() {
-    if (startupRefreshAttempted || authState.value) {
+    if (startupRefreshAttempted) {
       return;
     }
 
     startupRefreshAttempted = true;
     isInitializing.value = true;
     try {
+      const currentAuthState = getAuthState();
+      if (currentAuthState && !isExpired(currentAuthState.accessTokenExpiresAt)) {
+        return;
+      }
+
       await refresh();
     } catch {
       clearAuthState();
@@ -85,4 +90,13 @@ export function useAuth(): UseAuthResult {
     logout,
     clearSession: clearAuthState
   };
+}
+
+function isExpired(expiresAt: string): boolean {
+  const expiresAtTimestamp = Date.parse(expiresAt);
+  if (Number.isNaN(expiresAtTimestamp)) {
+    return true;
+  }
+
+  return expiresAtTimestamp <= Date.now();
 }

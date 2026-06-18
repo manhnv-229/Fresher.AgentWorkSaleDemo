@@ -10,25 +10,35 @@ import { useAuth } from '../composables/useAuth';
 import {
   changePassword,
   createInternalAgent,
+  deleteInternalAgent,
+  deleteTenantAgent,
+  getInternalAgentDetail,
   getInternalAgents,
+  getTenantAgentDetail,
   getTenantAgents,
   getTenants,
   getUsers,
   lockUser,
   unlockUser,
+  updateInternalAgent,
+  updateTenantAgent,
   type AdminUserSummary,
+  type AgentDetail,
   type AgentListFilters,
   type AgentStatusFilter,
   type AgentSummary,
   type CreateAgentPayload,
-  type TenantSummary
+  type PagedResult,
+  type TenantSummary,
+  type UpdateAgentPayload
 } from '../api';
 import { ApiError } from '../api/http';
 import { formatDate } from '../utils/formatDate';
 
 type AgentScopeView = 'internal' | 'tenant';
-type WorkspaceView = AgentScopeView | 'settings';
+type WorkspaceView = AgentScopeView | 'settings' | 'detail';
 type SettingsSection = 'members' | 'password';
+type ViewMode = 'list' | 'detail' | 'edit';
 
 interface AvatarOption {
   id: string;
@@ -56,14 +66,23 @@ const statusOptions: StatusOption[] = [
   { value: 'Inactive', label: 'Inactive' }
 ];
 
+const allStatusOptions: StatusOption[] = [
+  { value: 'Draft', label: 'Draft' },
+  { value: 'Active', label: 'Active' },
+  { value: 'Inactive', label: 'Inactive' }
+];
+
 const { authState, isAuthenticated, isInitializing, initializeAuth, logout, changePassword: submitPasswordChangeRequest, clearSession } = useAuth();
 
 const activeWorkspace = ref<WorkspaceView>('internal');
 const activeSettingsSection = ref<SettingsSection>('members');
+const viewMode = ref<ViewMode>('list');
 const tenants = ref<TenantSummary[]>([]);
 const selectedTenantId = ref<string>('');
-const internalAgents = ref<AgentSummary[]>([]);
-const tenantAgents = ref<AgentSummary[]>([]);
+const internalAgents = ref<PagedResult<AgentSummary>>({ items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 });
+const tenantAgents = ref<PagedResult<AgentSummary>>({ items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 });
+const currentPage = ref(1);
+const pageSize = ref(20);
 
 const isLoadingDashboard = ref(false);
 const isLoadingTenantAgents = ref(false);
@@ -71,6 +90,9 @@ const isSavingInternalAgent = ref(false);
 const isLoadingUsers = ref(false);
 const activeUserActionId = ref('');
 const isChangingPassword = ref(false);
+const isLoadingAgentDetail = ref(false);
+const isSavingAgent = ref(false);
+const isDeletingAgent = ref(false);
 
 const sidebarError = ref('');
 const internalAgentsError = ref('');
@@ -78,6 +100,7 @@ const tenantAgentsError = ref('');
 const userManagementError = ref('');
 const passwordChangeError = ref('');
 const authNotice = ref('');
+const agentDetailError = ref('');
 
 const isCreateModalOpen = ref(false);
 const createName = ref('');
@@ -90,6 +113,17 @@ const statusFilter = ref<'' | AgentStatusFilter>('');
 const users = ref<AdminUserSummary[]>([]);
 const currentPassword = ref('');
 const newPassword = ref('');
+
+const selectedAgent = ref<AgentDetail | null>(null);
+const editName = ref('');
+const editRole = ref('');
+const editDescription = ref('');
+const editIcon = ref(avatarOptions[0]?.id ?? 'mint');
+const editStatus = ref('Draft');
+const editError = ref('');
+
+const isDeleteConfirmModalOpen = ref(false);
+const agentToDelete = ref<AgentSummary | null>(null);
 
 const selectedTenant = computed(() => tenants.value.find((tenant) => tenant.id === selectedTenantId.value) ?? null);
 const hasGlobalWorkspaceAccess = computed(() => (isSettingsWorkspace.value ? true : !sidebarError.value));
@@ -198,7 +232,7 @@ async function loadDashboard() {
         return;
       }
 
-      internalAgents.value = [];
+      internalAgents.value = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 };
       internalAgentsError.value = normalizeError(internalAgentResult.reason, 'Không tải được danh sách agent nội bộ.');
     }
 
@@ -229,17 +263,23 @@ async function refreshDashboard() {
 async function loadTenantAgents(tenantId: string) {
   selectedTenantId.value = tenantId;
   activeWorkspace.value = 'tenant';
+  viewMode.value = 'list';
   tenantAgentsError.value = '';
   isLoadingTenantAgents.value = true;
 
   try {
-    tenantAgents.value = await getTenantAgents(tenantId, activeFilters.value);
+    const filters: AgentListFilters = {
+      ...activeFilters.value,
+      page: currentPage.value,
+      pageSize: pageSize.value
+    };
+    tenantAgents.value = await getTenantAgents(tenantId, filters);
   } catch (error) {
     if (handleAuthFailure(error)) {
       return;
     }
 
-    tenantAgents.value = [];
+    tenantAgents.value = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 } as PagedResult<AgentSummary>;
     tenantAgentsError.value = normalizeError(error, 'Không tải được agent của đơn vị đã chọn.');
   } finally {
     isLoadingTenantAgents.value = false;
@@ -251,13 +291,18 @@ async function loadInternalAgents() {
   isLoadingDashboard.value = true;
 
   try {
-    internalAgents.value = await getInternalAgents(activeFilters.value);
+    const filters: AgentListFilters = {
+      ...activeFilters.value,
+      page: currentPage.value,
+      pageSize: pageSize.value
+    };
+    internalAgents.value = await getInternalAgents(filters);
   } catch (error) {
     if (handleAuthFailure(error)) {
       return;
     }
 
-    internalAgents.value = [];
+    internalAgents.value = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 } as PagedResult<AgentSummary>;
     internalAgentsError.value = normalizeError(error, 'Không tải được danh sách agent nội bộ.');
   } finally {
     isLoadingDashboard.value = false;
@@ -407,8 +452,8 @@ function resetWorkspace() {
   activeSettingsSection.value = 'members';
   tenants.value = [];
   selectedTenantId.value = '';
-  internalAgents.value = [];
-  tenantAgents.value = [];
+  internalAgents.value = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 };
+  tenantAgents.value = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 };
   users.value = [];
   sidebarError.value = '';
   internalAgentsError.value = '';
@@ -483,6 +528,156 @@ function statusTone(status: string) {
   }
 
   return 'status-chip';
+}
+
+function goToPage(page: number) {
+  currentPage.value = page;
+  if (activeWorkspace.value === 'internal') {
+    void loadInternalAgents();
+  } else if (activeWorkspace.value === 'tenant' && selectedTenantId.value) {
+    void loadTenantAgents(selectedTenantId.value);
+  }
+}
+
+async function openAgentDetail(agent: AgentSummary, scope: 'internal' | 'tenant') {
+  viewMode.value = 'detail';
+  agentDetailError.value = '';
+  isLoadingAgentDetail.value = true;
+  selectedAgent.value = null;
+
+  try {
+    if (scope === 'internal') {
+      selectedAgent.value = await getInternalAgentDetail(agent.id);
+    } else {
+      selectedAgent.value = await getTenantAgentDetail(selectedTenantId.value, agent.id);
+    }
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+    agentDetailError.value = normalizeError(error, 'Không tải được chi tiết agent.');
+  } finally {
+    isLoadingAgentDetail.value = false;
+  }
+}
+
+function startEditAgent() {
+  if (!selectedAgent.value) return;
+  editName.value = selectedAgent.value.name;
+  editRole.value = selectedAgent.value.role;
+  editDescription.value = selectedAgent.value.description ?? '';
+  editIcon.value = selectedAgent.value.icon ?? avatarOptions[0]?.id ?? 'mint';
+  editStatus.value = selectedAgent.value.status;
+  editError.value = '';
+  viewMode.value = 'edit';
+}
+
+function cancelEdit() {
+  viewMode.value = 'detail';
+  editError.value = '';
+}
+
+async function submitUpdateAgent() {
+  if (!selectedAgent.value) return;
+  editError.value = '';
+
+  if (!editName.value.trim() || !editRole.value.trim()) {
+    editError.value = 'Tên và vai trò là bắt buộc.';
+    return;
+  }
+
+  const payload: UpdateAgentPayload = {
+    name: editName.value.trim(),
+    role: editRole.value.trim(),
+    description: editDescription.value.trim() || undefined,
+    icon: editIcon.value,
+    status: editStatus.value
+  };
+
+  isSavingAgent.value = true;
+  try {
+    if (selectedAgent.value.scope === 'Internal') {
+      await updateInternalAgent(selectedAgent.value.id, payload);
+    } else {
+      await updateTenantAgent(selectedTenantId.value, selectedAgent.value.id, payload);
+    }
+    viewMode.value = 'detail';
+    await Promise.all([refreshCurrentAgent(), refreshActiveAgentList()]);
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+    editError.value = normalizeError(error, 'Không cập nhật được agent.');
+  } finally {
+    isSavingAgent.value = false;
+  }
+}
+
+async function refreshActiveAgentList() {
+  if (selectedAgent.value?.scope === 'Internal' || activeWorkspace.value === 'internal') {
+    await loadInternalAgents();
+    return;
+  }
+
+  if (selectedTenantId.value) {
+    await loadTenantAgents(selectedTenantId.value);
+  }
+}
+
+async function refreshCurrentAgent() {
+  if (!selectedAgent.value) return;
+  try {
+    if (selectedAgent.value.scope === 'Internal') {
+      selectedAgent.value = await getInternalAgentDetail(selectedAgent.value.id);
+    } else {
+      selectedAgent.value = await getTenantAgentDetail(selectedTenantId.value, selectedAgent.value!.id);
+    }
+  } catch {
+    // silently fail
+  }
+}
+
+function openDeleteConfirm(agent: AgentSummary) {
+  agentToDelete.value = agent;
+  isDeleteConfirmModalOpen.value = true;
+}
+
+function closeDeleteConfirm() {
+  agentToDelete.value = null;
+  isDeleteConfirmModalOpen.value = false;
+}
+
+async function confirmDeleteAgent() {
+  if (!agentToDelete.value) return;
+  isDeletingAgent.value = true;
+
+  try {
+    if (agentToDelete.value.scope === 'Internal') {
+      await deleteInternalAgent(agentToDelete.value.id);
+    } else {
+      await deleteTenantAgent(selectedTenantId.value, agentToDelete.value.id);
+    }
+    closeDeleteConfirm();
+    viewMode.value = 'list';
+    selectedAgent.value = null;
+    if (activeWorkspace.value === 'internal') {
+      await loadInternalAgents();
+    } else if (activeWorkspace.value === 'tenant' && selectedTenantId.value) {
+      await loadTenantAgents(selectedTenantId.value);
+    }
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+  } finally {
+    isDeletingAgent.value = false;
+  }
+}
+
+function backToList() {
+  viewMode.value = 'list';
+  selectedAgent.value = null;
+  agentDetailError.value = '';
 }
 </script>
 
@@ -758,12 +953,12 @@ function statusTone(status: string) {
                 <LoaderCircle :size="18" class="spin" aria-hidden="true" />
                 <span>Đang tải agent nội bộ...</span>
               </div>
-              <div v-else-if="internalAgents.length === 0" class="empty-card">
+              <div v-else-if="internalAgents.items.length === 0" class="empty-card">
                 <h3>{{ emptyStateTitle }}</h3>
                 <p>{{ emptyStateDescription }}</p>
               </div>
               <div v-else class="agent-grid">
-                <article v-for="agent in internalAgents" :key="agent.id" class="agent-card">
+                <article v-for="agent in internalAgents.items" :key="agent.id" class="agent-card" @click="openAgentDetail(agent, 'internal')">
                   <div class="agent-card__avatar" :style="avatarStyle(agent.icon)">{{ avatarLabel(agent) }}</div>
                   <div class="agent-card__body">
                     <div class="agent-card__top">
@@ -786,6 +981,25 @@ function statusTone(status: string) {
                   </div>
                 </article>
               </div>
+              <div v-if="internalAgents.totalPages > 1" class="pagination">
+                <BaseButton
+                  variant="secondary"
+                  type="button"
+                  :disabled="currentPage <= 1"
+                  @click="goToPage(currentPage - 1)"
+                >
+                  Trước
+                </BaseButton>
+                <span class="pagination-info">Trang {{ internalAgents.page }} / {{ internalAgents.totalPages }}</span>
+                <BaseButton
+                  variant="secondary"
+                  type="button"
+                  :disabled="currentPage >= internalAgents.totalPages"
+                  @click="goToPage(currentPage + 1)"
+                >
+                  Sau
+                </BaseButton>
+              </div>
             </div>
 
             <div v-else class="content-panel">
@@ -798,12 +1012,12 @@ function statusTone(status: string) {
                 <h3>Chưa chọn đơn vị</h3>
                 <p>Chọn một đơn vị ở sidebar để xem các agent dành riêng cho đơn vị đó.</p>
               </div>
-              <div v-else-if="tenantAgents.length === 0" class="empty-card">
+              <div v-else-if="tenantAgents.items.length === 0" class="empty-card">
                 <h3>{{ emptyStateTitle }}</h3>
                 <p>{{ emptyStateDescription }}</p>
               </div>
               <div v-else class="agent-grid">
-                <article v-for="agent in tenantAgents" :key="agent.id" class="agent-card">
+                <article v-for="agent in tenantAgents.items" :key="agent.id" class="agent-card" @click="openAgentDetail(agent, 'tenant')">
                   <div class="agent-card__avatar" :style="avatarStyle(agent.icon)">{{ avatarLabel(agent) }}</div>
                   <div class="agent-card__body">
                     <div class="agent-card__top">
@@ -825,6 +1039,25 @@ function statusTone(status: string) {
                     </dl>
                   </div>
                 </article>
+              </div>
+              <div v-if="tenantAgents.totalPages > 1" class="pagination">
+                <BaseButton
+                  variant="secondary"
+                  type="button"
+                  :disabled="currentPage <= 1"
+                  @click="goToPage(currentPage - 1)"
+                >
+                  Trước
+                </BaseButton>
+                <span class="pagination-info">Trang {{ tenantAgents.page }} / {{ tenantAgents.totalPages }}</span>
+                <BaseButton
+                  variant="secondary"
+                  type="button"
+                  :disabled="currentPage >= tenantAgents.totalPages"
+                  @click="goToPage(currentPage + 1)"
+                >
+                  Sau
+                </BaseButton>
               </div>
             </div>
           </template>
@@ -890,5 +1123,228 @@ function statusTone(status: string) {
         </div>
       </div>
     </BaseModal>
+
+    <BaseModal :open="viewMode !== 'list' && activeWorkspace !== 'settings'" title="" @close="backToList">
+      <div v-if="isLoadingAgentDetail" class="loading-row">
+        <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+        <span>Đang tải chi tiết agent...</span>
+      </div>
+      <div v-else-if="agentDetailError" class="message message--error">{{ agentDetailError }}</div>
+      <template v-else-if="selectedAgent">
+        <template v-if="viewMode === 'detail'">
+          <div class="agent-detail">
+            <div class="agent-detail__header">
+              <div class="agent-card__avatar" :style="avatarStyle(selectedAgent.icon)">{{ avatarLabel(selectedAgent) }}</div>
+              <div>
+                <h3>{{ selectedAgent.name }}</h3>
+                <p>{{ selectedAgent.description || 'Chưa có mô tả.' }}</p>
+              </div>
+            </div>
+            <dl class="agent-detail__fields">
+              <div>
+                <dt>Mã agent</dt>
+                <dd>{{ selectedAgent.code }}</dd>
+              </div>
+              <div>
+                <dt>Vai trò</dt>
+                <dd>{{ selectedAgent.role }}</dd>
+              </div>
+              <div>
+                <dt>Phạm vi</dt>
+                <dd>{{ selectedAgent.scope }}</dd>
+              </div>
+              <div>
+                <dt>Trạng thái</dt>
+                <dd><span :class="statusTone(selectedAgent.status)">{{ selectedAgent.status }}</span></dd>
+              </div>
+              <div>
+                <dt>Ngày tạo</dt>
+                <dd>{{ formatDate(selectedAgent.createdAt) }}</dd>
+              </div>
+              <div v-if="selectedAgent.modifiedAt">
+                <dt>Sửa lần cuối</dt>
+                <dd>{{ formatDate(selectedAgent.modifiedAt) }}</dd>
+              </div>
+            </dl>
+            <div class="agent-detail__actions">
+              <BaseButton variant="secondary" type="button" @click="backToList">Quay lại</BaseButton>
+              <BaseButton variant="secondary" type="button" @click="startEditAgent">Chỉnh sửa</BaseButton>
+              <BaseButton variant="danger" type="button" @click="openDeleteConfirm(selectedAgent)">Xóa</BaseButton>
+            </div>
+          </div>
+        </template>
+        <template v-else-if="viewMode === 'edit'">
+          <div class="create-agent">
+            <div class="create-agent__group">
+              <p class="create-agent__label">Hình đại diện</p>
+              <div class="avatar-picker">
+                <button
+                  v-for="option in avatarOptions"
+                  :key="option.id"
+                  class="avatar-choice"
+                  :class="{ 'avatar-choice--active': editIcon === option.id }"
+                  :style="{ background: option.accent }"
+                  type="button"
+                  @click="editIcon = option.id"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="create-agent__group">
+              <label class="create-agent__label" for="edit-name">Tên</label>
+              <BaseInput id="edit-name" v-model="editName" placeholder="Nhập tên" />
+            </div>
+
+            <div class="create-agent__group">
+              <label class="create-agent__label" for="edit-role">Vai trò</label>
+              <textarea
+                id="edit-role"
+                v-model="editRole"
+                class="agent-textarea"
+                rows="3"
+                placeholder="Nhập mô tả vai trò"
+              />
+            </div>
+
+            <div class="create-agent__group">
+              <label class="create-agent__label" for="edit-description">Mô tả</label>
+              <textarea
+                id="edit-description"
+                v-model="editDescription"
+                class="agent-textarea"
+                rows="4"
+                placeholder="Mô tả ngắn về nhiệm vụ hoặc chuyên môn của agent"
+              />
+            </div>
+
+            <div class="create-agent__group">
+              <label class="create-agent__label" for="edit-status">Trạng thái</label>
+              <select id="edit-status" v-model="editStatus" class="agent-select">
+                <option v-for="option in allStatusOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </div>
+
+            <p v-if="editError" class="message message--error">{{ editError }}</p>
+
+            <div class="create-agent__actions">
+              <BaseButton variant="secondary" type="button" :disabled="isSavingAgent" @click="cancelEdit">Hủy</BaseButton>
+              <BaseButton type="button" :disabled="isSavingAgent" @click="submitUpdateAgent">
+                {{ isSavingAgent ? 'Đang lưu...' : 'Lưu' }}
+              </BaseButton>
+            </div>
+          </div>
+        </template>
+      </template>
+    </BaseModal>
+
+    <BaseModal :open="isDeleteConfirmModalOpen" title="Xác nhận xóa" @close="closeDeleteConfirm">
+      <div class="delete-confirm">
+        <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
+        <p>Hành động này không thể hoàn tác.</p>
+        <div class="create-agent__actions">
+          <BaseButton variant="secondary" type="button" :disabled="isDeletingAgent" @click="closeDeleteConfirm">Hủy</BaseButton>
+          <BaseButton variant="danger" type="button" :disabled="isDeletingAgent" @click="confirmDeleteAgent">
+            {{ isDeletingAgent ? 'Đang xóa...' : 'Xác nhận xóa' }}
+          </BaseButton>
+        </div>
+      </div>
+    </BaseModal>
   </main>
 </template>
+
+<style scoped>
+.agent-card {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.agent-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.agent-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.agent-detail__fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.agent-detail__fields div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.agent-detail__fields dt {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.agent-detail__fields dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.agent-detail__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.agent-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  font-size: 0.875rem;
+}
+
+.delete-confirm {
+  text-align: center;
+}
+
+.delete-confirm p {
+  margin: 0.5rem 0;
+}
+
+.delete-confirm strong {
+  color: #dc3545;
+}
+</style>
