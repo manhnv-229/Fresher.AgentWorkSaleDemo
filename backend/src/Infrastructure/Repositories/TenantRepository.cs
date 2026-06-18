@@ -16,8 +16,27 @@ public sealed class TenantCatalogRepository(DemoDbContext dbContext) : ITenantCa
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<Tenant?> GetByIdAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        return await dbContext.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(tenant => tenant.Id == tenantId, cancellationToken);
+    }
+
+    public async Task<bool> ExistsByCodeAsync(string code, Guid? excludeTenantId, CancellationToken cancellationToken)
+    {
+        return await dbContext.Tenants.AnyAsync(
+            tenant => tenant.Code == code && (!excludeTenantId.HasValue || tenant.Id != excludeTenantId.Value),
+            cancellationToken);
+    }
+
     public void Add(Tenant tenant)
     {
         dbContext.Tenants.Add(tenant);
+    }
+
+    public void Update(Tenant tenant)
+    {
+        dbContext.Tenants.Update(tenant);
     }
 }

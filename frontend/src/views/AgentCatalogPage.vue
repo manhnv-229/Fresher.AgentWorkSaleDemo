@@ -10,17 +10,21 @@ import { useAuth } from '../composables/useAuth';
 import {
   changePassword,
   createInternalAgent,
+  createTenant,
   deleteInternalAgent,
   deleteTenantAgent,
   getInternalAgentDetail,
   getInternalAgents,
   getTenantAgentDetail,
   getTenantAgents,
+  getTenantDetail,
   getTenants,
   getUsers,
+  lockTenant,
   lockUser,
   unlockUser,
   updateInternalAgent,
+  updateTenant,
   updateTenantAgent,
   type AdminUserSummary,
   type AgentDetail,
@@ -29,6 +33,7 @@ import {
   type AgentSummary,
   type CreateAgentPayload,
   type PagedResult,
+  type TenantDetail,
   type TenantSummary,
   type UpdateAgentPayload
 } from '../api';
@@ -124,6 +129,17 @@ const editError = ref('');
 
 const isDeleteConfirmModalOpen = ref(false);
 const agentToDelete = ref<AgentSummary | null>(null);
+
+const isTenantDetailModalOpen = ref(false);
+const selectedTenantDetail = ref<TenantDetail | null>(null);
+const isLoadingTenantDetail = ref(false);
+const tenantDetailError = ref('');
+const isEditingTenant = ref(false);
+const editTenantName = ref('');
+const editTenantCode = ref('');
+const editTenantError = ref('');
+const isSavingTenant = ref(false);
+const isLockingTenant = ref(false);
 
 const selectedTenant = computed(() => tenants.value.find((tenant) => tenant.id === selectedTenantId.value) ?? null);
 const hasGlobalWorkspaceAccess = computed(() => (isSettingsWorkspace.value ? true : !sidebarError.value));
@@ -679,6 +695,99 @@ function backToList() {
   selectedAgent.value = null;
   agentDetailError.value = '';
 }
+
+async function openTenantDetail(tenantId: string) {
+  isTenantDetailModalOpen.value = true;
+  isLoadingTenantDetail.value = true;
+  tenantDetailError.value = '';
+  selectedTenantDetail.value = null;
+  isEditingTenant.value = false;
+
+  try {
+    selectedTenantDetail.value = await getTenantDetail(tenantId);
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+    tenantDetailError.value = normalizeError(error, 'Không tải được thông tin đơn vị.');
+  } finally {
+    isLoadingTenantDetail.value = false;
+  }
+}
+
+function closeTenantDetailModal() {
+  isTenantDetailModalOpen.value = false;
+  selectedTenantDetail.value = null;
+  isEditingTenant.value = false;
+  editTenantError.value = '';
+}
+
+function startEditTenant() {
+  if (!selectedTenantDetail.value) return;
+  editTenantName.value = selectedTenantDetail.value.name;
+  editTenantCode.value = selectedTenantDetail.value.code;
+  editTenantError.value = '';
+  isEditingTenant.value = true;
+}
+
+function cancelEditTenant() {
+  isEditingTenant.value = false;
+  editTenantError.value = '';
+}
+
+async function submitUpdateTenant() {
+  if (!selectedTenantDetail.value) return;
+  editTenantError.value = '';
+
+  if (!editTenantName.value.trim() || !editTenantCode.value.trim()) {
+    editTenantError.value = 'Tên và mã đơn vị là bắt buộc.';
+    return;
+  }
+
+  isSavingTenant.value = true;
+  try {
+    const updated = await updateTenant(selectedTenantDetail.value.id, {
+      name: editTenantName.value.trim(),
+      code: editTenantCode.value.trim()
+    });
+    selectedTenantDetail.value = updated;
+    isEditingTenant.value = false;
+    await loadTenantsList();
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+    editTenantError.value = normalizeError(error, 'Không cập nhật được đơn vị.');
+  } finally {
+    isSavingTenant.value = false;
+  }
+}
+
+async function submitLockTenant() {
+  if (!selectedTenantDetail.value) return;
+  isLockingTenant.value = true;
+
+  try {
+    const updated = await lockTenant(selectedTenantDetail.value.id);
+    selectedTenantDetail.value = updated;
+    await loadTenantsList();
+  } catch (error) {
+    if (handleAuthFailure(error)) {
+      return;
+    }
+    tenantDetailError.value = normalizeError(error, 'Không khóa được đơn vị.');
+  } finally {
+    isLockingTenant.value = false;
+  }
+}
+
+async function loadTenantsList() {
+  try {
+    tenants.value = await getTenants();
+  } catch {
+    // silently fail
+  }
+}
 </script>
 
 <template>
@@ -731,17 +840,27 @@ function backToList() {
           <p v-if="sidebarError" class="message message--error">{{ sidebarError }}</p>
           <p v-else-if="isLoadingDashboard && tenants.length === 0" class="message">Đang tải danh sách đơn vị...</p>
           <div v-else class="tenant-list__items">
-            <button
+            <div
               v-for="tenant in tenants"
               :key="tenant.id"
               class="tenant-link"
               :class="{ 'tenant-link--active': activeWorkspace === 'tenant' && selectedTenantId === tenant.id }"
-              type="button"
+              role="button"
+              tabindex="0"
               @click="loadTenantAgents(tenant.id)"
+              @keydown.enter="loadTenantAgents(tenant.id)"
             >
               <Building2 :size="16" aria-hidden="true" />
               <span>{{ tenant.name }}</span>
-            </button>
+              <button
+                class="tenant-link__action"
+                type="button"
+                title="Xem chi tiết"
+                @click.stop="openTenantDetail(tenant.id)"
+              >
+                <Settings2 :size="14" aria-hidden="true" />
+              </button>
+            </div>
 
             <p v-if="tenants.length === 0" class="message">Chưa có đơn vị nào để hiển thị.</p>
           </div>
@@ -1253,6 +1372,74 @@ function backToList() {
         </div>
       </div>
     </BaseModal>
+
+    <BaseModal :open="isTenantDetailModalOpen" title="Chi tiết đơn vị" @close="closeTenantDetailModal">
+      <div v-if="isLoadingTenantDetail" class="loading-row">
+        <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+        <span>Đang tải thông tin đơn vị...</span>
+      </div>
+      <div v-else-if="tenantDetailError" class="message message--error">{{ tenantDetailError }}</div>
+      <template v-else-if="selectedTenantDetail">
+        <template v-if="!isEditingTenant">
+          <div class="tenant-detail">
+            <dl class="tenant-detail__fields">
+              <div>
+                <dt>Tên đơn vị</dt>
+                <dd>{{ selectedTenantDetail.name }}</dd>
+              </div>
+              <div>
+                <dt>Mã đơn vị</dt>
+                <dd>{{ selectedTenantDetail.code }}</dd>
+              </div>
+              <div>
+                <dt>Trạng thái</dt>
+                <dd><span :class="statusTone(selectedTenantDetail.status)">{{ selectedTenantDetail.status }}</span></dd>
+              </div>
+              <div>
+                <dt>Ngày tạo</dt>
+                <dd>{{ formatDate(selectedTenantDetail.createdAt) }}</dd>
+              </div>
+              <div v-if="selectedTenantDetail.modifiedAt">
+                <dt>Sửa lần cuối</dt>
+                <dd>{{ formatDate(selectedTenantDetail.modifiedAt) }}</dd>
+              </div>
+            </dl>
+            <div class="tenant-detail__actions">
+              <BaseButton variant="secondary" type="button" @click="startEditTenant" :disabled="selectedTenantDetail.status === 'Locked'">
+                Chỉnh sửa
+              </BaseButton>
+              <BaseButton
+                variant="danger"
+                type="button"
+                :disabled="isLockingTenant || selectedTenantDetail.status === 'Locked'"
+                @click="submitLockTenant"
+              >
+                {{ isLockingTenant ? 'Đang khóa...' : 'Khóa đơn vị' }}
+              </BaseButton>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <div class="create-agent">
+            <div class="create-agent__group">
+              <label class="create-agent__label" for="edit-tenant-name">Tên đơn vị</label>
+              <BaseInput id="edit-tenant-name" v-model="editTenantName" placeholder="Nhập tên đơn vị" />
+            </div>
+            <div class="create-agent__group">
+              <label class="create-agent__label" for="edit-tenant-code">Mã đơn vị</label>
+              <BaseInput id="edit-tenant-code" v-model="editTenantCode" placeholder="Nhập mã đơn vị" />
+            </div>
+            <p v-if="editTenantError" class="message message--error">{{ editTenantError }}</p>
+            <div class="create-agent__actions">
+              <BaseButton variant="secondary" type="button" :disabled="isSavingTenant" @click="cancelEditTenant">Hủy</BaseButton>
+              <BaseButton type="button" :disabled="isSavingTenant" @click="submitUpdateTenant">
+                {{ isSavingTenant ? 'Đang lưu...' : 'Lưu' }}
+              </BaseButton>
+            </div>
+          </div>
+        </template>
+      </template>
+    </BaseModal>
   </main>
 </template>
 
@@ -1346,5 +1533,87 @@ function backToList() {
 
 .delete-confirm strong {
   color: #dc3545;
+}
+
+.tenant-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tenant-detail__fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.tenant-detail__fields div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tenant-detail__fields dt {
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tenant-detail__fields dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.tenant-detail__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.tenant-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.375rem;
+  transition: background-color 0.15s ease;
+}
+
+.tenant-link:hover {
+  background-color: #f8f9fa;
+}
+
+.tenant-link--active {
+  background-color: #e9ecef;
+  font-weight: 500;
+}
+
+.tenant-link__action {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: #6c757d;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  margin-left: auto;
+}
+
+.tenant-link:hover .tenant-link__action {
+  opacity: 1;
+}
+
+.tenant-link__action:hover {
+  color: #495057;
 }
 </style>

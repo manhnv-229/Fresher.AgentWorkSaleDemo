@@ -15,7 +15,22 @@ public sealed class TenantCatalogService(
     public async Task<ServiceResult<IReadOnlyList<TenantListItem>>> GetTenantsAsync(CancellationToken cancellationToken)
     {
         var tenants = await tenantRepository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<TenantListItem>>.Success(tenants.Select(MapTenant).ToList());
+        return ServiceResult<IReadOnlyList<TenantListItem>>.Success(tenants.Select(MapTenantListItem).ToList());
+    }
+
+    public async Task<ServiceResult<TenantDetailItem>> GetTenantByIdAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return ServiceResult<TenantDetailItem>.Failure(
+                TenantErrorCodes.TenantNotFound,
+                "Tenant not found.");
+        }
+
+        return ServiceResult<TenantDetailItem>.Success(MapTenantDetailItem(tenant));
     }
 
     public async Task<ServiceResult<TenantListItem>> CreateTenantAsync(
@@ -27,6 +42,14 @@ public sealed class TenantCatalogService(
             return ServiceResult<TenantListItem>.Failure(
                 TenantErrorCodes.ValidationError,
                 "Name and code are required.");
+        }
+
+        var exists = await tenantRepository.ExistsByCodeAsync(command.Code.Trim(), null, cancellationToken);
+        if (exists)
+        {
+            return ServiceResult<TenantListItem>.Failure(
+                TenantErrorCodes.DuplicateTenantCode,
+                "A tenant with this code already exists.");
         }
 
         var tenant = new Tenant
@@ -41,13 +64,88 @@ public sealed class TenantCatalogService(
         tenantRepository.Add(tenant);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ServiceResult<TenantListItem>.Success(MapTenant(tenant));
+        return ServiceResult<TenantListItem>.Success(MapTenantListItem(tenant));
     }
 
-    private static TenantListItem MapTenant(Tenant tenant) =>
+    public async Task<ServiceResult<TenantDetailItem>> UpdateTenantAsync(
+        Guid tenantId,
+        UpdateTenantCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Code))
+        {
+            return ServiceResult<TenantDetailItem>.Failure(
+                TenantErrorCodes.ValidationError,
+                "Name and code are required.");
+        }
+
+        var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return ServiceResult<TenantDetailItem>.Failure(
+                TenantErrorCodes.TenantNotFound,
+                "Tenant not found.");
+        }
+
+        var codeExists = await tenantRepository.ExistsByCodeAsync(command.Code.Trim(), tenantId, cancellationToken);
+        if (codeExists)
+        {
+            return ServiceResult<TenantDetailItem>.Failure(
+                TenantErrorCodes.DuplicateTenantCode,
+                "A tenant with this code already exists.");
+        }
+
+        tenant.Name = command.Name.Trim();
+        tenant.Code = command.Code.Trim();
+        tenant.ModifiedAt = DateTime.UtcNow;
+
+        tenantRepository.Update(tenant);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ServiceResult<TenantDetailItem>.Success(MapTenantDetailItem(tenant));
+    }
+
+    public async Task<ServiceResult<TenantDetailItem>> LockTenantAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return ServiceResult<TenantDetailItem>.Failure(
+                TenantErrorCodes.TenantNotFound,
+                "Tenant not found.");
+        }
+
+        if (tenant.Status == TenantStatus.Locked)
+        {
+            return ServiceResult<TenantDetailItem>.Failure(
+                TenantErrorCodes.InvalidStatusTransition,
+                "Tenant is already locked.");
+        }
+
+        tenant.Status = TenantStatus.Locked;
+        tenant.ModifiedAt = DateTime.UtcNow;
+
+        tenantRepository.Update(tenant);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ServiceResult<TenantDetailItem>.Success(MapTenantDetailItem(tenant));
+    }
+
+    private static TenantListItem MapTenantListItem(Tenant tenant) =>
         new(
             tenant.Id,
             tenant.Name,
             tenant.Code,
             tenant.Status.ToString());
+
+    private static TenantDetailItem MapTenantDetailItem(Tenant tenant) =>
+        new(
+            tenant.Id,
+            tenant.Name,
+            tenant.Code,
+            tenant.Status.ToString(),
+            tenant.CreatedAt,
+            tenant.ModifiedAt);
 }

@@ -13,6 +13,12 @@ export {
   updateInternalAgent,
   updateTenantAgent
 } from './agents';
+export {
+  createTenant,
+  getTenantDetail,
+  lockTenant,
+  updateTenant
+} from './tenants';
 export { getUsers, lockUser, unlockUser } from './users';
 export type { ApiErrorBody } from './api.types';
 export type { AdminUserSummary, ChangePasswordRequest, LoginRequest, TokenResponse, AuthState } from './auth.types';
@@ -26,3 +32,8 @@ export type {
   TenantSummary,
   UpdateAgentPayload
 } from './agents';
+export type {
+  CreateTenantPayload,
+  TenantDetail,
+  UpdateTenantPayload
+} from './tenants';

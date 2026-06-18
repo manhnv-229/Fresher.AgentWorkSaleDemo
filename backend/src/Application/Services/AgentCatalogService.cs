@@ -121,12 +121,19 @@ public sealed class AgentCatalogService(
             return validation;
         }
 
-        var tenantExists = await tenantRepository.ExistsAsync(tenantId, cancellationToken);
-        if (!tenantExists)
+        var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        if (tenant is null)
         {
             return ServiceResult<AgentListItem>.Failure(
                 AgentErrorCodes.TenantNotFound,
                 "Tenant was not found.");
+        }
+
+        if (tenant.Status == TenantStatus.Locked)
+        {
+            return ServiceResult<AgentListItem>.Failure(
+                AgentErrorCodes.TenantLocked,
+                "Cannot create agents in a locked tenant.");
         }
 
         var agent = CreateAgent(command, tenantId, AgentScope.Tenant, createdByUserId);
@@ -177,6 +184,21 @@ public sealed class AgentCatalogService(
                 "Agent was not found.");
         }
 
+        var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return ServiceResult<AgentListItem>.Failure(
+                AgentErrorCodes.TenantNotFound,
+                "Tenant was not found.");
+        }
+
+        if (tenant.Status == TenantStatus.Locked)
+        {
+            return ServiceResult<AgentListItem>.Failure(
+                AgentErrorCodes.TenantLocked,
+                "Cannot update agents in a locked tenant.");
+        }
+
         var validation = ValidateUpdateCommand(command);
         if (validation is not null)
         {
@@ -223,6 +245,21 @@ public sealed class AgentCatalogService(
             return ServiceResult<bool>.Failure(
                 AgentErrorCodes.AgentNotFound,
                 "Agent was not found.");
+        }
+
+        var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        if (tenant is null)
+        {
+            return ServiceResult<bool>.Failure(
+                AgentErrorCodes.TenantNotFound,
+                "Tenant was not found.");
+        }
+
+        if (tenant.Status == TenantStatus.Locked)
+        {
+            return ServiceResult<bool>.Failure(
+                AgentErrorCodes.TenantLocked,
+                "Cannot delete agents in a locked tenant.");
         }
 
         agent.Status = AgentStatus.Deleted;
