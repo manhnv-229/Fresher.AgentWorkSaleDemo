@@ -1074,7 +1074,6 @@ async function loadTenantsList() {
                 @click="loadUsers()"
               >
                 <RefreshCw :size="18" :class="{ spin: isLoadingUsers }" aria-hidden="true" />
-                Tải lại
               </BaseButton>
             </header>
 

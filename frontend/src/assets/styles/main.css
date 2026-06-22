@@ -199,7 +199,7 @@
 .state-card h2,
 .settings-brand h2 {
   margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-family: var(--font-sans);
 }
 
 .sidebar__eyebrow,
@@ -405,7 +405,7 @@
 .user-panel__header h3 {
   margin: 0;
   color: #162032;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-family: var(--font-sans);
   font-size: 26px;
 }
 

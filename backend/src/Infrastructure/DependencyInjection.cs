@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddSingleton<IRefreshTokenHasher, RefreshTokenHasher>();
         services.AddScoped<IAuthSessionValidator, AuthSessionValidator>();
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<DatabaseSeeder>();
 
         return services;

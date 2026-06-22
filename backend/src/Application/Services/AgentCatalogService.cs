@@ -11,6 +11,8 @@ namespace Demo.Application.Services;
 public sealed class AgentCatalogService(
     IAgentRepository agentRepository,
     ITenantRepository tenantRepository,
+    IAuditLogService auditLogService,
+    IAuthUserRepository authUserRepository,
     IUnitOfWork unitOfWork) : IAgentCatalogService
 {
     public async Task<ServiceResult<PagedResult<AgentListItem>>> GetInternalAgentsPagedAsync(
@@ -106,6 +108,18 @@ public sealed class AgentCatalogService(
         agentRepository.Add(agent);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var userName = await GetUserNameAsync(createdByUserId, cancellationToken);
+        await auditLogService.RecordAsync(
+            "agent.create",
+            userName,
+            createdByUserId,
+            null,
+            null,
+            $"Internal agent '{agent.Name}' was created.",
+            "Agent",
+            agent.Id.ToString(),
+            cancellationToken);
+
         return ServiceResult<AgentListItem>.Success(MapAgent(agent));
     }
 
@@ -140,6 +154,18 @@ public sealed class AgentCatalogService(
         agentRepository.Add(agent);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var userName = await GetUserNameAsync(createdByUserId, cancellationToken);
+        await auditLogService.RecordAsync(
+            "agent.create",
+            userName,
+            createdByUserId,
+            tenantId,
+            null,
+            $"Tenant agent '{agent.Name}' was created.",
+            "Agent",
+            agent.Id.ToString(),
+            cancellationToken);
+
         return ServiceResult<AgentListItem>.Success(MapAgent(agent));
     }
 
@@ -165,6 +191,18 @@ public sealed class AgentCatalogService(
 
         UpdateAgentFromCommand(agent, command, modifiedByUserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var userName = await GetUserNameAsync(modifiedByUserId, cancellationToken);
+        await auditLogService.RecordAsync(
+            "agent.update",
+            userName,
+            modifiedByUserId,
+            null,
+            null,
+            $"Internal agent '{agent.Name}' was updated.",
+            "Agent",
+            agent.Id.ToString(),
+            cancellationToken);
 
         return ServiceResult<AgentListItem>.Success(MapAgent(agent));
     }
@@ -208,6 +246,18 @@ public sealed class AgentCatalogService(
         UpdateAgentFromCommand(agent, command, modifiedByUserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var userName = await GetUserNameAsync(modifiedByUserId, cancellationToken);
+        await auditLogService.RecordAsync(
+            "agent.update",
+            userName,
+            modifiedByUserId,
+            tenantId,
+            null,
+            $"Tenant agent '{agent.Name}' was updated.",
+            "Agent",
+            agent.Id.ToString(),
+            cancellationToken);
+
         return ServiceResult<AgentListItem>.Success(MapAgent(agent));
     }
 
@@ -229,6 +279,18 @@ public sealed class AgentCatalogService(
         agent.ModifiedAt = DateTime.UtcNow;
         agent.ModifiedByUserId = modifiedByUserId;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var userName = await GetUserNameAsync(modifiedByUserId, cancellationToken);
+        await auditLogService.RecordAsync(
+            "agent.delete",
+            userName,
+            modifiedByUserId,
+            null,
+            null,
+            $"Internal agent '{agent.Name}' was deleted.",
+            "Agent",
+            agent.Id.ToString(),
+            cancellationToken);
 
         return ServiceResult<bool>.Success(true);
     }
@@ -268,7 +330,26 @@ public sealed class AgentCatalogService(
         agent.ModifiedByUserId = modifiedByUserId;
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var userName = await GetUserNameAsync(modifiedByUserId, cancellationToken);
+        await auditLogService.RecordAsync(
+            "agent.delete",
+            userName,
+            modifiedByUserId,
+            tenantId,
+            null,
+            $"Tenant agent '{agent.Name}' was deleted.",
+            "Agent",
+            agent.Id.ToString(),
+            cancellationToken);
+
         return ServiceResult<bool>.Success(true);
+    }
+
+    private async Task<string> GetUserNameAsync(Guid? userId, CancellationToken cancellationToken)
+    {
+        if (userId is null) return "System";
+        var user = await authUserRepository.GetByIdAsync(userId.Value, cancellationToken);
+        return user?.FullName ?? user?.Email ?? "Unknown";
     }
 
     private static Agent CreateAgent(CreateAgentCommand command, Guid? tenantId, AgentScope scope, Guid createdByUserId)

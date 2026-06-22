@@ -22,4 +22,5 @@ public static class PermissionCodes
     public const string RoleCreate = "role.create";
     public const string RoleUpdate = "role.update";
     public const string RoleAssign = "role.assign";
+    public const string AuditLogView = "auditlog.view";
 }

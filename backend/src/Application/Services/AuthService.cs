@@ -13,6 +13,7 @@ public sealed class AuthService(
     IAuthUserRepository authUserRepository,
     IRefreshTokenRepository refreshTokenRepository,
     IUserSessionRepository userSessionRepository,
+    IAuditLogService auditLogService,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService,
     IRefreshTokenHasher refreshTokenHasher,
@@ -40,7 +41,20 @@ public sealed class AuthService(
             return ServiceResult<AuthTokenResult>.Failure(AuthErrorCodes.InactiveUser, "User is not active.");
         }
 
-        return ServiceResult<AuthTokenResult>.Success(await CreateSessionAsync(user, ipAddress, cancellationToken));
+        var tokenResult = await CreateSessionAsync(user, ipAddress, cancellationToken);
+
+        await auditLogService.RecordAsync(
+            "login",
+            user.FullName ?? user.Email,
+            user.Id,
+            null,
+            ipAddress,
+            $"User '{user.FullName ?? user.Email}' logged in successfully.",
+            "User",
+            user.Id.ToString(),
+            cancellationToken);
+
+        return ServiceResult<AuthTokenResult>.Success(tokenResult);
     }
 
     public async Task<ServiceResult<bool>> ChangePasswordAsync(
@@ -66,6 +80,17 @@ public sealed class AuthService(
 
         await RevokeActiveSessionsAsync(user.Id, ipAddress, "PasswordChanged", cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await auditLogService.RecordAsync(
+            "password_change",
+            user.FullName ?? user.Email,
+            user.Id,
+            null,
+            ipAddress,
+            $"User '{user.FullName ?? user.Email}' changed their password.",
+            "User",
+            user.Id.ToString(),
+            cancellationToken);
 
         return ServiceResult<bool>.Success(true);
     }

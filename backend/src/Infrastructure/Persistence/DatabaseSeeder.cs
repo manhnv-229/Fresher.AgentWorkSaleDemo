@@ -44,7 +44,8 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         (PermissionCodes.RoleView, "View roles", "Role"),
         (PermissionCodes.RoleCreate, "Create roles", "Role"),
         (PermissionCodes.RoleUpdate, "Update roles", "Role"),
-        (PermissionCodes.RoleAssign, "Assign roles", "Role")
+        (PermissionCodes.RoleAssign, "Assign roles", "Role"),
+        (PermissionCodes.AuditLogView, "View audit logs", "AuditLog")
     ];
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)

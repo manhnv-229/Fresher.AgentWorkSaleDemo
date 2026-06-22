@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LoaderCircle, Lock, ShieldCheck } from '@lucide/vue';
+import { Lock, RefreshCw, ShieldCheck } from '@lucide/vue';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
@@ -65,8 +65,7 @@ async function toggleLock(user: AdminUserSummary) {
       <p class="content-header__copy">Lock/Unlock người dùng</p>
     </div>
     <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
-      <LoaderCircle :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
-      Tải lại
+      <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
     </BaseButton>
   </header>
 

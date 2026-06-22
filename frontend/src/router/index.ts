@@ -7,6 +7,7 @@ import LoginPage from '../views/LoginPage.vue';
 import InternalAgentsPage from '../views/InternalAgentsPage.vue';
 import TenantAgentsPage from '../views/TenantAgentsPage.vue';
 import AgentDetailPage from '../views/AgentDetailPage.vue';
+import SettingsAuditLogPage from '../views/SettingsAuditLogPage.vue';
 import SettingsMembersPage from '../views/SettingsMembersPage.vue';
 import SettingsPasswordPage from '../views/SettingsPasswordPage.vue';
 import NotFoundView from '../views/NotFoundView.vue';
@@ -58,6 +59,11 @@ export const router = createRouter({
           path: 'settings/password',
           name: 'settings-password',
           component: SettingsPasswordPage
+        },
+        {
+          path: 'settings/audit-log',
+          name: 'settings-audit-log',
+          component: SettingsAuditLogPage
         }
       ]
     },
