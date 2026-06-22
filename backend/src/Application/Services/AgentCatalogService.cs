@@ -95,6 +95,7 @@ public sealed class AgentCatalogService(
 
     public async Task<ServiceResult<AgentListItem>> CreateInternalAgentAsync(
         Guid createdByUserId,
+        string? ipAddress,
         CreateAgentCommand command,
         CancellationToken cancellationToken)
     {
@@ -114,7 +115,7 @@ public sealed class AgentCatalogService(
             userName,
             createdByUserId,
             null,
-            null,
+            ipAddress,
             $"Internal agent '{agent.Name}' was created.",
             "Agent",
             agent.Id.ToString(),
@@ -126,6 +127,7 @@ public sealed class AgentCatalogService(
     public async Task<ServiceResult<AgentListItem>> CreateTenantAgentAsync(
         Guid tenantId,
         Guid createdByUserId,
+        string? ipAddress,
         CreateAgentCommand command,
         CancellationToken cancellationToken)
     {
@@ -160,7 +162,7 @@ public sealed class AgentCatalogService(
             userName,
             createdByUserId,
             tenantId,
-            null,
+            ipAddress,
             $"Tenant agent '{agent.Name}' was created.",
             "Agent",
             agent.Id.ToString(),
@@ -172,6 +174,7 @@ public sealed class AgentCatalogService(
     public async Task<ServiceResult<AgentListItem>> UpdateInternalAgentAsync(
         Guid agentId,
         Guid modifiedByUserId,
+        string? ipAddress,
         UpdateAgentCommand command,
         CancellationToken cancellationToken)
     {
@@ -198,7 +201,7 @@ public sealed class AgentCatalogService(
             userName,
             modifiedByUserId,
             null,
-            null,
+            ipAddress,
             $"Internal agent '{agent.Name}' was updated.",
             "Agent",
             agent.Id.ToString(),
@@ -211,6 +214,7 @@ public sealed class AgentCatalogService(
         Guid tenantId,
         Guid agentId,
         Guid modifiedByUserId,
+        string? ipAddress,
         UpdateAgentCommand command,
         CancellationToken cancellationToken)
     {
@@ -252,7 +256,7 @@ public sealed class AgentCatalogService(
             userName,
             modifiedByUserId,
             tenantId,
-            null,
+            ipAddress,
             $"Tenant agent '{agent.Name}' was updated.",
             "Agent",
             agent.Id.ToString(),
@@ -264,6 +268,7 @@ public sealed class AgentCatalogService(
     public async Task<ServiceResult<bool>> DeleteInternalAgentAsync(
         Guid agentId,
         Guid modifiedByUserId,
+        string? ipAddress,
         CancellationToken cancellationToken)
     {
         var agent = await agentRepository.GetInternalAgentByIdAsync(agentId, cancellationToken);
@@ -286,7 +291,7 @@ public sealed class AgentCatalogService(
             userName,
             modifiedByUserId,
             null,
-            null,
+            ipAddress,
             $"Internal agent '{agent.Name}' was deleted.",
             "Agent",
             agent.Id.ToString(),
@@ -299,6 +304,7 @@ public sealed class AgentCatalogService(
         Guid tenantId,
         Guid agentId,
         Guid modifiedByUserId,
+        string? ipAddress,
         CancellationToken cancellationToken)
     {
         var agent = await agentRepository.GetTenantAgentByIdAsync(tenantId, agentId, cancellationToken);
@@ -336,7 +342,7 @@ public sealed class AgentCatalogService(
             userName,
             modifiedByUserId,
             tenantId,
-            null,
+            ipAddress,
             $"Tenant agent '{agent.Name}' was deleted.",
             "Agent",
             agent.Id.ToString(),

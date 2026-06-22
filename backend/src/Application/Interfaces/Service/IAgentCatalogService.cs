@@ -27,18 +27,21 @@ public interface IAgentCatalogService
 
     Task<ServiceResult<AgentListItem>> CreateInternalAgentAsync(
         Guid createdByUserId,
+        string? ipAddress,
         CreateAgentCommand command,
         CancellationToken cancellationToken);
 
     Task<ServiceResult<AgentListItem>> CreateTenantAgentAsync(
         Guid tenantId,
         Guid createdByUserId,
+        string? ipAddress,
         CreateAgentCommand command,
         CancellationToken cancellationToken);
 
     Task<ServiceResult<AgentListItem>> UpdateInternalAgentAsync(
         Guid agentId,
         Guid modifiedByUserId,
+        string? ipAddress,
         UpdateAgentCommand command,
         CancellationToken cancellationToken);
 
@@ -46,17 +49,20 @@ public interface IAgentCatalogService
         Guid tenantId,
         Guid agentId,
         Guid modifiedByUserId,
+        string? ipAddress,
         UpdateAgentCommand command,
         CancellationToken cancellationToken);
 
     Task<ServiceResult<bool>> DeleteInternalAgentAsync(
         Guid agentId,
         Guid modifiedByUserId,
+        string? ipAddress,
         CancellationToken cancellationToken);
 
     Task<ServiceResult<bool>> DeleteTenantAgentAsync(
         Guid tenantId,
         Guid agentId,
         Guid modifiedByUserId,
+        string? ipAddress,
         CancellationToken cancellationToken);
 }

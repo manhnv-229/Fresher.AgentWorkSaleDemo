@@ -73,6 +73,7 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
         var result = await agentService.CreateTenantAgentAsync(
             tenantId,
             userId.Value,
+            ClientIp(),
             new CreateAgentCommand(request.Name, request.Role, request.Description, request.Icon),
             cancellationToken);
 
@@ -111,6 +112,7 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
             tenantId,
             agentId,
             userId.Value,
+            ClientIp(),
             new UpdateAgentCommand(request.Name, request.Role, request.Description, request.Icon, request.Status),
             cancellationToken);
 
@@ -144,7 +146,7 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
             return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
         }
 
-        var result = await agentService.DeleteTenantAgentAsync(tenantId, agentId, userId.Value, cancellationToken);
+        var result = await agentService.DeleteTenantAgentAsync(tenantId, agentId, userId.Value, ClientIp(), cancellationToken);
 
         if (!result.Succeeded)
         {
@@ -168,4 +170,6 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
         var userIdValue = User.FindFirstValue("userId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(userIdValue, out var userId) ? userId : null;
     }
+
+    private string? ClientIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 }
