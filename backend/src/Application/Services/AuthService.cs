@@ -75,7 +75,6 @@ public sealed class AuthService(
         }
 
         user.PasswordHash = passwordHasher.HashPassword(request.NewPassword);
-        user.PasswordChangedAt = DateTime.UtcNow;
         user.ModifiedAt = DateTime.UtcNow;
 
         await RevokeActiveSessionsAsync(user.Id, ipAddress, "PasswordChanged", cancellationToken);

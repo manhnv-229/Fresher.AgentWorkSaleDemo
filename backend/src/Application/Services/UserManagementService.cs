@@ -11,11 +11,12 @@ namespace Demo.Application.Services;
 public sealed class UserManagementService(
     IAuthUserRepository authUserRepository,
     IUserSessionRepository userSessionRepository,
+    IAuditLogService auditLogService,
     IUnitOfWork unitOfWork) : IUserManagementService
 {
-    public async Task<ServiceResult<IReadOnlyList<AdminUserSummary>>> GetUsersAsync(CancellationToken cancellationToken)
+    public async Task<ServiceResult<IReadOnlyList<AdminUserSummary>>> GetUsersAsync(MemberListFilters? filters, CancellationToken cancellationToken)
     {
-        var users = await authUserRepository.GetAllAsync(cancellationToken);
+        var users = await authUserRepository.GetFilteredAsync(filters?.Search, filters?.Status, cancellationToken);
         return ServiceResult<IReadOnlyList<AdminUserSummary>>.Success(users.Select(MapSummary).ToList());
     }
 
@@ -56,6 +57,9 @@ public sealed class UserManagementService(
             return ServiceResult<AdminUserSummary>.Failure(AuthErrorCodes.UserNotFound, "User was not found.");
         }
 
+        var actorUser = await authUserRepository.GetByIdAsync(actorUserId, cancellationToken);
+        var actorName = actorUser?.FullName ?? actorUser?.Email ?? "Unknown";
+
         user.Status = targetStatus;
         user.ModifiedAt = DateTime.UtcNow;
 
@@ -71,6 +75,23 @@ public sealed class UserManagementService(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var action = targetStatus == AccountStatus.Locked ? "user.lock" : "user.unlock";
+        var description = targetStatus == AccountStatus.Locked
+            ? $"Tài khoản '{user.FullName ?? user.Email}' đã bị khóa."
+            : $"Tài khoản '{user.FullName ?? user.Email}' đã được mở khóa.";
+
+        await auditLogService.RecordAsync(
+            action,
+            actorName,
+            actorUserId,
+            null,
+            ipAddress,
+            description,
+            "User",
+            user.Id.ToString(),
+            cancellationToken);
+
         return ServiceResult<AdminUserSummary>.Success(MapSummary(user));
     }
 
@@ -81,9 +102,46 @@ public sealed class UserManagementService(
             user.Email,
             user.FullName,
             user.Status.ToString(),
-            user.PasswordChangedAt,
             user.EmployeeCode,
             user.Project,
             user.JobPosition);
+    }
+
+    public async Task<ServiceResult<AdminUserSummary>> UpdateJobPositionAsync(
+        Guid actorUserId,
+        Guid targetUserId,
+        string? jobPosition,
+        string? ipAddress,
+        CancellationToken cancellationToken)
+    {
+        var user = await authUserRepository.GetForUpdateByIdAsync(targetUserId, cancellationToken);
+        if (user is null)
+        {
+            return ServiceResult<AdminUserSummary>.Failure(AuthErrorCodes.UserNotFound, "User was not found.");
+        }
+
+        var actorUser = await authUserRepository.GetByIdAsync(actorUserId, cancellationToken);
+        var actorName = actorUser?.FullName ?? actorUser?.Email ?? "Unknown";
+
+        var oldJobPosition = user.JobPosition;
+        user.JobPosition = jobPosition;
+        user.ModifiedAt = DateTime.UtcNow;
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var description = $"Chức vụ của '{user.FullName ?? user.Email}' đã được cập nhật từ '{oldJobPosition ?? "trống"}' thành '{jobPosition ?? "trống"}'.";
+
+        await auditLogService.RecordAsync(
+            "user.update_job_position",
+            actorName,
+            actorUserId,
+            null,
+            ipAddress,
+            description,
+            "User",
+            user.Id.ToString(),
+            cancellationToken);
+
+        return ServiceResult<AdminUserSummary>.Success(MapSummary(user));
     }
 }

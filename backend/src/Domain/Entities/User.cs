@@ -27,10 +27,6 @@ public sealed class User
         get; set;
     }
     public AccountStatus Status { get; set; } = AccountStatus.Active;
-    public DateTime? PasswordChangedAt
-    {
-        get; set;
-    }
     public DateTime CreatedAt
     {
         get; set;

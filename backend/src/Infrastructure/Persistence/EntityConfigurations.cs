@@ -19,7 +19,6 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.Project).HasColumnName("project").HasMaxLength(255);
         builder.Property(x => x.JobPosition).HasColumnName("job_position").HasMaxLength(255);
         builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasConversion<string>().IsRequired();
-        builder.Property(x => x.PasswordChangedAt).HasColumnName("password_changed_at");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
         builder.HasIndex(x => x.Email).IsUnique();

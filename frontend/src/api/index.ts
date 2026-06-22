@@ -20,7 +20,7 @@ export {
   lockTenant,
   updateTenant
 } from './tenants';
-export { getUsers, lockUser, unlockUser } from './users';
+export { getUsers, lockUser, unlockUser, updateJobPosition } from './users';
 export type { ApiErrorBody } from './api.types';
 export type { AdminUserSummary, ChangePasswordRequest, LoginRequest, TokenResponse, AuthState } from './auth.types';
 export type {

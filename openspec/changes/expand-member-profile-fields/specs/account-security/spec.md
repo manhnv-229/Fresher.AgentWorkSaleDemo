@@ -1,11 +1,18 @@
 ## MODIFIED Requirements
 
 ### Requirement: Admin users can view account status and manage lock state
-The system SHALL let authorized admin users inspect user accounts with employee-identifying profile information and lock or unlock them without editing data directly in the database.
+The system SHALL let authorized admin users inspect user accounts in a member-management table with employee-identifying profile information, without exposing `password_changed_at`, and lock or unlock them without editing data directly in the database.
 
 #### Scenario: Authorized admin lists user accounts
 - **WHEN** a user with `user.view` permission opens the admin user-management flow
-- **THEN** the system returns user records with `Mã nhân viên`, `Họ tên`, `Dự án`, `Vị trí công việc`, `Email/thông tin tài khoản đăng nhập hệ thống`, and current account `Status` needed by the admin UI
+- **THEN** the system returns user records with the data needed to render the columns `Nhân viên`, `Vị trí công việc`, `Dự án`, `Email`, and current account `Trạng thái`
+- **AND** the `Nhân viên` column data includes employee `Full name` and `Mã nhân viên`
+- **AND** the response does not include `password_changed_at`
+
+#### Scenario: Member management uses modified timestamp instead of password-change timestamp
+- **WHEN** the admin user-management flow needs update-time context for a user record
+- **THEN** the system uses the existing `modified_at` field as the available timestamp source
+- **AND** the flow does not require a dedicated password-change timestamp field
 
 #### Scenario: User records can render incomplete employee profile data
 - **WHEN** an employee account is missing one or more optional profile fields such as project or job position

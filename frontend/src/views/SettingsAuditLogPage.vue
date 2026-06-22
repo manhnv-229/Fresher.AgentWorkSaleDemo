@@ -36,6 +36,8 @@ const TIME_PRESETS = [
 const AVAILABLE_ACTIONS = [
   'login',
   'password_change',
+  'user.lock',
+  'user.unlock',
   'agent.create',
   'agent.update',
   'agent.delete'
@@ -162,6 +164,8 @@ function getActionLabel(value: string): string {
   const labels: Record<string, string> = {
     login: 'Đăng nhập',
     password_change: 'Đổi mật khẩu',
+    'user.lock': 'Khóa tài khoản',
+    'user.unlock': 'Mở khóa tài khoản',
     'agent.create': 'Tạo agent',
     'agent.update': 'Sửa agent',
     'agent.delete': 'Xóa agent'
@@ -195,6 +199,7 @@ function toggleMenu() {
       <BaseInput
         v-model="searchText"
         placeholder="Tìm kiếm nhật ký..."
+        class="field"
         :disabled="isLoading"
         @keydown.enter="applySearch"
       />

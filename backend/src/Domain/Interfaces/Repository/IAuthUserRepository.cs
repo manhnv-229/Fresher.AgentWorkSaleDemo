@@ -11,4 +11,6 @@ public interface IAuthUserRepository
     Task<User?> GetForUpdateByIdAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<User>> GetFilteredAsync(string? search, string? status, CancellationToken cancellationToken);
 }

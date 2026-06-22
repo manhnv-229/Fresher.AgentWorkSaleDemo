@@ -344,7 +344,7 @@
 
 .filter-bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
+  grid-template-columns: 360px 240px;
   gap: 14px;
   margin-bottom: 20px;
 }

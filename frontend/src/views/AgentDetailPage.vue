@@ -8,6 +8,7 @@ import BaseModal from '../components/BaseModal.vue';
 import type { UpdateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentDetail } from '../composables/useAgentDetail';
+import { AGENT_STATUSES, getAgentStatusLabel } from '../utils/statuses';
 
 const props = defineProps<{ agentId: string }>();
 const route = useRoute();
@@ -35,11 +36,7 @@ const avatarOptions = [
   { id: 'violet', label: 'VT', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
 
-const allStatusOptions = [
-  { value: 'Draft', label: 'Draft' },
-  { value: 'Active', label: 'Active' },
-  { value: 'Inactive', label: 'Inactive' }
-];
+const allStatusOptions = AGENT_STATUSES;
 
 onMounted(() => {
   void loadAgent();
