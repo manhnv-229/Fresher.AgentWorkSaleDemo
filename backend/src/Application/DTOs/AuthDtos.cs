@@ -30,7 +30,10 @@ public sealed record AdminUserSummary(
     string Email,
     string? FullName,
     string Status,
-    DateTime? PasswordChangedAt);
+    DateTime? PasswordChangedAt,
+    string? EmployeeCode,
+    string? Project,
+    string? JobPosition);
 
 public sealed record JwtTokenResult(
     string AccessToken,

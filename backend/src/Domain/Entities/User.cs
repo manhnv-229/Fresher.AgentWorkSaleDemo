@@ -14,6 +14,18 @@ public sealed class User
     {
         get; set;
     }
+    public string? EmployeeCode
+    {
+        get; set;
+    }
+    public string? Project
+    {
+        get; set;
+    }
+    public string? JobPosition
+    {
+        get; set;
+    }
     public AccountStatus Status { get; set; } = AccountStatus.Active;
     public DateTime? PasswordChangedAt
     {

@@ -83,6 +83,9 @@ async function toggleLock(user: AdminUserSummary) {
       <thead>
         <tr>
           <th>Tài khoản</th>
+          <th>Mã NV</th>
+          <th>Dự án</th>
+          <th>Chức vụ</th>
           <th>Trạng thái</th>
           <th>Đổi mật khẩu</th>
           <th class="table-actions">Hành động</th>
@@ -96,6 +99,9 @@ async function toggleLock(user: AdminUserSummary) {
               <span>{{ user.email }}</span>
             </div>
           </td>
+          <td>{{ user.employeeCode || '—' }}</td>
+          <td>{{ user.project || '—' }}</td>
+          <td>{{ user.jobPosition || '—' }}</td>
           <td><span :class="statusTone(user.status)">{{ user.status }}</span></td>
           <td>{{ user.passwordChangedAt ? formatDate(user.passwordChangedAt) : 'Chưa cập nhật' }}</td>
           <td class="table-actions">

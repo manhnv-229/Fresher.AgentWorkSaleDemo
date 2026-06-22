@@ -81,6 +81,9 @@ public sealed class UserManagementService(
             user.Email,
             user.FullName,
             user.Status.ToString(),
-            user.PasswordChangedAt);
+            user.PasswordChangedAt,
+            user.EmployeeCode,
+            user.Project,
+            user.JobPosition);
     }
 }

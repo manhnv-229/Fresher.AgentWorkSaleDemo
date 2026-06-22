@@ -27,4 +27,7 @@ export interface AdminUserSummary {
   fullName: string | null;
   status: string;
   passwordChangedAt: string | null;
+  employeeCode: string | null;
+  project: string | null;
+  jobPosition: string | null;
 }

@@ -218,12 +218,12 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
 
     private async Task SeedUsersAsync(CancellationToken cancellationToken)
     {
-        await AddUserAsync(AdminUserId, "admin@example.com", "Admin User", cancellationToken);
-        await AddUserAsync(TenantUserId, "tenant@example.com", "Tenant User", cancellationToken);
-        await AddUserAsync(StaffUserId, "staff@example.com", "Staff User", cancellationToken);
+        await AddUserAsync(AdminUserId, "admin@example.com", "Admin User", "EMP001", "Internal", "System Administrator", cancellationToken);
+        await AddUserAsync(TenantUserId, "tenant@example.com", "Tenant User", "EMP002", "Tenant One", "Tenant Manager", cancellationToken);
+        await AddUserAsync(StaffUserId, "staff@example.com", "Staff User", "EMP003", "Tenant One", "Staff", cancellationToken);
     }
 
-    private async Task AddUserAsync(Guid id, string email, string fullName, CancellationToken cancellationToken)
+    private async Task AddUserAsync(Guid id, string email, string fullName, string employeeCode, string project, string jobPosition, CancellationToken cancellationToken)
     {
         if (await dbContext.Users.AnyAsync(x => x.Id == id, cancellationToken))
         {
@@ -235,6 +235,9 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             Id = id,
             Email = email,
             FullName = fullName,
+            EmployeeCode = employeeCode,
+            Project = project,
+            JobPosition = jobPosition,
             PasswordHash = passwordHasher.HashPassword("Password123!"),
             Status = AccountStatus.Active,
             CreatedAt = DateTime.UtcNow
