@@ -83,7 +83,7 @@ async function handleLogout() {
           :to="{ name: 'agents-internal' }"
         >
           <Shield :size="17" aria-hidden="true" />
-          Nội bộ
+          Nhân viên AI
         </RouterLink>
         <RouterLink
           class="scope-link"
@@ -143,6 +143,13 @@ async function handleLogout() {
           :to="{ name: 'settings-password' }"
         >
           Đổi mật khẩu
+        </RouterLink>
+        <RouterLink
+          class="scope-link"
+          :class="{ 'scope-link--active': route.name === 'settings-audit-log' }"
+          :to="{ name: 'settings-audit-log' }"
+        >
+          Nhật ký hoạt động
         </RouterLink>
       </nav>
     </aside>

@@ -13,6 +13,7 @@ import {
 } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentList, useInternalAgents } from '../composables/useAgentList';
+import { ALL_AGENT_STATUSES, getAgentStatusLabel } from '../utils/statuses';
 
 const router = useRouter();
 const filters = useAgentList();
@@ -174,10 +175,9 @@ async function confirmDelete() {
     <label class="filter-select">
       <span class="sr-only">Lọc theo trạng thái</span>
       <select v-model="filters.statusFilter.value" aria-label="Lọc theo trạng thái">
-        <option value="">Tất cả</option>
-        <option value="Draft">Draft</option>
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
+        <option v-for="option in ALL_AGENT_STATUSES" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
       </select>
     </label>
   </div>
@@ -202,7 +202,7 @@ async function confirmDelete() {
               <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
             </div>
             <div class="agent-card__actions" @click.stop>
-              <span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' }">{{ agent.status }}</span>
+              <span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' }">{{ getAgentStatusLabel(agent.status) }}</span>
               <div class="card-menu-wrapper">
                 <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
                   <MoreVertical :size="16" aria-hidden="true" />

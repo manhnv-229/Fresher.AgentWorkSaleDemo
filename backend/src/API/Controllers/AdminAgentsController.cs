@@ -69,6 +69,7 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
 
         var result = await agentService.CreateInternalAgentAsync(
             userId.Value,
+            ClientIp(),
             new CreateAgentCommand(request.Name, request.Role, request.Description, request.Icon),
             cancellationToken);
 
@@ -98,6 +99,7 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
         var result = await agentService.UpdateInternalAgentAsync(
             agentId,
             userId.Value,
+            ClientIp(),
             new UpdateAgentCommand(request.Name, request.Role, request.Description, request.Icon, request.Status),
             cancellationToken);
 
@@ -130,7 +132,7 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
             return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
         }
 
-        var result = await agentService.DeleteInternalAgentAsync(agentId, userId.Value, cancellationToken);
+        var result = await agentService.DeleteInternalAgentAsync(agentId, userId.Value, ClientIp(), cancellationToken);
 
         if (!result.Succeeded)
         {
@@ -154,4 +156,6 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
         var userIdValue = User.FindFirstValue("userId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(userIdValue, out var userId) ? userId : null;
     }
+
+    private string? ClientIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 }

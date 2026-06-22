@@ -17,9 +17,13 @@ public sealed class AdminUsersController(IUserManagementService userManagementSe
 {
     [HttpGet]
     [HasPermission(PermissionCodes.UserView)]
-    public async Task<ActionResult<IReadOnlyList<AdminUserSummary>>> GetUsers(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<AdminUserSummary>>> GetUsers(
+        [FromQuery] string? search,
+        [FromQuery] string? status,
+        CancellationToken cancellationToken)
     {
-        var result = await userManagementService.GetUsersAsync(cancellationToken);
+        var filters = new MemberListFilters(search, status);
+        var result = await userManagementService.GetUsersAsync(filters, cancellationToken);
         if (result.Succeeded && result.Value is not null)
         {
             return Ok(result.Value);
@@ -46,6 +50,32 @@ public sealed class AdminUsersController(IUserManagementService userManagementSe
         return await UpdateUserStatusAsync(
             userId,
             (actorUserId, targetUserId) => userManagementService.UnlockUserAsync(actorUserId, targetUserId, ClientIp(), cancellationToken));
+    }
+
+    [HttpPut("{userId:guid}/job-position")]
+    [HasPermission(PermissionCodes.UserUpdate)]
+    public async Task<ActionResult<AdminUserSummary>> UpdateJobPosition(Guid userId, UpdateJobPositionRequest request, CancellationToken cancellationToken)
+    {
+        var actorUserId = CurrentUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
+        }
+
+        var result = await userManagementService.UpdateJobPositionAsync(actorUserId.Value, userId, request.JobPosition, ClientIp(), cancellationToken);
+        if (result.Succeeded && result.Value is not null)
+        {
+            return Ok(result.Value);
+        }
+
+        if (result.ErrorCode == AuthErrorCodes.UserNotFound)
+        {
+            return NotFound(new ApiErrorResponse(result.ErrorCode, result.ErrorMessage ?? "User was not found."));
+        }
+
+        return BadRequest(new ApiErrorResponse(
+            result.ErrorCode ?? AuthErrorCodes.UserNotFound,
+            result.ErrorMessage ?? "Could not update job position."));
     }
 
     private async Task<ActionResult<AdminUserSummary>> UpdateUserStatusAsync(

@@ -16,6 +16,31 @@ public sealed class AuthUserRepository(DemoDbContext dbContext) : IAuthUserRepos
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<User>> GetFilteredAsync(string? search, string? status, CancellationToken cancellationToken)
+    {
+        var query = dbContext.Users.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(u =>
+                (u.FullName != null && u.FullName.ToLower().Contains(term)) ||
+                (u.EmployeeCode != null && u.EmployeeCode.ToLower().Contains(term)) ||
+                u.Email.ToLower().Contains(term) ||
+                (u.Project != null && u.Project.ToLower().Contains(term)) ||
+                (u.JobPosition != null && u.JobPosition.ToLower().Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(u => u.Status.ToString() == status);
+        }
+
+        return await query
+            .OrderBy(u => u.Email)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
     {
         return dbContext.Users.SingleOrDefaultAsync(user => user.Email == email, cancellationToken);

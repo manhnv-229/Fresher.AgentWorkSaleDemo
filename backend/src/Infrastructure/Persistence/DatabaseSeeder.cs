@@ -44,7 +44,8 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         (PermissionCodes.RoleView, "View roles", "Role"),
         (PermissionCodes.RoleCreate, "Create roles", "Role"),
         (PermissionCodes.RoleUpdate, "Update roles", "Role"),
-        (PermissionCodes.RoleAssign, "Assign roles", "Role")
+        (PermissionCodes.RoleAssign, "Assign roles", "Role"),
+        (PermissionCodes.AuditLogView, "View audit logs", "AuditLog")
     ];
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -217,15 +218,21 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
 
     private async Task SeedUsersAsync(CancellationToken cancellationToken)
     {
-        await AddUserAsync(AdminUserId, "admin@example.com", "Admin User", cancellationToken);
-        await AddUserAsync(TenantUserId, "tenant@example.com", "Tenant User", cancellationToken);
-        await AddUserAsync(StaffUserId, "staff@example.com", "Staff User", cancellationToken);
+        await AddUserAsync(AdminUserId, "admin@example.com", "Gorner Robin", "EMP001", "Nội bộ", "Quản trị hệ thống", cancellationToken);
+        await AddUserAsync(TenantUserId, "tenant@example.com", "Trần Thị Bình", "EMP002", "Dự án Alpha", "Quản lý dự án", cancellationToken);
+        await AddUserAsync(StaffUserId, "staff@example.com", "Lê Minh Châu", "EMP003", "Dự án Beta", "Nhân viên kỹ thuật", cancellationToken);
     }
 
-    private async Task AddUserAsync(Guid id, string email, string fullName, CancellationToken cancellationToken)
+    private async Task AddUserAsync(Guid id, string email, string fullName, string employeeCode, string project, string jobPosition, CancellationToken cancellationToken)
     {
-        if (await dbContext.Users.AnyAsync(x => x.Id == id, cancellationToken))
+        var existing = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (existing is not null)
         {
+            existing.FullName = fullName;
+            existing.EmployeeCode = employeeCode;
+            existing.Project = project;
+            existing.JobPosition = jobPosition;
+            await dbContext.SaveChangesAsync(cancellationToken);
             return;
         }
 
@@ -234,6 +241,9 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             Id = id,
             Email = email,
             FullName = fullName,
+            EmployeeCode = employeeCode,
+            Project = project,
+            JobPosition = jobPosition,
             PasswordHash = passwordHasher.HashPassword("Password123!"),
             Status = AccountStatus.Active,
             CreatedAt = DateTime.UtcNow

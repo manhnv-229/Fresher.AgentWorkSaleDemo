@@ -39,6 +39,7 @@ import {
 } from '../api';
 import { ApiError } from '../api/http';
 import { formatDate } from '../utils/formatDate';
+import { ALL_AGENT_STATUSES, AGENT_STATUSES, getAgentStatusLabel } from '../utils/statuses';
 
 type AgentScopeView = 'internal' | 'tenant';
 type WorkspaceView = AgentScopeView | 'settings' | 'detail';
@@ -55,11 +56,6 @@ interface AvatarOption {
   accent: string;
 }
 
-interface StatusOption {
-  value: '' | AgentStatusFilter;
-  label: string;
-}
-
 const avatarOptions: AvatarOption[] = [
   { id: 'mint', label: 'MN', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
   { id: 'amber', label: 'AM', accent: 'linear-gradient(135deg, #ffd43b, #f08c00)' },
@@ -68,18 +64,9 @@ const avatarOptions: AvatarOption[] = [
   { id: 'violet', label: 'VT', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
 
-const statusOptions: StatusOption[] = [
-  { value: '', label: 'Tất cả' },
-  { value: 'Draft', label: 'Draft' },
-  { value: 'Active', label: 'Active' },
-  { value: 'Inactive', label: 'Inactive' }
-];
+const statusOptions = ALL_AGENT_STATUSES;
 
-const allStatusOptions: StatusOption[] = [
-  { value: 'Draft', label: 'Draft' },
-  { value: 'Active', label: 'Active' },
-  { value: 'Inactive', label: 'Inactive' }
-];
+const allStatusOptions = AGENT_STATUSES;
 
 const { authState, isAuthenticated, isInitializing, initializeAuth, logout, changePassword: submitPasswordChangeRequest, clearSession } = useAuth();
 
@@ -1074,7 +1061,6 @@ async function loadTenantsList() {
                 @click="loadUsers()"
               >
                 <RefreshCw :size="18" :class="{ spin: isLoadingUsers }" aria-hidden="true" />
-                Tải lại
               </BaseButton>
             </header>
 
@@ -1093,7 +1079,6 @@ async function loadTenantsList() {
                   <tr>
                     <th>Tài khoản</th>
                     <th>Trạng thái</th>
-                    <th>Đổi mật khẩu</th>
                     <th class="table-actions">Hành động</th>
                   </tr>
                 </thead>
@@ -1106,9 +1091,8 @@ async function loadTenantsList() {
                       </div>
                     </td>
                     <td>
-                      <span :class="statusTone(user.status)">{{ user.status }}</span>
+                       <span :class="statusTone(user.status)">{{ getAgentStatusLabel(user.status) }}</span>
                     </td>
-                    <td>{{ user.passwordChangedAt ? formatDate(user.passwordChangedAt) : 'Chưa cập nhật' }}</td>
                     <td class="table-actions">
                       <BaseButton
                         variant="secondary"
@@ -1198,7 +1182,7 @@ async function loadTenantsList() {
                       </div>
                       <div>
                         <dt>Trạng thái</dt>
-                        <dd><span :class="statusTone(selectedAgent.status)">{{ selectedAgent.status }}</span></dd>
+                        <dd><span :class="statusTone(selectedAgent.status)">{{ getAgentStatusLabel(selectedAgent.status) }}</span></dd>
                       </div>
                       <div>
                         <dt>Ngày tạo</dt>
@@ -1318,7 +1302,7 @@ async function loadTenantsList() {
                         <p>{{ agent.description || 'Agent nội bộ chưa có mô tả.' }}</p>
                       </div>
                       <div class="agent-card__actions" @click.stop>
-                        <span class="agent-status">{{ agent.status }}</span>
+                        <span class="agent-status">{{ getAgentStatusLabel(agent.status) }}</span>
                         <div class="card-menu-wrapper">
                           <button
                             type="button"
@@ -1400,7 +1384,7 @@ async function loadTenantsList() {
                         <p>{{ agent.description || 'Agent tenant chưa có mô tả.' }}</p>
                       </div>
                       <div class="agent-card__actions" @click.stop>
-                        <span class="agent-status">{{ agent.status }}</span>
+                        <span class="agent-status">{{ getAgentStatusLabel(agent.status) }}</span>
                         <div class="card-menu-wrapper">
                           <button
                             type="button"
@@ -1554,7 +1538,7 @@ async function loadTenantsList() {
               </div>
               <div>
                 <dt>Trạng thái</dt>
-                <dd><span :class="statusTone(selectedTenantDetail.status)">{{ selectedTenantDetail.status }}</span></dd>
+                <dd><span :class="statusTone(selectedTenantDetail.status)">{{ getAgentStatusLabel(selectedTenantDetail.status) }}</span></dd>
               </div>
               <div>
                 <dt>Ngày tạo</dt>
