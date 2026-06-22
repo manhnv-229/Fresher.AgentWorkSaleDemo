@@ -21,6 +21,7 @@ public sealed class AuditLogService(
             dateFrom,
             dateTo,
             filter?.Actions,
+            filter?.TargetTypes,
             cancellationToken);
         var response = entries.Select(MapToResponse).ToList();
         return ServiceResult<IReadOnlyList<AuditLogEntryResponse>>.Success(response);
@@ -113,6 +114,6 @@ public sealed class AuditLogService(
             entry.Action,
             entry.UserName,
             DateTime.SpecifyKind(entry.CreatedAt, DateTimeKind.Utc),
-            entry.IPAddress,
+            entry.TargetType,
             entry.Description);
 }

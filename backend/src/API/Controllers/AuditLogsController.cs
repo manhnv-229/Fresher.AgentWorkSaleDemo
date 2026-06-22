@@ -19,12 +19,14 @@ public sealed class AuditLogsController(IAuditLogService auditLogService) : Cont
         [FromQuery] string? search,
         [FromQuery] string? timePreset,
         [FromQuery] string[]? actions,
+        [FromQuery] string[]? targetTypes,
         CancellationToken cancellationToken)
     {
         var filter = new AuditLogFilterRequest(
             search,
             timePreset,
-            actions?.ToList());
+            actions?.ToList(),
+            targetTypes?.ToList());
 
         var result = await auditLogService.GetAuditLogsAsync(filter, cancellationToken);
         if (result.Succeeded && result.Value is not null)

@@ -13,6 +13,7 @@ public sealed class AuditLogRepository(DemoDbContext dbContext) : IAuditLogRepos
         DateTime? createdDateFrom,
         DateTime? createdDateTo,
         IReadOnlyList<string>? actions,
+        IReadOnlyList<string>? targetTypes,
         CancellationToken cancellationToken)
     {
         var query = dbContext.AuditLogEntries.AsNoTracking().AsQueryable();
@@ -23,7 +24,6 @@ public sealed class AuditLogRepository(DemoDbContext dbContext) : IAuditLogRepos
             query = query.Where(e =>
                 e.Action.ToLower().Contains(term) ||
                 e.UserName.ToLower().Contains(term) ||
-                (e.IPAddress != null && e.IPAddress.ToLower().Contains(term)) ||
                 e.Description.ToLower().Contains(term));
         }
 
@@ -40,6 +40,11 @@ public sealed class AuditLogRepository(DemoDbContext dbContext) : IAuditLogRepos
         if (actions is { Count: > 0 })
         {
             query = query.Where(e => actions.Contains(e.Action));
+        }
+
+        if (targetTypes is { Count: > 0 })
+        {
+            query = query.Where(e => e.TargetType != null && targetTypes.Contains(e.TargetType));
         }
 
         return await query

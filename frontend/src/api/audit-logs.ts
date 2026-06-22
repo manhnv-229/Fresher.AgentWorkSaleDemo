@@ -5,7 +5,7 @@ export interface AuditLogEntry {
   action: string;
   userName: string;
   createdAt: string;
-  ipAddress: string | null;
+  targetType: string | null;
   description: string;
 }
 
@@ -13,6 +13,7 @@ export interface AuditLogFilters {
   search?: string;
   timePreset?: string;
   actions?: string[];
+  targetTypes?: string[];
 }
 
 export async function getAuditLogs(filters?: AuditLogFilters): Promise<AuditLogEntry[]> {
@@ -22,6 +23,11 @@ export async function getAuditLogs(filters?: AuditLogFilters): Promise<AuditLogE
   if (filters?.actions) {
     for (const action of filters.actions) {
       params.append('actions', action);
+    }
+  }
+  if (filters?.targetTypes) {
+    for (const targetType of filters.targetTypes) {
+      params.append('targetTypes', targetType);
     }
   }
 

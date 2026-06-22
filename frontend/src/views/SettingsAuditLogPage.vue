@@ -16,9 +16,11 @@ const error = ref('');
 
 const searchText = ref('');
 const isMenuOpen = ref(false);
-const isComboOpen = ref(false);
+const isActionComboOpen = ref(false);
+const isTargetComboOpen = ref(false);
 const menuRef = ref<HTMLElement | null>(null);
-const comboRef = ref<HTMLElement | null>(null);
+const actionComboRef = ref<HTMLElement | null>(null);
+const targetComboRef = ref<HTMLElement | null>(null);
 
 const TIME_PRESETS = [
   { value: 'today', label: 'Hôm nay' },
@@ -39,17 +41,24 @@ const AVAILABLE_ACTIONS = [
   'agent.delete'
 ];
 
+const AVAILABLE_TARGET_TYPES = [
+  'User',
+  'Agent'
+];
+
 const selectedTimePreset = ref('');
 const selectedActions = ref<string[]>([]);
+const selectedTargetTypes = ref<string[]>([]);
 
 const hasActiveMenuFilters = computed(() =>
-  selectedTimePreset.value !== '' || selectedActions.value.length > 0
+  selectedTimePreset.value !== '' || selectedActions.value.length > 0 || selectedTargetTypes.value.length > 0
 );
 
 const activeFilterCount = computed(() => {
   let count = 0;
   if (selectedTimePreset.value) count++;
   count += selectedActions.value.length;
+  count += selectedTargetTypes.value.length;
   return count;
 });
 
@@ -66,9 +75,15 @@ function handleClickOutside(e: MouseEvent) {
   const target = e.target as Node;
   if (menuRef.value && !menuRef.value.contains(target)) {
     isMenuOpen.value = false;
-    isComboOpen.value = false;
-  } else if (comboRef.value && !comboRef.value.contains(target)) {
-    isComboOpen.value = false;
+    isActionComboOpen.value = false;
+    isTargetComboOpen.value = false;
+  } else {
+    if (actionComboRef.value && !actionComboRef.value.contains(target)) {
+      isActionComboOpen.value = false;
+    }
+    if (targetComboRef.value && !targetComboRef.value.contains(target)) {
+      isTargetComboOpen.value = false;
+    }
   }
 }
 
@@ -95,7 +110,8 @@ function applySearch() {
 
 function applyMenuFilters() {
   isMenuOpen.value = false;
-  isComboOpen.value = false;
+  isActionComboOpen.value = false;
+  isTargetComboOpen.value = false;
   const filters = buildFilters();
   void loadEntries(filters);
 }
@@ -103,8 +119,10 @@ function applyMenuFilters() {
 function resetMenuFilters() {
   selectedTimePreset.value = '';
   selectedActions.value = [];
+  selectedTargetTypes.value = [];
   isMenuOpen.value = false;
-  isComboOpen.value = false;
+  isActionComboOpen.value = false;
+  isTargetComboOpen.value = false;
   const filters = buildFilters();
   void loadEntries(filters);
 }
@@ -114,6 +132,7 @@ function buildFilters(): AuditLogFilters | undefined {
   if (searchText.value.trim()) filters.search = searchText.value.trim();
   if (selectedTimePreset.value) filters.timePreset = selectedTimePreset.value;
   if (selectedActions.value.length > 0) filters.actions = [...selectedActions.value];
+  if (selectedTargetTypes.value.length > 0) filters.targetTypes = [...selectedTargetTypes.value];
   return Object.keys(filters).length > 0 ? filters : undefined;
 }
 
@@ -123,6 +142,15 @@ function toggleAction(action: string) {
     selectedActions.value.push(action);
   } else {
     selectedActions.value.splice(idx, 1);
+  }
+}
+
+function toggleTargetType(targetType: string) {
+  const idx = selectedTargetTypes.value.indexOf(targetType);
+  if (idx === -1) {
+    selectedTargetTypes.value.push(targetType);
+  } else {
+    selectedTargetTypes.value.splice(idx, 1);
   }
 }
 
@@ -139,6 +167,10 @@ function getActionLabel(value: string): string {
     'agent.delete': 'Xóa agent'
   };
   return labels[value] ?? value;
+}
+
+function getTargetTypeLabel(value: string): string {
+  return value;
 }
 
 function toggleMenu() {
@@ -193,18 +225,18 @@ function toggleMenu() {
 
           <div class="filter-menu__section">
             <p class="filter-menu__label">Hành động</p>
-            <div class="filter-combo" ref="comboRef">
+            <div class="filter-combo" ref="actionComboRef">
               <button
                 class="filter-combo__trigger"
                 type="button"
-                @click.stop="isComboOpen = !isComboOpen"
+                @click.stop="isActionComboOpen = !isActionComboOpen"
               >
                 <span class="filter-combo__value">
                   {{ selectedActions.length === 0 ? 'Tất cả' : `${selectedActions.length} đã chọn` }}
                 </span>
                 <span class="filter-combo__arrow">▾</span>
               </button>
-              <div v-if="isComboOpen" class="filter-combo__dropdown">
+              <div v-if="isActionComboOpen" class="filter-combo__dropdown">
                 <label
                   v-for="action in AVAILABLE_ACTIONS"
                   :key="action"
@@ -216,6 +248,38 @@ function toggleMenu() {
                     @change="toggleAction(action)"
                   />
                   <span>{{ getActionLabel(action) }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-menu__divider"></div>
+
+          <div class="filter-menu__section">
+            <p class="filter-menu__label">Đối tượng</p>
+            <div class="filter-combo" ref="targetComboRef">
+              <button
+                class="filter-combo__trigger"
+                type="button"
+                @click.stop="isTargetComboOpen = !isTargetComboOpen"
+              >
+                <span class="filter-combo__value">
+                  {{ selectedTargetTypes.length === 0 ? 'Tất cả' : `${selectedTargetTypes.length} đã chọn` }}
+                </span>
+                <span class="filter-combo__arrow">▾</span>
+              </button>
+              <div v-if="isTargetComboOpen" class="filter-combo__dropdown">
+                <label
+                  v-for="targetType in AVAILABLE_TARGET_TYPES"
+                  :key="targetType"
+                  class="filter-combo__option"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="selectedTargetTypes.includes(targetType)"
+                    @change="toggleTargetType(targetType)"
+                  />
+                  <span>{{ getTargetTypeLabel(targetType) }}</span>
                 </label>
               </div>
             </div>
@@ -250,8 +314,8 @@ function toggleMenu() {
         <tr>
           <th>Thời gian</th>
           <th>Người dùng</th>
-          <th>Địa chỉ IP</th>
           <th>Hành động</th>
+          <th>Đối tượng</th>
           <th>Mô tả</th>
         </tr>
       </thead>
@@ -259,8 +323,8 @@ function toggleMenu() {
         <tr v-for="entry in entries" :key="entry.id">
           <td>{{ formatDate(entry.createdAt) }}</td>
           <td>{{ entry.userName }}</td>
-          <td>{{ entry.ipAddress || '—' }}</td>
           <td><span class="status-chip">{{ entry.action }}</span></td>
+          <td>{{ entry.targetType ? getTargetTypeLabel(entry.targetType) : '—' }}</td>
           <td>{{ entry.description }}</td>
         </tr>
       </tbody>

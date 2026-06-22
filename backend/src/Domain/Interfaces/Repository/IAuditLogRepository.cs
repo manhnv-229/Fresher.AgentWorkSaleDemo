@@ -9,6 +9,7 @@ public interface IAuditLogRepository
         DateTime? createdDateFrom,
         DateTime? createdDateTo,
         IReadOnlyList<string>? actions,
+        IReadOnlyList<string>? targetTypes,
         CancellationToken cancellationToken);
 
     void Add(AuditLogEntry entry);
