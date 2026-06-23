@@ -7,6 +7,7 @@ import LoginPage from '../views/LoginPage.vue';
 import InternalAgentsPage from '../views/InternalAgentsPage.vue';
 import TenantAgentsPage from '../views/TenantAgentsPage.vue';
 import AgentDetailPage from '../views/AgentDetailPage.vue';
+import AgentKnowledgePage from '../views/AgentKnowledgePage.vue';
 import SettingsAuditLogPage from '../views/SettingsAuditLogPage.vue';
 import SettingsMembersPage from '../views/SettingsMembersPage.vue';
 import SettingsPasswordPage from '../views/SettingsPasswordPage.vue';
@@ -44,6 +45,12 @@ export const router = createRouter({
           path: 'agents/:agentId',
           name: 'agent-detail',
           component: AgentDetailPage,
+          props: true
+        },
+        {
+          path: 'agents/:agentId/knowledge',
+          name: 'agent-knowledge',
+          component: AgentKnowledgePage,
           props: true
         },
         {

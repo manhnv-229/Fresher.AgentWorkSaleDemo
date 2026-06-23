@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import { useAuth } from '../composables/useAuth';
+import { useAgentDetail } from '../composables/useAgentDetail';
 import { useTenantSelection } from '../composables/useTenantSelection';
 import { ApiError } from '../api/http';
 
@@ -16,6 +17,10 @@ const sidebarError = ref('');
 const isLoadingTenants = ref(false);
 
 const isSettingsRoute = computed(() => route.path.startsWith('/settings'));
+const isAgentRoute = computed(() => route.name === 'agent-detail' || route.name === 'agent-knowledge');
+
+const { agent, isLoading: isLoadingAgent, loadInternal, loadTenant, clear: clearAgent } = useAgentDetail();
+
 const workspaceTitle = computed(() => {
   if (isSettingsRoute.value) return 'Thiết lập';
   if (route.name === 'agents-internal') return 'Agent nội bộ';
@@ -23,9 +28,20 @@ const workspaceTitle = computed(() => {
     const tenant = tenants.value.find(t => t.id === route.params.tenantId);
     return tenant?.name || 'Đơn vị';
   }
-  if (route.name === 'agent-detail') return 'Chỉnh sửa agent';
   return 'Agent nội bộ';
 });
+
+const agentScope = computed(() => (route.query.scope as string) || 'internal');
+const agentTenantId = computed(() => (route.query.tenantId as string) || '');
+
+function buildAgentSectionLink(section: string) {
+  const name = section === 'knowledge' ? 'agent-knowledge' : 'agent-detail';
+  return {
+    name,
+    params: { agentId: route.params.agentId },
+    query: { ...route.query }
+  };
+}
 
 onMounted(() => {
   void initializeAuth();
@@ -49,6 +65,20 @@ watch(isAuthenticated, async (authenticated) => {
   }
 }, { immediate: true });
 
+watch(isAgentRoute, async (isAgent) => {
+  if (isAgent) {
+    clearAgent();
+    const id = route.params.agentId as string;
+    if (agentScope.value === 'tenant' && agentTenantId.value) {
+      await loadTenant(agentTenantId.value, id);
+    } else {
+      await loadInternal(id);
+    }
+  } else {
+    clearAgent();
+  }
+}, { immediate: true });
+
 function handleTenantClick(tenantId: string) {
   selectTenant(tenantId);
   router.push({ name: 'agents-tenant', params: { tenantId } });
@@ -69,8 +99,8 @@ async function handleLogout() {
     <p class="message">Đang chuyển tới trang đăng nhập...</p>
   </main>
 
-  <section v-else class="workspace" :class="{ 'workspace--settings': isSettingsRoute }" aria-labelledby="workspace-title">
-    <aside class="workspace__sidebar">
+  <section v-else class="workspace" :class="{ 'workspace--settings': isSettingsRoute, 'workspace--agent': isAgentRoute }" aria-labelledby="workspace-title">
+    <aside v-if="!isAgentRoute" class="workspace__sidebar">
       <div class="sidebar__brand">
         <p class="sidebar__eyebrow">Demo AgentWorkSale</p>
         <h1 id="workspace-title">{{ workspaceTitle }}</h1>
@@ -151,6 +181,40 @@ async function handleLogout() {
           :to="{ name: 'settings-audit-log' }"
         >
           Nhật ký hoạt động
+        </RouterLink>
+      </nav>
+    </aside>
+
+    <aside v-if="isAgentRoute" class="workspace__agent-sidebar">
+      <div class="agent-sidebar__header">
+        <p class="sidebar__eyebrow">Agent</p>
+        <template v-if="isLoadingAgent">
+          <p class="agent-sidebar__name">Đang tải...</p>
+        </template>
+        <template v-else-if="agent">
+          <p class="agent-sidebar__name">{{ agent.name }}</p>
+          <p class="agent-sidebar__role" :title="agent.role">{{ agent.role }}</p>
+        </template>
+        <template v-else>
+          <p class="agent-sidebar__name">Agent</p>
+          <p class="agent-sidebar__role">Không tải được thông tin agent.</p>
+        </template>
+      </div>
+
+      <nav class="agent-sidebar__nav" aria-label="Agent workspace">
+        <RouterLink
+          class="scope-link"
+          :class="{ 'scope-link--active': route.name === 'agent-detail' }"
+          :to="buildAgentSectionLink('info')"
+        >
+          Thông tin chung
+        </RouterLink>
+        <RouterLink
+          class="scope-link"
+          :class="{ 'scope-link--active': route.name === 'agent-knowledge' }"
+          :to="buildAgentSectionLink('knowledge')"
+        >
+          Tri thức
         </RouterLink>
       </nav>
     </aside>
