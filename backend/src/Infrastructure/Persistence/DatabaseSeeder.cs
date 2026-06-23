@@ -20,8 +20,6 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
     private static readonly Guid InternalAgentId = Guid.Parse("55555555-5555-5555-5555-555555555550");
     private static readonly Guid TenantOneAgentId = Guid.Parse("55555555-5555-5555-5555-555555555551");
     private static readonly Guid TenantTwoAgentId = Guid.Parse("55555555-5555-5555-5555-555555555552");
-    private static readonly Guid TenantOneRootFolderId = Guid.Parse("66666666-6666-6666-6666-666666666661");
-    private static readonly Guid TenantOneGuideFileId = Guid.Parse("77777777-7777-7777-7777-777777777771");
 
     private static readonly (string Code, string Name, string Group)[] Permissions =
     [
@@ -58,7 +56,6 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         await SeedUsersAsync(cancellationToken);
         await SeedMembershipsAsync(cancellationToken);
         await SeedAgentsAsync(cancellationToken);
-        await SeedKnowledgeAsync(cancellationToken);
         await SeedAuditLogsAsync(cancellationToken);
     }
 
@@ -356,85 +353,6 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
             Scope = scope,
             Status = AgentStatus.Active,
             Role = role,
-            CreatedAt = DateTime.UtcNow
-        });
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task SeedKnowledgeAsync(CancellationToken cancellationToken)
-    {
-        await AddKnowledgeFolderAsync(TenantOneRootFolderId, TenantOneAgentId, null, AdminUserId, "Guides", cancellationToken);
-        await AddKnowledgeFileAsync(
-            TenantOneGuideFileId,
-            TenantOneAgentId,
-            TenantOneRootFolderId,
-            AdminUserId,
-            "tenant-one-guide",
-            "Tenant One Guide.pdf",
-            "seed/tenant-one-guide.pdf",
-            "application/pdf",
-            ".pdf",
-            1024L,
-            cancellationToken);
-    }
-
-    private async Task AddKnowledgeFolderAsync(
-        Guid id,
-        Guid agentId,
-        Guid? parentFolderId,
-        Guid createdByUserId,
-        string name,
-        CancellationToken cancellationToken)
-    {
-        if (await dbContext.AgentKnowledgeFolders.AnyAsync(x => x.Id == id, cancellationToken))
-        {
-            return;
-        }
-
-        dbContext.AgentKnowledgeFolders.Add(new AgentKnowledgeFolder
-        {
-            Id = id,
-            AgentId = agentId,
-            ParentFolderId = parentFolderId,
-            CreatedByUserId = createdByUserId,
-            Name = name,
-            CreatedAt = DateTime.UtcNow
-        });
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task AddKnowledgeFileAsync(
-        Guid id,
-        Guid agentId,
-        Guid? folderId,
-        Guid createdByUserId,
-        string name,
-        string originalName,
-        string storageKey,
-        string contentType,
-        string? extension,
-        long sizeBytes,
-        CancellationToken cancellationToken)
-    {
-        if (await dbContext.AgentKnowledgeFiles.AnyAsync(x => x.Id == id, cancellationToken))
-        {
-            return;
-        }
-
-        dbContext.AgentKnowledgeFiles.Add(new AgentKnowledgeFile
-        {
-            Id = id,
-            AgentId = agentId,
-            FolderId = folderId,
-            CreatedByUserId = createdByUserId,
-            Name = name,
-            OriginalName = originalName,
-            ContentType = contentType,
-            Extension = extension,
-            StorageKey = storageKey,
-            SizeBytes = sizeBytes,
             CreatedAt = DateTime.UtcNow
         });
 

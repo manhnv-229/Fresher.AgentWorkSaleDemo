@@ -4,6 +4,7 @@ using Demo.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Demo.Infrastructure.Migrations
 {
     [DbContext(typeof(DemoDbContext))]
-    partial class DemoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260623063758_DropAgentBranchAndInstructionTables")]
+    partial class DropAgentBranchAndInstructionTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -114,6 +117,143 @@ namespace Demo.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("agents", (string)null);
+                });
+
+            modelBuilder.Entity("Demo.Domain.Entities.AgentKnowledgeFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("agent_id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Extension")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("extension");
+
+                    b.Property<Guid?>("FolderId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("folder_id");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OriginalName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("original_name");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("storage_key");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FolderId");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique();
+
+                    b.ToTable("agent_knowledge_files", (string)null);
+                });
+
+            modelBuilder.Entity("Demo.Domain.Entities.AgentKnowledgeFolder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("agent_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("ParentFolderId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("parent_folder_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ParentFolderId");
+
+                    b.HasIndex("AgentId", "ParentFolderId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("agent_knowledge_folders", (string)null);
                 });
 
             modelBuilder.Entity("Demo.Domain.Entities.AuditLogEntry", b =>
@@ -636,6 +776,58 @@ namespace Demo.Infrastructure.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Demo.Domain.Entities.AgentKnowledgeFile", b =>
+                {
+                    b.HasOne("Demo.Domain.Entities.Agent", "Agent")
+                        .WithMany("KnowledgeFiles")
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Demo.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Demo.Domain.Entities.AgentKnowledgeFolder", "Folder")
+                        .WithMany("Files")
+                        .HasForeignKey("FolderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Folder");
+                });
+
+            modelBuilder.Entity("Demo.Domain.Entities.AgentKnowledgeFolder", b =>
+                {
+                    b.HasOne("Demo.Domain.Entities.Agent", "Agent")
+                        .WithMany("KnowledgeFolders")
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Demo.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Demo.Domain.Entities.AgentKnowledgeFolder", "ParentFolder")
+                        .WithMany("ChildFolders")
+                        .HasForeignKey("ParentFolderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("ParentFolder");
+                });
+
             modelBuilder.Entity("Demo.Domain.Entities.AuditLogEntry", b =>
                 {
                     b.HasOne("Demo.Domain.Entities.Tenant", "Tenant")
@@ -753,6 +945,20 @@ namespace Demo.Infrastructure.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Demo.Domain.Entities.Agent", b =>
+                {
+                    b.Navigation("KnowledgeFiles");
+
+                    b.Navigation("KnowledgeFolders");
+                });
+
+            modelBuilder.Entity("Demo.Domain.Entities.AgentKnowledgeFolder", b =>
+                {
+                    b.Navigation("ChildFolders");
+
+                    b.Navigation("Files");
                 });
 
             modelBuilder.Entity("Demo.Domain.Entities.Permission", b =>
