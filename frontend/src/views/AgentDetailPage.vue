@@ -48,7 +48,12 @@ watch(() => props.agentId, () => {
 
 async function loadAgent() {
   clear();
-  if (scope.value === 'tenant' && tenantId.value) {
+  if (scope.value === 'tenant') {
+    if (!tenantId.value) {
+      error.value = 'Thiếu ngữ cảnh đơn vị cho agent này.';
+      return;
+    }
+
     await loadTenant(tenantId.value, props.agentId);
   } else {
     await loadInternal(props.agentId);

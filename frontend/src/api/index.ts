@@ -4,6 +4,7 @@ export { setAccessTokenProvider, getAccessToken } from './interceptors';
 export { changePassword, login, logout, refreshAccessToken } from './auth';
 export {
   createInternalAgent,
+  createTenantAgent,
   deleteInternalAgent,
   deleteTenantAgent,
   getInternalAgentDetail,

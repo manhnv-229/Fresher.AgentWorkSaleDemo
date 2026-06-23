@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { LoaderCircle, MoreVertical } from '@lucide/vue';
+import { LoaderCircle, MoreVertical, Plus } from '@lucide/vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
 import BaseModal from '../components/BaseModal.vue';
-import { deleteTenantAgent, type AgentSummary } from '../api';
+import { createTenantAgent, deleteTenantAgent, type AgentSummary, type CreateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentList, useTenantAgents } from '../composables/useAgentList';
 import { useTenantSelection } from '../composables/useTenantSelection';
-import { ALL_AGENT_STATUSES, getAgentStatusLabel } from '../utils/statuses';
+import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
 
 const props = defineProps<{ tenantId: string }>();
 const router = useRouter();
@@ -20,8 +20,23 @@ const cardMenuOpenId = ref<string | null>(null);
 const isDeleteModalOpen = ref(false);
 const agentToDelete = ref<AgentSummary | null>(null);
 const isDeleting = ref(false);
+const isCreateModalOpen = ref(false);
+const createName = ref('');
+const createRole = ref('');
+const createDescription = ref('');
+const createIcon = ref('mint');
+const createError = ref('');
+const isSaving = ref(false);
 
 const selectedTenant = computed(() => tenants.value.find(t => t.id === props.tenantId) ?? null);
+
+const avatarOptions = [
+  { id: 'mint', label: 'MN', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
+  { id: 'amber', label: 'AM', accent: 'linear-gradient(135deg, #ffd43b, #f08c00)' },
+  { id: 'rose', label: 'RS', accent: 'linear-gradient(135deg, #ff8787, #f03e3e)' },
+  { id: 'ocean', label: 'OC', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
+  { id: 'violet', label: 'VT', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
+];
 
 onMounted(async () => {
   if (tenants.value.length === 0) {
@@ -48,14 +63,7 @@ function goToPage(page: number) {
 }
 
 function avatarStyle(icon: string | null | undefined) {
-  const options = [
-    { id: 'mint', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
-    { id: 'amber', accent: 'linear-gradient(135deg, #ffd43b, #f08c00)' },
-    { id: 'rose', accent: 'linear-gradient(135deg, #ff8787, #f03e3e)' },
-    { id: 'ocean', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
-    { id: 'violet', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
-  ];
-  const option = options.find(o => o.id === icon) ?? options[0];
+  const option = avatarOptions.find(o => o.id === icon) ?? avatarOptions[0];
   return { background: option.accent };
 }
 
@@ -94,6 +102,55 @@ function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete
   openDetail(agent);
 }
 
+function openCreateModal() {
+  createError.value = '';
+  isCreateModalOpen.value = true;
+}
+
+function closeCreateModal() {
+  isCreateModalOpen.value = false;
+  createName.value = '';
+  createRole.value = '';
+  createDescription.value = '';
+  createIcon.value = 'mint';
+  createError.value = '';
+}
+
+async function submitCreate() {
+  createError.value = '';
+  if (!selectedTenant.value) {
+    createError.value = 'Vui lòng chọn đơn vị trước khi tạo agent.';
+    return;
+  }
+
+  if (!createName.value.trim() || !createRole.value.trim()) {
+    createError.value = 'Tên và vai trò là bắt buộc.';
+    return;
+  }
+
+  const payload: CreateAgentPayload = {
+    name: createName.value.trim(),
+    role: createRole.value.trim(),
+    description: createDescription.value.trim() || undefined,
+    icon: createIcon.value
+  };
+
+  isSaving.value = true;
+  try {
+    await createTenantAgent(props.tenantId, payload);
+    closeCreateModal();
+    await load(props.tenantId);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      router.push({ name: 'login' });
+      return;
+    }
+    createError.value = err instanceof ApiError ? err.message : 'Không tạo được agent cho đơn vị.';
+  } finally {
+    isSaving.value = false;
+  }
+}
+
 function closeDeleteModal() {
   isDeleteModalOpen.value = false;
   agentToDelete.value = null;
@@ -121,10 +178,14 @@ async function confirmDelete() {
 <template>
   <header class="content-header">
     <div>
-      <p class="content-header__eyebrow">Danh sách theo đơn vị</p>
+      <p class="content-header__eyebrow">Ngữ cảnh đơn vị</p>
       <h2>{{ selectedTenant?.name || 'Chọn đơn vị' }}</h2>
-      <p class="content-header__copy">Mỗi đơn vị có một danh sách agent riêng.</p>
+      <p class="content-header__copy">Đang thao tác như trong tài khoản của đơn vị được chọn.</p>
     </div>
+    <BaseButton type="button" :disabled="!selectedTenant || Boolean(error)" @click="openCreateModal">
+      <Plus :size="18" aria-hidden="true" />
+      Thêm mới
+    </BaseButton>
   </header>
 
   <div class="filter-bar">
@@ -132,7 +193,7 @@ async function confirmDelete() {
     <label class="filter-select">
       <span class="sr-only">Lọc theo trạng thái</span>
       <select v-model="filters.statusFilter.value" aria-label="Lọc theo trạng thái">
-        <option v-for="option in ALL_AGENT_STATUSES" :key="option.value" :value="option.value">
+        <option v-for="option in withAllOption(AGENT_STATUSES)" :key="option.value" :value="option.value">
           {{ option.label }}
         </option>
       </select>
@@ -163,7 +224,6 @@ async function confirmDelete() {
               <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
             </div>
             <div class="agent-card__actions" @click.stop>
-              <span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' }">{{ getAgentStatusLabel(agent.status) }}</span>
               <div class="card-menu-wrapper">
                 <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
                   <MoreVertical :size="16" aria-hidden="true" />
@@ -183,8 +243,14 @@ async function confirmDelete() {
             </div>
           </div>
           <dl class="agent-meta">
-            <div><dt>Vai trò</dt><dd>{{ agent.role }}</dd></div>
-            <div><dt>Đơn vị</dt><dd>{{ selectedTenant.name }}</dd></div>
+            <div class="agent-meta__row">
+              <dt>Vai trò</dt>
+              <dd>{{ agent.role }}</dd>
+            </div>
+            <div class="agent-meta__row">
+              <dt>Trạng thái</dt>
+              <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
+            </div>
           </dl>
         </div>
       </article>
@@ -208,6 +274,38 @@ async function confirmDelete() {
         <BaseButton variant="secondary" type="button" :disabled="isDeleting" @click="closeDeleteModal">Hủy</BaseButton>
         <BaseButton variant="danger" type="button" :disabled="isDeleting" @click="confirmDelete">
           {{ isDeleting ? 'Đang xóa...' : 'Xác nhận xóa' }}
+        </BaseButton>
+      </div>
+    </div>
+  </BaseModal>
+
+  <BaseModal :open="isCreateModalOpen" :title="`Tạo agent cho ${selectedTenant?.name || 'đơn vị'}`" @close="closeCreateModal">
+    <div class="create-agent">
+      <div class="create-agent__group">
+        <p class="create-agent__label">Hình đại diện</p>
+        <div class="avatar-picker">
+          <button v-for="opt in avatarOptions" :key="opt.id" class="avatar-choice" :class="{ 'avatar-choice--active': createIcon === opt.id }" :style="{ background: opt.accent }" type="button" @click="createIcon = opt.id">
+            {{ opt.label }}
+          </button>
+        </div>
+      </div>
+      <div class="create-agent__group">
+        <label class="create-agent__label" for="tenant-create-name">Tên</label>
+        <BaseInput id="tenant-create-name" v-model="createName" placeholder="Nhập tên" />
+      </div>
+      <div class="create-agent__group">
+        <label class="create-agent__label" for="tenant-create-role">Vai trò</label>
+        <textarea id="tenant-create-role" v-model="createRole" class="agent-textarea" rows="3" placeholder="Nhập mô tả vai trò" />
+      </div>
+      <div class="create-agent__group">
+        <label class="create-agent__label" for="tenant-create-desc">Mô tả</label>
+        <textarea id="tenant-create-desc" v-model="createDescription" class="agent-textarea" rows="4" placeholder="Mô tả ngắn về agent" />
+      </div>
+      <p v-if="createError" class="message message--error">{{ createError }}</p>
+      <div class="create-agent__actions">
+        <BaseButton variant="secondary" type="button" :disabled="isSaving" @click="closeCreateModal">Hủy</BaseButton>
+        <BaseButton type="button" :disabled="isSaving" @click="submitCreate">
+          {{ isSaving ? 'Đang lưu...' : 'Lưu' }}
         </BaseButton>
       </div>
     </div>

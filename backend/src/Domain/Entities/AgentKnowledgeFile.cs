@@ -1,3 +1,5 @@
+using Demo.Domain.Enums;
+
 namespace Demo.Domain.Entities;
 
 public sealed class AgentKnowledgeFile
@@ -14,19 +16,20 @@ public sealed class AgentKnowledgeFile
     {
         get; set;
     }
-    public Guid CreatedByUserId
+    public Guid StorageObjectId
     {
         get; set;
     }
     public string Name { get; set; } = string.Empty;
+    public string NormalizedName { get; set; } = string.Empty;
     public string OriginalName { get; set; } = string.Empty;
-    public string ContentType { get; set; } = string.Empty;
-    public string? Extension
+    public string Extension { get; set; } = string.Empty;
+    public AgentKnowledgeFileStatus Status { get; set; } = AgentKnowledgeFileStatus.Active;
+    public Guid CreatedByUserId
     {
         get; set;
     }
-    public string StorageKey { get; set; } = string.Empty;
-    public long SizeBytes
+    public Guid? ModifiedByUserId
     {
         get; set;
     }
@@ -51,7 +54,15 @@ public sealed class AgentKnowledgeFile
     {
         get; set;
     }
+    public KnowledgeStorageObject? StorageObject
+    {
+        get; set;
+    }
     public User? CreatedByUser
+    {
+        get; set;
+    }
+    public User? ModifiedByUser
     {
         get; set;
     }

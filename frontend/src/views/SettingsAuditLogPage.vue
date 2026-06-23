@@ -516,4 +516,5 @@ function toggleMenu() {
   margin: 0;
   accent-color: #2479ff;
 }
+
 </style>
