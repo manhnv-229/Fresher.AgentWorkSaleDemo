@@ -1,4 +1,5 @@
 using Demo.Domain.Entities;
+using Demo.Domain.Enums;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -231,5 +232,88 @@ internal sealed class AuditLogEntryConfiguration : IEntityTypeConfiguration<Audi
         builder.HasIndex(x => x.Action);
         builder.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
         builder.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+internal sealed class AgentKnowledgeFolderConfiguration : IEntityTypeConfiguration<AgentKnowledgeFolder>
+{
+    public void Configure(EntityTypeBuilder<AgentKnowledgeFolder> builder)
+    {
+        builder.ToTable("agent_knowledge_folders");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(36);
+        builder.Property(x => x.AgentId).HasColumnName("agent_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.ParentFolderId).HasColumnName("parent_folder_id").HasMaxLength(36);
+        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.NormalizedName).HasColumnName("normalized_name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.ModifiedByUserId).HasColumnName("modified_by_user_id").HasMaxLength(36);
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
+        builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        builder.HasIndex(x => new { x.AgentId, x.ParentFolderId });
+        builder.HasIndex(x => new { x.AgentId, x.NormalizedName });
+        builder.HasIndex(x => x.CreatedByUserId);
+        builder.HasOne(x => x.Agent).WithMany(x => x.KnowledgeFolders).HasForeignKey(x => x.AgentId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.ParentFolder).WithMany(x => x.ChildFolders).HasForeignKey(x => x.ParentFolderId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.ModifiedByUser).WithMany().HasForeignKey(x => x.ModifiedByUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class AgentKnowledgeFileConfiguration : IEntityTypeConfiguration<AgentKnowledgeFile>
+{
+    public void Configure(EntityTypeBuilder<AgentKnowledgeFile> builder)
+    {
+        builder.ToTable("agent_knowledge_files");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(36);
+        builder.Property(x => x.AgentId).HasColumnName("agent_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.FolderId).HasColumnName("folder_id").HasMaxLength(36);
+        builder.Property(x => x.StorageObjectId).HasColumnName("storage_object_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.NormalizedName).HasColumnName("normalized_name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.OriginalName).HasColumnName("original_name").HasMaxLength(255).IsRequired();
+        builder.Property(x => x.Extension).HasColumnName("extension").HasMaxLength(20).IsRequired();
+        builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasConversion<string>().IsRequired();
+        builder.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.ModifiedByUserId).HasColumnName("modified_by_user_id").HasMaxLength(36);
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(x => x.ModifiedAt).HasColumnName("modified_at");
+        builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        builder.HasIndex(x => new { x.AgentId, x.FolderId });
+        builder.HasIndex(x => new { x.AgentId, x.NormalizedName });
+        builder.HasIndex(x => new { x.AgentId, x.CreatedByUserId });
+        builder.HasIndex(x => new { x.AgentId, x.CreatedAt });
+        builder.HasIndex(x => x.StorageObjectId);
+        builder.HasOne(x => x.Agent).WithMany(x => x.KnowledgeFiles).HasForeignKey(x => x.AgentId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Folder).WithMany(x => x.Files).HasForeignKey(x => x.FolderId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(x => x.StorageObject).WithMany(x => x.Files).HasForeignKey(x => x.StorageObjectId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.ModifiedByUser).WithMany().HasForeignKey(x => x.ModifiedByUserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class KnowledgeStorageObjectConfiguration : IEntityTypeConfiguration<KnowledgeStorageObject>
+{
+    public void Configure(EntityTypeBuilder<KnowledgeStorageObject> builder)
+    {
+        builder.ToTable("knowledge_storage_objects");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").HasMaxLength(36);
+        builder.Property(x => x.StorageBucket).HasColumnName("storage_bucket").HasMaxLength(100).IsRequired();
+        builder.Property(x => x.StorageObjectKey).HasColumnName("storage_object_key").HasMaxLength(643).IsRequired();
+        builder.Property(x => x.StorageEtag).HasColumnName("storage_etag").HasMaxLength(255);
+        builder.Property(x => x.StorageVersionId).HasColumnName("storage_version_id").HasMaxLength(255);
+        builder.Property(x => x.ChecksumSha256).HasColumnName("checksum_sha256").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.SizeBytes).HasColumnName("size_bytes").IsRequired();
+        builder.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(150).IsRequired();
+        builder.Property(x => x.Status).HasColumnName("status").HasMaxLength(50).HasConversion<string>().IsRequired();
+        builder.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasMaxLength(36).IsRequired();
+        builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+        builder.HasIndex(x => new { x.ChecksumSha256, x.SizeBytes }).IsUnique();
+        builder.HasIndex(x => new { x.StorageBucket, x.StorageObjectKey }).IsUnique();
+        builder.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
     }
 }

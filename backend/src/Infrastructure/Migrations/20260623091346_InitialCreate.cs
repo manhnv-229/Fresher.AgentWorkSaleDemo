@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Demo.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class RecreateSnapshot : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -65,9 +65,14 @@ namespace Demo.Infrastructure.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     full_name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    employee_code = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    project = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    job_position = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
                     status = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    password_changed_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     modified_at = table.Column<DateTime>(type: "datetime(6)", nullable: true)
                 },
@@ -194,6 +199,42 @@ namespace Demo.Infrastructure.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "knowledge_storage_objects",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
+                    storage_bucket = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    storage_object_key = table.Column<string>(type: "varchar(643)", maxLength: 643, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    storage_etag = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    storage_version_id = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    checksum_sha256 = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    size_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    content_type = table.Column<string>(type: "varchar(150)", maxLength: 150, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    status = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    created_by_user_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_knowledge_storage_objects", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_knowledge_storage_objects_users_created_by_user_id",
+                        column: x => x.created_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "user_sessions",
                 columns: table => new
                 {
@@ -312,75 +353,18 @@ namespace Demo.Infrastructure.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "agent_branch_infos",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
-                    agent_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
-                    branch_name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    branch_phone_number = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    email = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    address = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    province = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    district = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    opening_hour_type = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    modified_at = table.Column<DateTime>(type: "datetime(6)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_agent_branch_infos", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_agent_branch_infos_agents_agent_id",
-                        column: x => x.agent_id,
-                        principalTable: "agents",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "agent_instructions",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
-                    agent_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
-                    pre_prompt = table.Column<string>(type: "text", nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    regional_accent = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    modified_at = table.Column<DateTime>(type: "datetime(6)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_agent_instructions", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_agent_instructions_agents_agent_id",
-                        column: x => x.agent_id,
-                        principalTable: "agents",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "agent_knowledge_folders",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
                     agent_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
                     parent_folder_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: true, collation: "ascii_general_ci"),
-                    created_by_user_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
                     name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    normalized_name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    created_by_user_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
+                    modified_by_user_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: true, collation: "ascii_general_ci"),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     modified_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true)
@@ -403,6 +387,12 @@ namespace Demo.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "FK_agent_knowledge_folders_users_created_by_user_id",
                         column: x => x.created_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_agent_knowledge_folders_users_modified_by_user_id",
+                        column: x => x.modified_by_user_id,
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -455,18 +445,19 @@ namespace Demo.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
                     agent_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
                     folder_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: true, collation: "ascii_general_ci"),
-                    created_by_user_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
+                    storage_object_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
                     name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    normalized_name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     original_name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    content_type = table.Column<string>(type: "varchar(150)", maxLength: 150, nullable: false)
+                    extension = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    extension = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: true)
+                    status = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    storage_key = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    size_bytes = table.Column<long>(type: "bigint", nullable: false),
+                    created_by_user_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: false, collation: "ascii_general_ci"),
+                    modified_by_user_id = table.Column<Guid>(type: "char(36)", maxLength: 36, nullable: true, collation: "ascii_general_ci"),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     modified_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     deleted_at = table.Column<DateTime>(type: "datetime(6)", nullable: true)
@@ -487,8 +478,20 @@ namespace Demo.Infrastructure.Migrations
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
+                        name: "FK_agent_knowledge_files_knowledge_storage_objects_storage_obje~",
+                        column: x => x.storage_object_id,
+                        principalTable: "knowledge_storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
                         name: "FK_agent_knowledge_files_users_created_by_user_id",
                         column: x => x.created_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_agent_knowledge_files_users_modified_by_user_id",
+                        column: x => x.modified_by_user_id,
                         principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
@@ -496,21 +499,24 @@ namespace Demo.Infrastructure.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateIndex(
-                name: "IX_agent_branch_infos_agent_id",
-                table: "agent_branch_infos",
-                column: "agent_id",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_agent_instructions_agent_id",
-                table: "agent_instructions",
-                column: "agent_id",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_agent_knowledge_files_agent_id",
+                name: "IX_agent_knowledge_files_agent_id_created_at",
                 table: "agent_knowledge_files",
-                column: "agent_id");
+                columns: new[] { "agent_id", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_agent_knowledge_files_agent_id_created_by_user_id",
+                table: "agent_knowledge_files",
+                columns: new[] { "agent_id", "created_by_user_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_agent_knowledge_files_agent_id_folder_id",
+                table: "agent_knowledge_files",
+                columns: new[] { "agent_id", "folder_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_agent_knowledge_files_agent_id_normalized_name",
+                table: "agent_knowledge_files",
+                columns: new[] { "agent_id", "normalized_name" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_agent_knowledge_files_created_by_user_id",
@@ -523,26 +529,34 @@ namespace Demo.Infrastructure.Migrations
                 column: "folder_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_agent_knowledge_files_storage_key",
+                name: "IX_agent_knowledge_files_modified_by_user_id",
                 table: "agent_knowledge_files",
-                column: "storage_key",
-                unique: true);
+                column: "modified_by_user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_agent_knowledge_folders_agent_id",
-                table: "agent_knowledge_folders",
-                column: "agent_id");
+                name: "IX_agent_knowledge_files_storage_object_id",
+                table: "agent_knowledge_files",
+                column: "storage_object_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_agent_knowledge_folders_agent_id_parent_folder_id_name",
+                name: "IX_agent_knowledge_folders_agent_id_normalized_name",
                 table: "agent_knowledge_folders",
-                columns: new[] { "agent_id", "parent_folder_id", "name" },
-                unique: true);
+                columns: new[] { "agent_id", "normalized_name" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_agent_knowledge_folders_agent_id_parent_folder_id",
+                table: "agent_knowledge_folders",
+                columns: new[] { "agent_id", "parent_folder_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_agent_knowledge_folders_created_by_user_id",
                 table: "agent_knowledge_folders",
                 column: "created_by_user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_agent_knowledge_folders_modified_by_user_id",
+                table: "agent_knowledge_folders",
+                column: "modified_by_user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_agent_knowledge_folders_parent_folder_id",
@@ -594,6 +608,23 @@ namespace Demo.Infrastructure.Migrations
                 name: "IX_audit_logs_user_id",
                 table: "audit_logs",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_knowledge_storage_objects_checksum_sha256_size_bytes",
+                table: "knowledge_storage_objects",
+                columns: new[] { "checksum_sha256", "size_bytes" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_knowledge_storage_objects_created_by_user_id",
+                table: "knowledge_storage_objects",
+                column: "created_by_user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_knowledge_storage_objects_storage_bucket_storage_object_key",
+                table: "knowledge_storage_objects",
+                columns: new[] { "storage_bucket", "storage_object_key" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_permissions_code",
@@ -707,12 +738,6 @@ namespace Demo.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "agent_branch_infos");
-
-            migrationBuilder.DropTable(
-                name: "agent_instructions");
-
-            migrationBuilder.DropTable(
                 name: "agent_knowledge_files");
 
             migrationBuilder.DropTable(
@@ -732,6 +757,9 @@ namespace Demo.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "agent_knowledge_folders");
+
+            migrationBuilder.DropTable(
+                name: "knowledge_storage_objects");
 
             migrationBuilder.DropTable(
                 name: "user_sessions");

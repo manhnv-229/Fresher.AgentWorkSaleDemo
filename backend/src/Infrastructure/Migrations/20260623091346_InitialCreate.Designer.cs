@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Demo.Infrastructure.Migrations
 {
     [DbContext(typeof(DemoDbContext))]
-    [Migration("20260623063758_DropAgentBranchAndInstructionTables")]
-    partial class DropAgentBranchAndInstructionTables
+    [Migration("20260623091346_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -132,12 +132,6 @@ namespace Demo.Infrastructure.Migrations
                         .HasColumnType("char(36)")
                         .HasColumnName("agent_id");
 
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("varchar(150)")
-                        .HasColumnName("content_type");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
@@ -152,6 +146,7 @@ namespace Demo.Infrastructure.Migrations
                         .HasColumnName("deleted_at");
 
                     b.Property<string>("Extension")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)")
                         .HasColumnName("extension");
@@ -165,11 +160,22 @@ namespace Demo.Infrastructure.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("modified_at");
 
+                    b.Property<Guid?>("ModifiedByUserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("modified_by_user_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("normalized_name");
 
                     b.Property<string>("OriginalName")
                         .IsRequired()
@@ -177,26 +183,34 @@ namespace Demo.Infrastructure.Migrations
                         .HasColumnType("varchar(255)")
                         .HasColumnName("original_name");
 
-                    b.Property<long>("SizeBytes")
-                        .HasColumnType("bigint")
-                        .HasColumnName("size_bytes");
-
-                    b.Property<string>("StorageKey")
+                    b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)")
-                        .HasColumnName("storage_key");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StorageObjectId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("storage_object_id");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AgentId");
 
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("FolderId");
 
-                    b.HasIndex("StorageKey")
-                        .IsUnique();
+                    b.HasIndex("ModifiedByUserId");
+
+                    b.HasIndex("StorageObjectId");
+
+                    b.HasIndex("AgentId", "CreatedAt");
+
+                    b.HasIndex("AgentId", "CreatedByUserId");
+
+                    b.HasIndex("AgentId", "FolderId");
+
+                    b.HasIndex("AgentId", "NormalizedName");
 
                     b.ToTable("agent_knowledge_files", (string)null);
                 });
@@ -231,11 +245,22 @@ namespace Demo.Infrastructure.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("modified_at");
 
+                    b.Property<Guid?>("ModifiedByUserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("modified_by_user_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)")
                         .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("normalized_name");
 
                     b.Property<Guid?>("ParentFolderId")
                         .HasMaxLength(36)
@@ -244,14 +269,15 @@ namespace Demo.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AgentId");
-
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ModifiedByUserId");
 
                     b.HasIndex("ParentFolderId");
 
-                    b.HasIndex("AgentId", "ParentFolderId", "Name")
-                        .IsUnique();
+                    b.HasIndex("AgentId", "NormalizedName");
+
+                    b.HasIndex("AgentId", "ParentFolderId");
 
                     b.ToTable("agent_knowledge_folders", (string)null);
                 });
@@ -321,6 +347,84 @@ namespace Demo.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("audit_logs", (string)null);
+                });
+
+            modelBuilder.Entity("Demo.Domain.Entities.KnowledgeStorageObject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChecksumSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("checksum_sha256");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("char(36)")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StorageBucket")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("storage_bucket");
+
+                    b.Property<string>("StorageEtag")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("storage_etag");
+
+                    b.Property<string>("StorageObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(643)
+                        .HasColumnType("varchar(643)")
+                        .HasColumnName("storage_object_key");
+
+                    b.Property<string>("StorageVersionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("storage_version_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ChecksumSha256", "SizeBytes")
+                        .IsUnique();
+
+                    b.HasIndex("StorageBucket", "StorageObjectKey")
+                        .IsUnique();
+
+                    b.ToTable("knowledge_storage_objects", (string)null);
                 });
 
             modelBuilder.Entity("Demo.Domain.Entities.Permission", b =>
@@ -795,11 +899,26 @@ namespace Demo.Infrastructure.Migrations
                         .HasForeignKey("FolderId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Demo.Domain.Entities.User", "ModifiedByUser")
+                        .WithMany()
+                        .HasForeignKey("ModifiedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Demo.Domain.Entities.KnowledgeStorageObject", "StorageObject")
+                        .WithMany("Files")
+                        .HasForeignKey("StorageObjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Agent");
 
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Folder");
+
+                    b.Navigation("ModifiedByUser");
+
+                    b.Navigation("StorageObject");
                 });
 
             modelBuilder.Entity("Demo.Domain.Entities.AgentKnowledgeFolder", b =>
@@ -816,6 +935,11 @@ namespace Demo.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Demo.Domain.Entities.User", "ModifiedByUser")
+                        .WithMany()
+                        .HasForeignKey("ModifiedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Demo.Domain.Entities.AgentKnowledgeFolder", "ParentFolder")
                         .WithMany("ChildFolders")
                         .HasForeignKey("ParentFolderId")
@@ -824,6 +948,8 @@ namespace Demo.Infrastructure.Migrations
                     b.Navigation("Agent");
 
                     b.Navigation("CreatedByUser");
+
+                    b.Navigation("ModifiedByUser");
 
                     b.Navigation("ParentFolder");
                 });
@@ -843,6 +969,17 @@ namespace Demo.Infrastructure.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Demo.Domain.Entities.KnowledgeStorageObject", b =>
+                {
+                    b.HasOne("Demo.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
                 });
 
             modelBuilder.Entity("Demo.Domain.Entities.RefreshToken", b =>
@@ -958,6 +1095,11 @@ namespace Demo.Infrastructure.Migrations
                 {
                     b.Navigation("ChildFolders");
 
+                    b.Navigation("Files");
+                });
+
+            modelBuilder.Entity("Demo.Domain.Entities.KnowledgeStorageObject", b =>
+                {
                     b.Navigation("Files");
                 });
 

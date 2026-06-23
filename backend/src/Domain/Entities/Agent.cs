@@ -62,4 +62,7 @@ public sealed class Agent
     {
         get; set;
     }
+
+    public ICollection<AgentKnowledgeFolder> KnowledgeFolders { get; set; } = new List<AgentKnowledgeFolder>();
+    public ICollection<AgentKnowledgeFile> KnowledgeFiles { get; set; } = new List<AgentKnowledgeFile>();
 }
