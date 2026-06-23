@@ -13,7 +13,7 @@ import {
 } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentList, useInternalAgents } from '../composables/useAgentList';
-import { ALL_AGENT_STATUSES, getAgentStatusLabel } from '../utils/statuses';
+import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
 
 const router = useRouter();
 const filters = useAgentList();
@@ -166,7 +166,7 @@ async function confirmDelete() {
     </div>
     <BaseButton type="button" :disabled="Boolean(error)" @click="openCreateModal">
       <Plus :size="18" aria-hidden="true" />
-      Thêm agent
+      Thêm mới
     </BaseButton>
   </header>
 
@@ -175,7 +175,7 @@ async function confirmDelete() {
     <label class="filter-select">
       <span class="sr-only">Lọc theo trạng thái</span>
       <select v-model="filters.statusFilter.value" aria-label="Lọc theo trạng thái">
-        <option v-for="option in ALL_AGENT_STATUSES" :key="option.value" :value="option.value">
+        <option v-for="option in withAllOption(AGENT_STATUSES)" :key="option.value" :value="option.value">
           {{ option.label }}
         </option>
       </select>
@@ -202,7 +202,6 @@ async function confirmDelete() {
               <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
             </div>
             <div class="agent-card__actions" @click.stop>
-              <span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' }">{{ getAgentStatusLabel(agent.status) }}</span>
               <div class="card-menu-wrapper">
                 <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
                   <MoreVertical :size="16" aria-hidden="true" />
@@ -222,8 +221,14 @@ async function confirmDelete() {
             </div>
           </div>
           <dl class="agent-meta">
-            <div><dt>Vai trò</dt><dd>{{ agent.role }}</dd></div>
-            <div><dt>Phạm vi</dt><dd>{{ agent.scope }}</dd></div>
+            <div class="agent-meta__row">
+              <dt>Vai trò</dt>
+              <dd>{{ agent.role }}</dd>
+            </div>
+            <div class="agent-meta__row">
+              <dt>Trạng thái</dt>
+              <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
+            </div>
           </dl>
         </div>
       </article>

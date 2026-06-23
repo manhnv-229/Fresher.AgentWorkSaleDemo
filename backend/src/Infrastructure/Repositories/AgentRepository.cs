@@ -16,7 +16,7 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
     {
         var query = dbContext.Agents
             .AsNoTracking()
-            .Where(agent => agent.Scope == AgentScope.Internal && agent.DeletedAt == null);
+            .Where(agent => agent.Scope == AgentScope.Internal);
 
         query = ApplyFilters(query, filters);
 
@@ -43,7 +43,7 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
     {
         var query = dbContext.Agents
             .AsNoTracking()
-            .Where(agent => agent.Scope == AgentScope.Tenant && agent.TenantId == tenantId && agent.DeletedAt == null);
+            .Where(agent => agent.Scope == AgentScope.Tenant && agent.TenantId == tenantId);
 
         query = ApplyFilters(query, filters);
 

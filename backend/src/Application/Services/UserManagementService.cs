@@ -129,7 +129,9 @@ public sealed class UserManagementService(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var description = $"Chức vụ của '{user.FullName ?? user.Email}' đã được cập nhật từ '{oldJobPosition ?? "trống"}' thành '{jobPosition ?? "trống"}'.";
+        var description = AuditLogDescriptionBuilder.FormatChangeSummary(
+            $"User '{user.FullName ?? user.Email}'",
+            new AuditFieldChange("JobPosition", oldJobPosition, jobPosition));
 
         await auditLogService.RecordAsync(
             "user.update_job_position",

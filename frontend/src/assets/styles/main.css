@@ -508,6 +508,11 @@
   color: #c03333;
 }
 
+.status-chip--muted {
+  background: #f1f3f5;
+  color: #868e96;
+}
+
 .empty-card--tight {
   padding: 18px;
 }
@@ -670,12 +675,15 @@
   margin: 18px 0 0;
 }
 
-.agent-meta div {
+.agent-meta__row {
   display: grid;
-  gap: 4px;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
 }
 
 .agent-meta dt {
+  margin: 0;
   color: #748093;
   font-size: 12px;
   font-weight: 600;
@@ -684,9 +692,12 @@
 
 .agent-meta dd {
   margin: 0;
+  display: flex;
+  align-items: center;
   color: #202b3f;
   font-size: 14px;
   font-weight: 600;
+  min-height: 22px;
 }
 
 .modal-backdrop {

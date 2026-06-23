@@ -192,6 +192,7 @@ public sealed class AgentCatalogService(
             return validation;
         }
 
+        var auditDescription = BuildAgentUpdateDescription("Internal agent", agent, command);
         UpdateAgentFromCommand(agent, command, modifiedByUserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -202,7 +203,7 @@ public sealed class AgentCatalogService(
             modifiedByUserId,
             null,
             ipAddress,
-            $"Internal agent '{agent.Name}' was updated.",
+            auditDescription,
             "Agent",
             agent.Id.ToString(),
             cancellationToken);
@@ -247,6 +248,7 @@ public sealed class AgentCatalogService(
             return validation;
         }
 
+        var auditDescription = BuildAgentUpdateDescription("Tenant agent", agent, command);
         UpdateAgentFromCommand(agent, command, modifiedByUserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -257,7 +259,7 @@ public sealed class AgentCatalogService(
             modifiedByUserId,
             tenantId,
             ipAddress,
-            $"Tenant agent '{agent.Name}' was updated.",
+            auditDescription,
             "Agent",
             agent.Id.ToString(),
             cancellationToken);
@@ -356,6 +358,17 @@ public sealed class AgentCatalogService(
         if (userId is null) return "System";
         var user = await authUserRepository.GetByIdAsync(userId.Value, cancellationToken);
         return user?.FullName ?? user?.Email ?? "Unknown";
+    }
+
+    private static string BuildAgentUpdateDescription(string scopeLabel, Agent agent, UpdateAgentCommand command)
+    {
+        return AuditLogDescriptionBuilder.FormatChangeSummary(
+            $"{scopeLabel} '{agent.Name}'",
+            new AuditFieldChange("Name", agent.Name, command.Name),
+            new AuditFieldChange("Role", agent.Role, command.Role),
+            new AuditFieldChange("Description", agent.Description, command.Description),
+            new AuditFieldChange("Icon", agent.Icon, command.Icon),
+            new AuditFieldChange("Status", agent.Status.ToString(), command.Status));
     }
 
     private static Agent CreateAgent(CreateAgentCommand command, Guid? tenantId, AgentScope scope, Guid createdByUserId)

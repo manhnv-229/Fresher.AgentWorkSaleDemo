@@ -109,6 +109,7 @@ async function handleLogout() {
             class="tenant-link"
             :class="{ 'tenant-link--active': route.params.tenantId === tenant.id }"
             :to="{ name: 'agents-tenant', params: { tenantId: tenant.id } }"
+            @click="selectTenant(tenant.id)"
           >
             <Building2 :size="16" aria-hidden="true" />
             <span>{{ tenant.name }}</span>

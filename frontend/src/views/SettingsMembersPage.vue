@@ -8,7 +8,7 @@ import BaseTable from '../components/BaseTable.vue';
 import { getUsers, lockUser, unlockUser, updateJobPosition, type AdminUserSummary } from '../api';
 import type { MemberListFilters } from '../api/users';
 import { ApiError } from '../api/http';
-import { ALL_MEMBER_STATUSES, getMemberStatusLabel } from '../utils/statuses';
+import { MEMBER_STATUSES, withAllOption, getMemberStatusLabel } from '../utils/statuses';
 
 const router = useRouter();
 const users = ref<AdminUserSummary[]>([]);
@@ -34,7 +34,7 @@ const JOB_POSITIONS = [
   'Thực tập sinh'
 ];
 
-const STATUS_OPTIONS = ALL_MEMBER_STATUSES;
+const STATUS_OPTIONS = withAllOption(MEMBER_STATUSES);
 
 onMounted(() => {
   void loadUsers();
