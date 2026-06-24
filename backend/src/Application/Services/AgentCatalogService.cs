@@ -19,6 +19,11 @@ public sealed class AgentCatalogService(
     IMapper mapper,
     IUnitOfWork unitOfWork) : IAgentCatalogService
 {
+    #region Method
+
+    /// <summary>
+    /// Lấy danh sách agent nội bộ theo bộ lọc và phân trang.
+    /// </summary>
     public async Task<ServiceResult<PagedResult<AgentListItem>>> GetInternalAgentsPagedAsync(
         AgentListFilters filters,
         CancellationToken cancellationToken)
@@ -42,6 +47,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<PagedResult<AgentListItem>>.Success(result);
     }
 
+    /// <summary>
+    /// Lấy danh sách agent thuộc tenant theo bộ lọc và phân trang.
+    /// </summary>
     public async Task<ServiceResult<PagedResult<AgentListItem>>> GetTenantAgentsPagedAsync(
         Guid tenantId,
         AgentListFilters filters,
@@ -66,6 +74,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<PagedResult<AgentListItem>>.Success(result);
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết của agent nội bộ.
+    /// </summary>
     public async Task<ServiceResult<AgentDetailItem>> GetInternalAgentDetailAsync(
         Guid agentId,
         CancellationToken cancellationToken)
@@ -81,6 +92,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<AgentDetailItem>.Success(mapper.Map<AgentDetailItem>(agent));
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết của agent thuộc tenant.
+    /// </summary>
     public async Task<ServiceResult<AgentDetailItem>> GetTenantAgentDetailAsync(
         Guid tenantId,
         Guid agentId,
@@ -97,6 +111,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<AgentDetailItem>.Success(mapper.Map<AgentDetailItem>(agent));
     }
 
+    /// <summary>
+    /// Tạo mới agent nội bộ và ghi nhận audit log tương ứng.
+    /// </summary>
     public async Task<ServiceResult<AgentListItem>> CreateInternalAgentAsync(
         Guid createdByUserId,
         string? ipAddress,
@@ -128,6 +145,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<AgentListItem>.Success(mapper.Map<AgentListItem>(agent));
     }
 
+    /// <summary>
+    /// Tạo mới agent cho tenant khi tenant còn hoạt động.
+    /// </summary>
     public async Task<ServiceResult<AgentListItem>> CreateTenantAgentAsync(
         Guid tenantId,
         Guid createdByUserId,
@@ -175,6 +195,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<AgentListItem>.Success(mapper.Map<AgentListItem>(agent));
     }
 
+    /// <summary>
+    /// Cập nhật agent nội bộ và ghi lại mô tả thay đổi phục vụ audit.
+    /// </summary>
     public async Task<ServiceResult<AgentListItem>> UpdateInternalAgentAsync(
         Guid agentId,
         Guid modifiedByUserId,
@@ -215,6 +238,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<AgentListItem>.Success(mapper.Map<AgentListItem>(agent));
     }
 
+    /// <summary>
+    /// Cập nhật agent của tenant sau khi kiểm tra trạng thái tenant.
+    /// </summary>
     public async Task<ServiceResult<AgentListItem>> UpdateTenantAgentAsync(
         Guid tenantId,
         Guid agentId,
@@ -271,6 +297,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<AgentListItem>.Success(mapper.Map<AgentListItem>(agent));
     }
 
+    /// <summary>
+    /// Xóa mềm agent nội bộ.
+    /// </summary>
     public async Task<ServiceResult<bool>> DeleteInternalAgentAsync(
         Guid agentId,
         Guid modifiedByUserId,
@@ -306,6 +335,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<bool>.Success(true);
     }
 
+    /// <summary>
+    /// Xóa mềm agent của tenant sau khi kiểm tra tenant còn cho phép chỉnh sửa.
+    /// </summary>
     public async Task<ServiceResult<bool>> DeleteTenantAgentAsync(
         Guid tenantId,
         Guid agentId,
@@ -357,6 +389,9 @@ public sealed class AgentCatalogService(
         return ServiceResult<bool>.Success(true);
     }
 
+    /// <summary>
+    /// Lấy tên hiển thị của người thao tác để ghi vào audit log.
+    /// </summary>
     private async Task<string> GetUserNameAsync(Guid? userId, CancellationToken cancellationToken)
     {
         if (userId is null) return "System";
@@ -364,6 +399,9 @@ public sealed class AgentCatalogService(
         return user?.FullName ?? user?.Email ?? "Unknown";
     }
 
+    /// <summary>
+    /// Tạo mô tả thay đổi để lưu trong audit log khi cập nhật agent.
+    /// </summary>
     private static string BuildAgentUpdateDescription(string scopeLabel, Agent agent, UpdateAgentCommand command)
     {
         return AuditLogDescriptionBuilder.FormatChangeSummary(
@@ -375,6 +413,9 @@ public sealed class AgentCatalogService(
             new AuditFieldChange("Status", agent.Status.ToString(), command.Status));
     }
 
+    /// <summary>
+    /// Khởi tạo entity agent mới với thông tin mặc định cho luồng tạo.
+    /// </summary>
     private static Agent CreateAgent(CreateAgentCommand command, Guid? tenantId, AgentScope scope, Guid createdByUserId)
     {
         var id = Guid.NewGuid();
@@ -394,6 +435,9 @@ public sealed class AgentCatalogService(
         };
     }
 
+    /// <summary>
+    /// Đồng bộ dữ liệu cập nhật từ command vào entity agent hiện tại.
+    /// </summary>
     private static void UpdateAgentFromCommand(Agent agent, UpdateAgentCommand command, Guid modifiedByUserId)
     {
         agent.Name = command.Name.Trim();
@@ -405,13 +449,20 @@ public sealed class AgentCatalogService(
         agent.ModifiedByUserId = modifiedByUserId;
     }
 
+    /// <summary>
+    /// Sinh mã agent ổn định từ tên hiển thị và định danh ngẫu nhiên.
+    /// </summary>
     private static string CreateAgentCode(string name, Guid id)
     {
+        // Chỉ giữ ký tự chữ và số để mã sinh ra an toàn cho tìm kiếm/lọc dữ liệu.
         var normalized = new string(name.Trim().ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
         var prefix = string.IsNullOrWhiteSpace(normalized) ? "AGENT" : normalized[..Math.Min(normalized.Length, 10)];
         return $"{prefix}-{id.ToString("N")[..8]}";
     }
 
+    /// <summary>
+    /// Kiểm tra dữ liệu đầu vào cho luồng tạo agent.
+    /// </summary>
     private static ServiceResult<AgentListItem>? ValidateCreateCommand(CreateAgentCommand command)
     {
         if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Role))
@@ -424,6 +475,9 @@ public sealed class AgentCatalogService(
         return null;
     }
 
+    /// <summary>
+    /// Kiểm tra dữ liệu đầu vào cho luồng cập nhật agent.
+    /// </summary>
     private static ServiceResult<AgentListItem>? ValidateUpdateCommand(UpdateAgentCommand command)
     {
         if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Role))
@@ -443,6 +497,9 @@ public sealed class AgentCatalogService(
         return null;
     }
 
+    /// <summary>
+    /// Chuẩn hóa filter đầu vào từ API sang kiểu filter nội bộ cho tầng truy vấn.
+    /// </summary>
     private static bool TryCreateQueryFilters(AgentListFilters filters, out AgentQueryFilters queryFilters)
     {
         var hasValidStatus = TryParseStatus(filters.Status, out var status);
@@ -452,12 +509,18 @@ public sealed class AgentCatalogService(
         return hasValidStatus;
     }
 
+    /// <summary>
+    /// Chuẩn hóa chuỗi tìm kiếm để tránh truyền giá trị rỗng xuống tầng truy vấn.
+    /// </summary>
     private static string? NormalizeSearch(string? search)
     {
         var normalized = search?.Trim();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
+    /// <summary>
+    /// Phân tích giá trị trạng thái từ query string sang enum nội bộ.
+    /// </summary>
     private static bool TryParseStatus(string? status, out AgentStatus? parsedStatus)
     {
         parsedStatus = null;
@@ -475,4 +538,6 @@ public sealed class AgentCatalogService(
 
         return false;
     }
+
+    #endregion
 }

@@ -14,6 +14,11 @@ public sealed class AuditLogService(
     IMapper mapper,
     IUnitOfWork unitOfWork) : IAuditLogService
 {
+    #region Method
+
+    /// <summary>
+    /// Lấy danh sách audit log theo bộ lọc thời gian và hành động.
+    /// </summary>
     public async Task<ServiceResult<IReadOnlyList<AuditLogEntryResponse>>> GetAuditLogsAsync(
         AuditLogFilterRequest? filter,
         CancellationToken cancellationToken)
@@ -31,6 +36,9 @@ public sealed class AuditLogService(
         return ServiceResult<IReadOnlyList<AuditLogEntryResponse>>.Success(response);
     }
 
+    /// <summary>
+    /// Ghi một bản ghi audit log mới xuống cơ sở dữ liệu.
+    /// </summary>
     public async Task RecordAsync(
         string action,
         string userName,
@@ -60,6 +68,9 @@ public sealed class AuditLogService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Chuyển time preset từ API sang khoảng thời gian UTC phục vụ lọc dữ liệu.
+    /// </summary>
     private static void ResolveTimePreset(string? preset, out DateTime? from, out DateTime? to)
     {
         from = null;
@@ -69,6 +80,7 @@ public sealed class AuditLogService(
             return;
         }
 
+        // Luôn tính toán theo UTC để kết quả lọc đồng nhất với thời gian lưu trong database.
         var now = DateTime.UtcNow;
         var today = now.Date;
 
@@ -112,4 +124,5 @@ public sealed class AuditLogService(
         }
     }
 
+    #endregion
 }

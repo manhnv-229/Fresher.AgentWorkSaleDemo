@@ -22,6 +22,7 @@ export function setAuthState(tokens: TokenResponse): AuthState {
 
 export function clearAuthState(): void {
   authState.value = null;
+  // Xóa luôn dữ liệu cũ để các tab hoặc build trước đó không giữ token đã hết hiệu lực.
   clearLegacyPersistentAuthState();
 }
 
@@ -42,6 +43,7 @@ function readAuthState(): AuthState | null {
 
     return JSON.parse(stored) as AuthState;
   } catch {
+    // Nếu dữ liệu lưu bị lỗi định dạng thì dọn sạch để tránh khởi tạo phiên "nửa hợp lệ".
     clearLegacyPersistentAuthState();
     return null;
   }

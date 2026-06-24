@@ -23,6 +23,7 @@ export function useAgentDetail() {
     try {
       agent.value = await getInternalAgentDetail(agentId);
     } catch (err) {
+      // 401 được đẩy ra ngoài để page quyết định redirect thay vì composable tự điều hướng.
       if (err instanceof ApiError && err.status === 401) throw err;
       error.value = err instanceof ApiError ? err.message : 'Không tải được chi tiết agent.';
     } finally {
@@ -37,6 +38,7 @@ export function useAgentDetail() {
     try {
       agent.value = await getTenantAgentDetail(tenantId, agentId);
     } catch (err) {
+      // 401 được đẩy ra ngoài để page quyết định redirect thay vì composable tự điều hướng.
       if (err instanceof ApiError && err.status === 401) throw err;
       error.value = err instanceof ApiError ? err.message : 'Không tải được chi tiết agent.';
     } finally {

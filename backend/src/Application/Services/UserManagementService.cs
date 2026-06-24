@@ -18,6 +18,11 @@ public sealed class UserManagementService(
     IMapper mapper,
     IUnitOfWork unitOfWork) : IUserManagementService
 {
+    #region Method
+
+    /// <summary>
+    /// Lấy danh sách người dùng theo bộ lọc quản trị.
+    /// </summary>
     public async Task<ServiceResult<IReadOnlyList<AdminUserSummary>>> GetUsersAsync(MemberListFilters? filters, CancellationToken cancellationToken)
     {
         var users = await userQueryRepository.GetFilteredAsync(filters?.Search, filters?.Status, cancellationToken);
@@ -25,6 +30,9 @@ public sealed class UserManagementService(
             users.Select(user => mapper.Map<AdminUserSummary>(user)).ToList());
     }
 
+    /// <summary>
+    /// Khóa tài khoản người dùng 
+    /// </summary>
     public Task<ServiceResult<AdminUserSummary>> LockUserAsync(
         Guid actorUserId,
         Guid targetUserId,
@@ -34,6 +42,9 @@ public sealed class UserManagementService(
         return SetUserStatusAsync(actorUserId, targetUserId, AccountStatus.Locked, ipAddress, "AccountLocked", cancellationToken);
     }
 
+    /// <summary>
+    /// Mở khóa tài khoản người dùng 
+    /// </summary>
     public Task<ServiceResult<AdminUserSummary>> UnlockUserAsync(
         Guid actorUserId,
         Guid targetUserId,
@@ -43,6 +54,9 @@ public sealed class UserManagementService(
         return SetUserStatusAsync(actorUserId, targetUserId, AccountStatus.Active, ipAddress, "AccountUnlocked", cancellationToken);
     }
 
+    /// <summary>
+    /// Cập nhật trạng thái tài khoản và đồng bộ các phiên đăng nhập liên quan.
+    /// </summary>
     private async Task<ServiceResult<AdminUserSummary>> SetUserStatusAsync(
         Guid actorUserId,
         Guid targetUserId,
@@ -70,6 +84,7 @@ public sealed class UserManagementService(
 
         if (targetStatus == AccountStatus.Locked)
         {
+            // Khi khóa tài khoản, toàn bộ phiên còn hiệu lực phải bị thu hồi ngay để tránh tiếp tục sử dụng.
             var activeSessions = await userSessionRepository.GetActiveByUserIdAsync(user.Id, cancellationToken);
             foreach (var session in activeSessions)
             {
@@ -100,6 +115,9 @@ public sealed class UserManagementService(
         return ServiceResult<AdminUserSummary>.Success(mapper.Map<AdminUserSummary>(user));
     }
 
+    /// <summary>
+    /// Cập nhật chức danh công việc của người dùng và ghi audit log cho thay đổi đó.
+    /// </summary>
     public async Task<ServiceResult<AdminUserSummary>> UpdateJobPositionAsync(
         Guid actorUserId,
         Guid targetUserId,
@@ -139,4 +157,6 @@ public sealed class UserManagementService(
 
         return ServiceResult<AdminUserSummary>.Success(mapper.Map<AdminUserSummary>(user));
     }
+
+    #endregion
 }

@@ -25,6 +25,7 @@ async function submitLogin() {
   isLoading.value = true;
   try {
     await login(trimmedEmail, password.value);
+    // Không giữ mật khẩu trong state local sau khi đăng nhập thành công.
     password.value = '';
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Đăng nhập thất bại.';

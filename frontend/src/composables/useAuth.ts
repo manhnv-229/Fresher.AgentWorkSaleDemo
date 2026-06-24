@@ -20,6 +20,7 @@ export interface UseAuthResult {
 const isInitializing = ref(false);
 let startupRefreshAttempted = false;
 
+// Liên kết tầng HTTP với access token hiện có trong store mà không tạo phụ thuộc vòng.
 setAccessTokenProvider(getAccessToken);
 
 export function useAuth(): UseAuthResult {
@@ -51,6 +52,7 @@ export function useAuth(): UseAuthResult {
 
   async function initializeAuth() {
     if (startupRefreshAttempted) {
+      // Chỉ thử khôi phục phiên một lần khi khởi động để tránh refresh lặp vô hạn.
       return;
     }
 
@@ -59,11 +61,13 @@ export function useAuth(): UseAuthResult {
     try {
       const currentAuthState = getAuthState();
       if (currentAuthState && !isExpired(currentAuthState.accessTokenExpiresAt)) {
+        // Nếu access token vẫn còn hạn thì giữ nguyên state hiện tại thay vì gọi refresh thừa.
         return;
       }
 
       await refresh();
     } catch {
+      // Khi refresh thất bại, frontend dọn trạng thái cục bộ để router xử lý như phiên hết hạn.
       clearAuthState();
     } finally {
       isInitializing.value = false;
