@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { refreshAccessToken } from '../api/auth';
 import { ApiError } from '../api/http';
 import WorkspaceShell from '../layouts/WorkspaceShell.vue';
-import { getAccessToken, setAuthState } from '../stores/auth';
+import { useAuthStore } from '../stores/useAuthStore';
 import LoginPage from '../views/LoginPage.vue';
 import InternalAgentsPage from '../views/InternalAgentsPage.vue';
 import TenantAgentsPage from '../views/TenantAgentsPage.vue';
@@ -83,17 +83,20 @@ export const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
+  const authStore = useAuthStore();
+
   if (to.matched.some((record) => record.meta.public)) {
     return true;
   }
 
-  if (getAccessToken()) {
+  if (authStore.getAccessToken()) {
     return true;
   }
 
   try {
+    // Router thử khôi phục phiên bằng refresh token trước khi đẩy người dùng về login.
     const tokens = await refreshAccessToken();
-    setAuthState(tokens);
+    authStore.setAuthState(tokens);
     return true;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {

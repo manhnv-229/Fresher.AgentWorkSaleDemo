@@ -1,4 +1,4 @@
-import { httpJson } from './http';
+import { apiRequest } from './http';
 
 export type AgentStatusFilter = 'Draft' | 'Active' | 'Inactive';
 
@@ -64,68 +64,74 @@ export interface PagedResult<T> {
 }
 
 export function getTenants(): Promise<TenantSummary[]> {
-  return httpJson<TenantSummary[]>('/api/tenants', { auth: true });
+  return apiRequest<TenantSummary[]>({ url: '/api/tenants', requiresAuth: true });
 }
 
 export function getInternalAgents(filters: AgentListFilters = {}): Promise<PagedResult<AgentSummary>> {
-  return httpJson<PagedResult<AgentSummary>>(buildAgentListPath('/api/admin/agents/internal', filters), { auth: true });
+  return apiRequest<PagedResult<AgentSummary>>({ url: buildAgentListPath('/api/admin/agents/internal', filters), requiresAuth: true });
 }
 
 export function getInternalAgentDetail(agentId: string): Promise<AgentDetail> {
-  return httpJson<AgentDetail>(`/api/admin/agents/internal/${agentId}`, { auth: true });
+  return apiRequest<AgentDetail>({ url: `/api/admin/agents/internal/${agentId}`, requiresAuth: true });
 }
 
 export function createInternalAgent(payload: CreateAgentPayload): Promise<AgentSummary> {
-  return httpJson<AgentSummary, CreateAgentPayload>('/api/admin/agents/internal', {
+  return apiRequest<AgentSummary, CreateAgentPayload>({
+    url: '/api/admin/agents/internal',
     method: 'POST',
-    body: payload,
-    auth: true
+    data: payload,
+    requiresAuth: true
   });
 }
 
 export function updateInternalAgent(agentId: string, payload: UpdateAgentPayload): Promise<AgentSummary> {
-  return httpJson<AgentSummary, UpdateAgentPayload>(`/api/admin/agents/internal/${agentId}`, {
+  return apiRequest<AgentSummary, UpdateAgentPayload>({
+    url: `/api/admin/agents/internal/${agentId}`,
     method: 'PUT',
-    body: payload,
-    auth: true
+    data: payload,
+    requiresAuth: true
   });
 }
 
 export function deleteInternalAgent(agentId: string): Promise<void> {
-  return httpJson<void>(`/api/admin/agents/internal/${agentId}`, {
+  return apiRequest<void>({
+    url: `/api/admin/agents/internal/${agentId}`,
     method: 'DELETE',
-    auth: true
+    requiresAuth: true
   });
 }
 
 export function getTenantAgents(tenantId: string, filters: AgentListFilters = {}): Promise<PagedResult<AgentSummary>> {
-  return httpJson<PagedResult<AgentSummary>>(buildAgentListPath(`/api/tenants/${tenantId}/agents`, filters), { auth: true });
+  return apiRequest<PagedResult<AgentSummary>>({ url: buildAgentListPath(`/api/tenants/${tenantId}/agents`, filters), requiresAuth: true });
 }
 
 export function getTenantAgentDetail(tenantId: string, agentId: string): Promise<AgentDetail> {
-  return httpJson<AgentDetail>(`/api/tenants/${tenantId}/agents/${agentId}`, { auth: true });
+  return apiRequest<AgentDetail>({ url: `/api/tenants/${tenantId}/agents/${agentId}`, requiresAuth: true });
 }
 
 export function createTenantAgent(tenantId: string, payload: CreateAgentPayload): Promise<AgentSummary> {
-  return httpJson<AgentSummary, CreateAgentPayload>(`/api/tenants/${tenantId}/agents`, {
+  return apiRequest<AgentSummary, CreateAgentPayload>({
+    url: `/api/tenants/${tenantId}/agents`,
     method: 'POST',
-    body: payload,
-    auth: true
+    data: payload,
+    requiresAuth: true
   });
 }
 
 export function updateTenantAgent(tenantId: string, agentId: string, payload: UpdateAgentPayload): Promise<AgentSummary> {
-  return httpJson<AgentSummary, UpdateAgentPayload>(`/api/tenants/${tenantId}/agents/${agentId}`, {
+  return apiRequest<AgentSummary, UpdateAgentPayload>({
+    url: `/api/tenants/${tenantId}/agents/${agentId}`,
     method: 'PUT',
-    body: payload,
-    auth: true
+    data: payload,
+    requiresAuth: true
   });
 }
 
 export function deleteTenantAgent(tenantId: string, agentId: string): Promise<void> {
-  return httpJson<void>(`/api/tenants/${tenantId}/agents/${agentId}`, {
+  return apiRequest<void>({
+    url: `/api/tenants/${tenantId}/agents/${agentId}`,
     method: 'DELETE',
-    auth: true
+    requiresAuth: true
   });
 }
 

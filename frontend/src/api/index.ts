@@ -1,5 +1,5 @@
 export { getAuditLogs, type AuditLogEntry, type AuditLogFilters } from './audit-logs';
-export { API_BASE_URL, ApiError, httpJson } from './http';
+export { API_BASE_URL, ApiError, apiClient, apiRequest } from './http';
 export { setAccessTokenProvider, getAccessToken } from './interceptors';
 export { changePassword, login, logout, refreshAccessToken } from './auth';
 export {
