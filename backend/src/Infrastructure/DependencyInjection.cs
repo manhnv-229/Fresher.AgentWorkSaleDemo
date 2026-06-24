@@ -1,12 +1,16 @@
 using Demo.Domain.Options;
+using Demo.Application.Interfaces.Repository;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using Demo.Application.Services;
+using Demo.Application.Mapping;
 using Demo.Infrastructure.Persistence;
 using Demo.Infrastructure.Repositories;
+using Demo.Infrastructure.Queries;
 using Demo.Infrastructure.Services;
 using Demo.Infrastructure.Options;
 
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +39,8 @@ public static class DependencyInjection
 
         services.AddDbContext<DemoDbContext>(options =>
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+        services.AddSingleton<IDbConnectionFactory>(_ => new MySqlDbConnectionFactory(connectionString));
+        services.AddAutoMapper(typeof(BackendDataAccessProfile).Assembly);
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
@@ -55,6 +61,10 @@ public static class DependencyInjection
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogService, AuditLogService>();
+        services.AddScoped<IAgentQueryRepository, AgentQueryRepository>();
+        services.AddScoped<ITenantCatalogQueryRepository, TenantCatalogQueryRepository>();
+        services.AddScoped<IUserQueryRepository, UserQueryRepository>();
+        services.AddScoped<IAuditLogQueryRepository, AuditLogQueryRepository>();
         services.AddScoped<DatabaseSeeder>();
 
         return services;

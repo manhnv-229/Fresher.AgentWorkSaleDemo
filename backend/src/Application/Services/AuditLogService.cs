@@ -1,13 +1,17 @@
 using Demo.Application.Common;
 using Demo.Application.DTOs;
 using Demo.Domain.Entities;
+using Demo.Application.Interfaces.Repository;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
+using AutoMapper;
 
 namespace Demo.Application.Services;
 
 public sealed class AuditLogService(
+    IAuditLogQueryRepository auditLogQueryRepository,
     IAuditLogRepository auditLogRepository,
+    IMapper mapper,
     IUnitOfWork unitOfWork) : IAuditLogService
 {
     public async Task<ServiceResult<IReadOnlyList<AuditLogEntryResponse>>> GetAuditLogsAsync(
@@ -16,14 +20,14 @@ public sealed class AuditLogService(
     {
         ResolveTimePreset(filter?.TimePreset, out var dateFrom, out var dateTo);
 
-        var entries = await auditLogRepository.GetFilteredAsync(
+        var entries = await auditLogQueryRepository.GetFilteredAsync(
             filter?.Search,
             dateFrom,
             dateTo,
             filter?.Actions,
             filter?.TargetTypes,
             cancellationToken);
-        var response = entries.Select(MapToResponse).ToList();
+        var response = entries.Select(entry => mapper.Map<AuditLogEntryResponse>(entry)).ToList();
         return ServiceResult<IReadOnlyList<AuditLogEntryResponse>>.Success(response);
     }
 
@@ -108,12 +112,4 @@ public sealed class AuditLogService(
         }
     }
 
-    private static AuditLogEntryResponse MapToResponse(AuditLogEntry entry) =>
-        new(
-            entry.Id,
-            entry.Action,
-            entry.UserName,
-            DateTime.SpecifyKind(entry.CreatedAt, DateTimeKind.Utc),
-            entry.TargetType,
-            entry.Description);
 }

@@ -3,21 +3,26 @@ using Demo.Application.DTOs;
 using Demo.Application.Errors;
 using Demo.Domain.Entities;
 using Demo.Domain.Enums;
+using Demo.Application.Interfaces.Repository;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
+using AutoMapper;
 
 namespace Demo.Application.Services;
 
 public sealed class UserManagementService(
+    IUserQueryRepository userQueryRepository,
     IAuthUserRepository authUserRepository,
     IUserSessionRepository userSessionRepository,
     IAuditLogService auditLogService,
+    IMapper mapper,
     IUnitOfWork unitOfWork) : IUserManagementService
 {
     public async Task<ServiceResult<IReadOnlyList<AdminUserSummary>>> GetUsersAsync(MemberListFilters? filters, CancellationToken cancellationToken)
     {
-        var users = await authUserRepository.GetFilteredAsync(filters?.Search, filters?.Status, cancellationToken);
-        return ServiceResult<IReadOnlyList<AdminUserSummary>>.Success(users.Select(MapSummary).ToList());
+        var users = await userQueryRepository.GetFilteredAsync(filters?.Search, filters?.Status, cancellationToken);
+        return ServiceResult<IReadOnlyList<AdminUserSummary>>.Success(
+            users.Select(user => mapper.Map<AdminUserSummary>(user)).ToList());
     }
 
     public Task<ServiceResult<AdminUserSummary>> LockUserAsync(
@@ -92,19 +97,7 @@ public sealed class UserManagementService(
             user.Id.ToString(),
             cancellationToken);
 
-        return ServiceResult<AdminUserSummary>.Success(MapSummary(user));
-    }
-
-    private static AdminUserSummary MapSummary(User user)
-    {
-        return new AdminUserSummary(
-            user.Id,
-            user.Email,
-            user.FullName,
-            user.Status.ToString(),
-            user.EmployeeCode,
-            user.Project,
-            user.JobPosition);
+        return ServiceResult<AdminUserSummary>.Success(mapper.Map<AdminUserSummary>(user));
     }
 
     public async Task<ServiceResult<AdminUserSummary>> UpdateJobPositionAsync(
@@ -144,6 +137,6 @@ public sealed class UserManagementService(
             user.Id.ToString(),
             cancellationToken);
 
-        return ServiceResult<AdminUserSummary>.Success(MapSummary(user));
+        return ServiceResult<AdminUserSummary>.Success(mapper.Map<AdminUserSummary>(user));
     }
 }

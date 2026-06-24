@@ -1,18 +1,22 @@
 using Demo.Application.Common;
 using Demo.Application.DTOs;
 using Demo.Application.Errors;
+using Demo.Application.Interfaces.Repository;
 using Demo.Domain.Entities;
 using Demo.Domain.Enums;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
+using AutoMapper;
 
 namespace Demo.Application.Services;
 
 public sealed class AgentCatalogService(
+    IAgentQueryRepository agentQueryRepository,
     IAgentRepository agentRepository,
     ITenantRepository tenantRepository,
     IAuditLogService auditLogService,
     IAuthUserRepository authUserRepository,
+    IMapper mapper,
     IUnitOfWork unitOfWork) : IAgentCatalogService
 {
     public async Task<ServiceResult<PagedResult<AgentListItem>>> GetInternalAgentsPagedAsync(
@@ -26,8 +30,8 @@ public sealed class AgentCatalogService(
                 "Status filter is invalid.");
         }
 
-        var pagedResult = await agentRepository.GetInternalAgentsPagedAsync(queryFilters, cancellationToken);
-        var items = pagedResult.Items.Select(MapAgent).ToList();
+        var pagedResult = await agentQueryRepository.GetInternalAgentsPagedAsync(queryFilters, cancellationToken);
+        var items = pagedResult.Items.Select(agent => mapper.Map<AgentListItem>(agent)).ToList();
         var result = new PagedResult<AgentListItem>(
             items,
             pagedResult.Page,
@@ -50,8 +54,8 @@ public sealed class AgentCatalogService(
                 "Status filter is invalid.");
         }
 
-        var pagedResult = await agentRepository.GetTenantAgentsPagedAsync(tenantId, queryFilters, cancellationToken);
-        var items = pagedResult.Items.Select(MapAgent).ToList();
+        var pagedResult = await agentQueryRepository.GetTenantAgentsPagedAsync(tenantId, queryFilters, cancellationToken);
+        var items = pagedResult.Items.Select(agent => mapper.Map<AgentListItem>(agent)).ToList();
         var result = new PagedResult<AgentListItem>(
             items,
             pagedResult.Page,
@@ -66,7 +70,7 @@ public sealed class AgentCatalogService(
         Guid agentId,
         CancellationToken cancellationToken)
     {
-        var agent = await agentRepository.GetInternalAgentDetailByIdAsync(agentId, cancellationToken);
+        var agent = await agentQueryRepository.GetInternalAgentDetailByIdAsync(agentId, cancellationToken);
         if (agent is null)
         {
             return ServiceResult<AgentDetailItem>.Failure(
@@ -74,7 +78,7 @@ public sealed class AgentCatalogService(
                 "Agent was not found.");
         }
 
-        return ServiceResult<AgentDetailItem>.Success(MapAgentDetail(agent));
+        return ServiceResult<AgentDetailItem>.Success(mapper.Map<AgentDetailItem>(agent));
     }
 
     public async Task<ServiceResult<AgentDetailItem>> GetTenantAgentDetailAsync(
@@ -82,7 +86,7 @@ public sealed class AgentCatalogService(
         Guid agentId,
         CancellationToken cancellationToken)
     {
-        var agent = await agentRepository.GetTenantAgentDetailByIdAsync(tenantId, agentId, cancellationToken);
+        var agent = await agentQueryRepository.GetTenantAgentDetailByIdAsync(tenantId, agentId, cancellationToken);
         if (agent is null)
         {
             return ServiceResult<AgentDetailItem>.Failure(
@@ -90,7 +94,7 @@ public sealed class AgentCatalogService(
                 "Agent was not found.");
         }
 
-        return ServiceResult<AgentDetailItem>.Success(MapAgentDetail(agent));
+        return ServiceResult<AgentDetailItem>.Success(mapper.Map<AgentDetailItem>(agent));
     }
 
     public async Task<ServiceResult<AgentListItem>> CreateInternalAgentAsync(
@@ -121,7 +125,7 @@ public sealed class AgentCatalogService(
             agent.Id.ToString(),
             cancellationToken);
 
-        return ServiceResult<AgentListItem>.Success(MapAgent(agent));
+        return ServiceResult<AgentListItem>.Success(mapper.Map<AgentListItem>(agent));
     }
 
     public async Task<ServiceResult<AgentListItem>> CreateTenantAgentAsync(
@@ -168,7 +172,7 @@ public sealed class AgentCatalogService(
             agent.Id.ToString(),
             cancellationToken);
 
-        return ServiceResult<AgentListItem>.Success(MapAgent(agent));
+        return ServiceResult<AgentListItem>.Success(mapper.Map<AgentListItem>(agent));
     }
 
     public async Task<ServiceResult<AgentListItem>> UpdateInternalAgentAsync(
@@ -208,7 +212,7 @@ public sealed class AgentCatalogService(
             agent.Id.ToString(),
             cancellationToken);
 
-        return ServiceResult<AgentListItem>.Success(MapAgent(agent));
+        return ServiceResult<AgentListItem>.Success(mapper.Map<AgentListItem>(agent));
     }
 
     public async Task<ServiceResult<AgentListItem>> UpdateTenantAgentAsync(
@@ -264,7 +268,7 @@ public sealed class AgentCatalogService(
             agent.Id.ToString(),
             cancellationToken);
 
-        return ServiceResult<AgentListItem>.Success(MapAgent(agent));
+        return ServiceResult<AgentListItem>.Success(mapper.Map<AgentListItem>(agent));
     }
 
     public async Task<ServiceResult<bool>> DeleteInternalAgentAsync(
@@ -407,31 +411,6 @@ public sealed class AgentCatalogService(
         var prefix = string.IsNullOrWhiteSpace(normalized) ? "AGENT" : normalized[..Math.Min(normalized.Length, 10)];
         return $"{prefix}-{id.ToString("N")[..8]}";
     }
-
-    private static AgentListItem MapAgent(Agent agent) =>
-        new(
-            agent.Id,
-            agent.Code,
-            agent.Name,
-            agent.Description,
-            agent.Icon,
-            agent.Role,
-            agent.Scope.ToString(),
-            agent.Status.ToString());
-
-    private static AgentDetailItem MapAgentDetail(Agent agent) =>
-        new(
-            agent.Id,
-            agent.Code,
-            agent.Name,
-            agent.Description,
-            agent.Icon,
-            agent.Role,
-            agent.Scope.ToString(),
-            agent.Status.ToString(),
-            agent.CreatedAt,
-            agent.ModifiedAt,
-            agent.DeletedAt);
 
     private static ServiceResult<AgentListItem>? ValidateCreateCommand(CreateAgentCommand command)
     {
