@@ -14,6 +14,17 @@ internal static class KnowledgeServiceHelper
 {
 #region Method
 
+    public static bool IsInternalScope(Guid tenantId) => tenantId == Guid.Empty;
+
+    public static Guid? NormalizeTenantId(Guid tenantId) => IsInternalScope(tenantId) ? null : tenantId;
+
+    public static string BuildStorageObjectKey(Guid tenantId, Guid agentId, Guid fileId, string extension)
+    {
+        return IsInternalScope(tenantId)
+            ? $"internal/agents/{agentId:N}/knowledge/{fileId:N}{extension}"
+            : $"tenants/{tenantId:N}/agents/{agentId:N}/knowledge/{fileId:N}{extension}";
+    }
+
     /// <summary>
     /// Resolve tên actor từ user ID. Ưu tiên FullName, fallback sang Email, và trả về "Unknown" nếu không tìm thấy.
     /// Dùng để hiển thị tên người tạo/sửa trong response và audit log.
@@ -33,7 +44,9 @@ internal static class KnowledgeServiceHelper
         Guid agentId,
         CancellationToken cancellationToken)
     {
-        var agent = await agentRepository.GetTenantAgentByIdAsync(tenantId, agentId, cancellationToken);
+        var agent = IsInternalScope(tenantId)
+            ? await agentRepository.GetInternalAgentByIdAsync(agentId, cancellationToken)
+            : await agentRepository.GetTenantAgentByIdAsync(tenantId, agentId, cancellationToken);
         return agent is null ? (KnowledgeErrorCodes.AgentNotFound, "Agent was not found.") : null;
     }
 
@@ -47,6 +60,11 @@ internal static class KnowledgeServiceHelper
         Guid agentId,
         CancellationToken cancellationToken)
     {
+        if (IsInternalScope(tenantId))
+        {
+            return await EnsureReadableAgentAsync(agentRepository, tenantId, agentId, cancellationToken);
+        }
+
         var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
         if (tenant is null)
         {

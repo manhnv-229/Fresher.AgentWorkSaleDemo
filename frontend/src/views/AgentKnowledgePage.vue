@@ -24,6 +24,7 @@ import {
   renameKnowledgeFolder,
   searchKnowledgeFiles,
   uploadKnowledgeFile,
+  type KnowledgeAgentContext,
   type KnowledgeExplorerResponse,
   type KnowledgeFileItem,
   type KnowledgeFolderItem,
@@ -65,6 +66,12 @@ type ActiveItem =
   | { type: 'file'; item: KnowledgeFileItem };
 
 const tenantId = computed(() => (route.query.tenantId as string) || '');
+const scope = computed(() => (route.query.scope as string) || 'internal');
+const knowledgeContext = computed<KnowledgeAgentContext>(() => ({
+  agentId: props.agentId,
+  scope: scope.value === 'tenant' ? 'tenant' : 'internal',
+  tenantId: tenantId.value || undefined
+}));
 const breadcrumb = computed(() => explorer.value?.breadcrumb ?? []);
 const currentFolders = computed(() => explorer.value?.folders ?? []);
 // Hiển thị: ưu tiên search results nếu có search text, không thì dùng explorer files
@@ -76,8 +83,8 @@ onMounted(() => {
   void loadExplorer();
 });
 
-// Khi agentId hoặc tenantId thay đổi, reset folder selection và reload explorer
-watch(() => [props.agentId, tenantId.value], () => {
+// Khi agentId, scope, hoặc tenantId thay đổi, reset folder selection và reload explorer
+watch(() => [props.agentId, scope.value, tenantId.value], () => {
   selectedFolderId.value = null;
   void loadExplorer();
 });
@@ -91,14 +98,14 @@ watch(searchText, () => {
 async function loadExplorer(folderId = selectedFolderId.value) {
   error.value = '';
   message.value = '';
-  if (!tenantId.value) {
+  if (scope.value === 'tenant' && !tenantId.value) {
     error.value = 'Thiếu ngữ cảnh đơn vị cho agent này.';
     return;
   }
 
   isLoading.value = true;
   try {
-    explorer.value = await getKnowledgeExplorer(tenantId.value, props.agentId, folderId);
+    explorer.value = await getKnowledgeExplorer(knowledgeContext.value, folderId);
     selectedFolderId.value = explorer.value.selectedFolderId ?? null;
     await runSearch();
   } catch (err) {
@@ -117,13 +124,13 @@ async function openFolder(folderId: string | null) {
 // Tìm kiếm file theo tên trong folder hiện tại. Nếu query rỗng thì clear search results.
 async function runSearch() {
   const query = searchText.value.trim();
-  if (!query || !tenantId.value) {
+  if (!query || (scope.value === 'tenant' && !tenantId.value)) {
     searchResults.value = [];
     return;
   }
 
   try {
-    searchResults.value = await searchKnowledgeFiles(tenantId.value, props.agentId, {
+    searchResults.value = await searchKnowledgeFiles(knowledgeContext.value, {
       name: query,
       folderId: selectedFolderId.value
     });
@@ -146,7 +153,7 @@ async function submitCreateFolder() {
   }
 
   await runBusy(async () => {
-    await createKnowledgeFolder(tenantId.value, props.agentId, {
+    await createKnowledgeFolder(knowledgeContext.value, {
       name,
       parentFolderId: selectedFolderId.value
     });
@@ -169,7 +176,7 @@ async function onFileSelected(event: Event) {
   if (!file) return;
 
   await runBusy(async () => {
-    await uploadKnowledgeFile(tenantId.value, props.agentId, file, selectedFolderId.value);
+    await uploadKnowledgeFile(knowledgeContext.value, file, selectedFolderId.value);
     message.value = 'Đã tải file lên.';
     await loadExplorer();
   });
@@ -192,9 +199,9 @@ async function submitRename() {
 
   await runBusy(async () => {
     if (item.type === 'folder') {
-      await renameKnowledgeFolder(tenantId.value, props.agentId, item.item.id, { name });
+      await renameKnowledgeFolder(knowledgeContext.value, item.item.id, { name });
     } else {
-      await renameKnowledgeFile(tenantId.value, props.agentId, item.item.id, { name });
+      await renameKnowledgeFile(knowledgeContext.value, item.item.id, { name });
     }
 
     isRenameOpen.value = false;
@@ -216,11 +223,11 @@ async function submitMove() {
 
   await runBusy(async () => {
     if (item.type === 'folder') {
-      await moveKnowledgeFolder(tenantId.value, props.agentId, item.item.id, {
+      await moveKnowledgeFolder(knowledgeContext.value, item.item.id, {
         targetFolderId: moveTargetFolderId.value
       });
     } else {
-      await moveKnowledgeFile(tenantId.value, props.agentId, item.item.id, {
+      await moveKnowledgeFile(knowledgeContext.value, item.item.id, {
         targetFolderId: moveTargetFolderId.value
       });
     }
@@ -243,9 +250,9 @@ async function submitDelete() {
 
   await runBusy(async () => {
     if (item.type === 'folder') {
-      await deleteKnowledgeFolder(tenantId.value, props.agentId, item.item.id);
+      await deleteKnowledgeFolder(knowledgeContext.value, item.item.id);
     } else {
-      await deleteKnowledgeFile(tenantId.value, props.agentId, item.item.id);
+      await deleteKnowledgeFile(knowledgeContext.value, item.item.id);
     }
 
     isDeleteOpen.value = false;
@@ -256,7 +263,7 @@ async function submitDelete() {
 
 async function downloadFile(file: KnowledgeFileItem) {
   await runBusy(async () => {
-    await downloadKnowledgeFile(tenantId.value, props.agentId, file);
+    await downloadKnowledgeFile(knowledgeContext.value, file);
   });
 }
 
@@ -333,14 +340,14 @@ function formatDate(value: string) {
     <div>
       <p class="content-header__eyebrow">Tri thức</p>
       <h2>Tri thức agent</h2>
-      <p class="content-header__copy">Quản lý thư mục, tài liệu và file nguồn cho agent trong đơn vị hiện tại.</p>
+      <p class="content-header__copy">Quản lý thư mục, tài liệu và file nguồn cho agent hiện tại.</p>
     </div>
     <div class="knowledge-header__actions">
-      <BaseButton variant="secondary" type="button" :disabled="isBusy || !tenantId" @click="openCreateFolder">
+      <BaseButton variant="secondary" type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="openCreateFolder">
         <FolderPlus :size="16" aria-hidden="true" />
         Thư mục
       </BaseButton>
-      <BaseButton type="button" :disabled="isBusy || !tenantId" @click="triggerUpload">
+      <BaseButton type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="triggerUpload">
         <Upload :size="16" aria-hidden="true" />
         Upload
       </BaseButton>

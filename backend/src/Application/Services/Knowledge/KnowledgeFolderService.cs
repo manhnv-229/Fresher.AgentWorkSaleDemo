@@ -265,7 +265,7 @@ public sealed class KnowledgeFolderService(
             action,
             actorName,
             userId,
-            tenantId,
+            KnowledgeServiceHelper.NormalizeTenantId(tenantId),
             ipAddress,
             description,
             targetType,

@@ -49,6 +49,7 @@ export type {
 } from './agents';
 export type {
   CreateKnowledgeFolderPayload,
+  KnowledgeAgentContext,
   KnowledgeBreadcrumbItem,
   KnowledgeExplorerResponse,
   KnowledgeFileDetail,

@@ -1,5 +1,11 @@
 import { apiClient, apiRequest } from './http';
 
+export interface KnowledgeAgentContext {
+  agentId: string;
+  scope?: 'internal' | 'tenant';
+  tenantId?: string;
+}
+
 export interface KnowledgeFolderTreeItem {
   id: string;
   parentFolderId?: string | null;
@@ -72,11 +78,13 @@ export interface MoveKnowledgeItemPayload {
   targetFolderId?: string | null;
 }
 
-const basePath = (tenantId: string, agentId: string) => `/api/tenants/${tenantId}/agents/${agentId}/knowledge`;
+const basePath = ({ tenantId, agentId, scope = 'internal' }: KnowledgeAgentContext) =>
+  scope === 'tenant'
+    ? `/api/tenants/${tenantId}/agents/${agentId}/knowledge`
+    : `/api/admin/agents/internal/${agentId}/knowledge`;
 
 export function getKnowledgeExplorer(
-  tenantId: string,
-  agentId: string,
+  context: KnowledgeAgentContext,
   folderId?: string | null
 ): Promise<KnowledgeExplorerResponse> {
   const params = new URLSearchParams();
@@ -86,14 +94,13 @@ export function getKnowledgeExplorer(
 
   const query = params.toString();
   return apiRequest<KnowledgeExplorerResponse>({
-    url: `${basePath(tenantId, agentId)}/explorer${query ? `?${query}` : ''}`,
+    url: `${basePath(context)}/explorer${query ? `?${query}` : ''}`,
     requiresAuth: true
   });
 }
 
 export function searchKnowledgeFiles(
-  tenantId: string,
-  agentId: string,
+  context: KnowledgeAgentContext,
   filters: KnowledgeSearchFilters
 ): Promise<KnowledgeFileItem[]> {
   const params = new URLSearchParams();
@@ -105,18 +112,17 @@ export function searchKnowledgeFiles(
 
   const query = params.toString();
   return apiRequest<KnowledgeFileItem[]>({
-    url: `${basePath(tenantId, agentId)}/files/search${query ? `?${query}` : ''}`,
+    url: `${basePath(context)}/files/search${query ? `?${query}` : ''}`,
     requiresAuth: true
   });
 }
 
 export function createKnowledgeFolder(
-  tenantId: string,
-  agentId: string,
+  context: KnowledgeAgentContext,
   payload: CreateKnowledgeFolderPayload
 ): Promise<KnowledgeFolderItem> {
   return apiRequest<KnowledgeFolderItem, CreateKnowledgeFolderPayload>({
-    url: `${basePath(tenantId, agentId)}/folders`,
+    url: `${basePath(context)}/folders`,
     method: 'POST',
     data: payload,
     requiresAuth: true
@@ -124,13 +130,12 @@ export function createKnowledgeFolder(
 }
 
 export function renameKnowledgeFolder(
-  tenantId: string,
-  agentId: string,
+  context: KnowledgeAgentContext,
   folderId: string,
   payload: RenameKnowledgeItemPayload
 ): Promise<KnowledgeFolderItem> {
   return apiRequest<KnowledgeFolderItem, RenameKnowledgeItemPayload>({
-    url: `${basePath(tenantId, agentId)}/folders/${folderId}/rename`,
+    url: `${basePath(context)}/folders/${folderId}/rename`,
     method: 'PUT',
     data: payload,
     requiresAuth: true
@@ -138,30 +143,28 @@ export function renameKnowledgeFolder(
 }
 
 export function moveKnowledgeFolder(
-  tenantId: string,
-  agentId: string,
+  context: KnowledgeAgentContext,
   folderId: string,
   payload: MoveKnowledgeItemPayload
 ): Promise<KnowledgeFolderItem> {
   return apiRequest<KnowledgeFolderItem, MoveKnowledgeItemPayload>({
-    url: `${basePath(tenantId, agentId)}/folders/${folderId}/move`,
+    url: `${basePath(context)}/folders/${folderId}/move`,
     method: 'PUT',
     data: payload,
     requiresAuth: true
   });
 }
 
-export function deleteKnowledgeFolder(tenantId: string, agentId: string, folderId: string): Promise<void> {
+export function deleteKnowledgeFolder(context: KnowledgeAgentContext, folderId: string): Promise<void> {
   return apiRequest<void>({
-    url: `${basePath(tenantId, agentId)}/folders/${folderId}`,
+    url: `${basePath(context)}/folders/${folderId}`,
     method: 'DELETE',
     requiresAuth: true
   });
 }
 
 export function uploadKnowledgeFile(
-  tenantId: string,
-  agentId: string,
+  context: KnowledgeAgentContext,
   file: File,
   folderId?: string | null
 ): Promise<KnowledgeFileItem> {
@@ -172,7 +175,7 @@ export function uploadKnowledgeFile(
   }
 
   return apiRequest<KnowledgeFileItem, FormData>({
-    url: `${basePath(tenantId, agentId)}/files`,
+    url: `${basePath(context)}/files`,
     method: 'POST',
     data: formData,
     requiresAuth: true
@@ -180,13 +183,12 @@ export function uploadKnowledgeFile(
 }
 
 export function renameKnowledgeFile(
-  tenantId: string,
-  agentId: string,
+  context: KnowledgeAgentContext,
   fileId: string,
   payload: RenameKnowledgeItemPayload
 ): Promise<KnowledgeFileItem> {
   return apiRequest<KnowledgeFileItem, RenameKnowledgeItemPayload>({
-    url: `${basePath(tenantId, agentId)}/files/${fileId}/rename`,
+    url: `${basePath(context)}/files/${fileId}/rename`,
     method: 'PUT',
     data: payload,
     requiresAuth: true
@@ -194,22 +196,21 @@ export function renameKnowledgeFile(
 }
 
 export function moveKnowledgeFile(
-  tenantId: string,
-  agentId: string,
+  context: KnowledgeAgentContext,
   fileId: string,
   payload: MoveKnowledgeItemPayload
 ): Promise<KnowledgeFileItem> {
   return apiRequest<KnowledgeFileItem, MoveKnowledgeItemPayload>({
-    url: `${basePath(tenantId, agentId)}/files/${fileId}/move`,
+    url: `${basePath(context)}/files/${fileId}/move`,
     method: 'PUT',
     data: payload,
     requiresAuth: true
   });
 }
 
-export function deleteKnowledgeFile(tenantId: string, agentId: string, fileId: string): Promise<void> {
+export function deleteKnowledgeFile(context: KnowledgeAgentContext, fileId: string): Promise<void> {
   return apiRequest<void>({
-    url: `${basePath(tenantId, agentId)}/files/${fileId}`,
+    url: `${basePath(context)}/files/${fileId}`,
     method: 'DELETE',
     requiresAuth: true
   });
@@ -217,9 +218,9 @@ export function deleteKnowledgeFile(tenantId: string, agentId: string, fileId: s
 
 // Tải file về dưới dạng blob và trigger download qua temporary link element.
 // Không dùng window.open vì browser có thể block popup.
-export async function downloadKnowledgeFile(tenantId: string, agentId: string, file: KnowledgeFileItem): Promise<void> {
+export async function downloadKnowledgeFile(context: KnowledgeAgentContext, file: KnowledgeFileItem): Promise<void> {
   const response = await apiClient.request<Blob>({
-    url: `${basePath(tenantId, agentId)}/files/${file.id}/download`,
+    url: `${basePath(context)}/files/${file.id}/download`,
     method: 'GET',
     responseType: 'blob',
     requiresAuth: true

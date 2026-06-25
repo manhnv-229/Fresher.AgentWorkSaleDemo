@@ -114,7 +114,7 @@ public sealed class KnowledgeFileService(
         var storageObject = await knowledgeRepository.FindReusableStorageObjectAsync(agentId, upload.FolderId, checksum, upload.Length, cancellationToken);
         if (storageObject is null)
         {
-            var objectKey = $"tenants/{tenantId:N}/agents/{agentId:N}/knowledge/{fileId:N}{extension}";
+            var objectKey = KnowledgeServiceHelper.BuildStorageObjectKey(tenantId, agentId, fileId, extension);
             KnowledgeStorageUploadResult storageResult;
             try
             {
@@ -434,7 +434,7 @@ public sealed class KnowledgeFileService(
             action,
             actorName,
             userId,
-            tenantId,
+            KnowledgeServiceHelper.NormalizeTenantId(tenantId),
             ipAddress,
             description,
             targetType,
