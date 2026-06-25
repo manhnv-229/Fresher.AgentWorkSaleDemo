@@ -38,6 +38,20 @@ public interface IAgentKnowledgeRepository
         Guid? folderId,
         string checksumSha256,
         long sizeBytes,
+        Guid? excludeFileId,
+        CancellationToken cancellationToken);
+
+    Task<KnowledgeStorageObject?> FindReusableStorageObjectAsync(
+        Guid agentId,
+        Guid? folderId,
+        string checksumSha256,
+        long sizeBytes,
+        CancellationToken cancellationToken);
+
+    Task<bool> HasOtherActiveFileReferencesAsync(
+        Guid agentId,
+        Guid storageObjectId,
+        Guid excludeFileId,
         CancellationToken cancellationToken);
 
     void AddFile(AgentKnowledgeFile file);

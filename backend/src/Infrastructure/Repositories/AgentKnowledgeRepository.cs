@@ -260,6 +260,7 @@ public sealed class AgentKnowledgeRepository(DemoDbContext dbContext) : IAgentKn
         Guid? folderId,
         string checksumSha256,
         long sizeBytes,
+        Guid? excludeFileId,
         CancellationToken cancellationToken)
     {
         return await dbContext.AgentKnowledgeFiles.AnyAsync(file =>
@@ -267,11 +268,56 @@ public sealed class AgentKnowledgeRepository(DemoDbContext dbContext) : IAgentKn
             file.FolderId == folderId &&
             file.DeletedAt == null &&
             file.Status == AgentKnowledgeFileStatus.Active &&
+            (excludeFileId == null || file.Id != excludeFileId.Value) &&
             file.StorageObject != null &&
             file.StorageObject.DeletedAt == null &&
             file.StorageObject.Status == KnowledgeStorageObjectStatus.Active &&
             file.StorageObject.ChecksumSha256 == checksumSha256 &&
             file.StorageObject.SizeBytes == sizeBytes,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Tìm storage object đang active có thể tái sử dụng trong cùng agent nhưng ở thư mục khác.
+    /// </summary>
+    public async Task<KnowledgeStorageObject?> FindReusableStorageObjectAsync(
+        Guid agentId,
+        Guid? folderId,
+        string checksumSha256,
+        long sizeBytes,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.AgentKnowledgeFiles
+            .AsNoTracking()
+            .Where(file =>
+                file.AgentId == agentId &&
+                file.FolderId != folderId &&
+                file.DeletedAt == null &&
+                file.Status == AgentKnowledgeFileStatus.Active &&
+                file.StorageObject != null &&
+                file.StorageObject.DeletedAt == null &&
+                file.StorageObject.Status == KnowledgeStorageObjectStatus.Active &&
+                file.StorageObject.ChecksumSha256 == checksumSha256 &&
+                file.StorageObject.SizeBytes == sizeBytes)
+            .Select(file => file.StorageObject)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Kiểm tra còn file active nào khác trong cùng agent đang tham chiếu storage object này hay không.
+    /// </summary>
+    public async Task<bool> HasOtherActiveFileReferencesAsync(
+        Guid agentId,
+        Guid storageObjectId,
+        Guid excludeFileId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.AgentKnowledgeFiles.AnyAsync(file =>
+            file.AgentId == agentId &&
+            file.StorageObjectId == storageObjectId &&
+            file.Id != excludeFileId &&
+            file.DeletedAt == null &&
+            file.Status == AgentKnowledgeFileStatus.Active,
             cancellationToken);
     }
 

@@ -390,45 +390,53 @@ public sealed class AgentKnowledgeService(
         buffered.Position = 0;
 
         // Chặn upload cùng nội dung trong cùng thư mục để tránh tạo thêm metadata/object trùng tại một vị trí.
-        if (await knowledgeRepository.ExactFileDuplicateExistsAsync(agentId, upload.FolderId, checksum, upload.Length, cancellationToken))
+        if (await knowledgeRepository.ExactFileDuplicateExistsAsync(agentId, upload.FolderId, checksum, upload.Length, null, cancellationToken))
         {
             return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.ValidationError, "An identical file already exists in this folder.");
         }
 
         var fileId = Guid.NewGuid();
-        var objectKey = $"tenants/{tenantId:N}/agents/{agentId:N}/knowledge/{fileId:N}{extension}";
-        KnowledgeStorageUploadResult storageResult;
-        try
+        var contentType = NormalizeContentType(upload.ContentType, extension);
+        var storageObject = await knowledgeRepository.FindReusableStorageObjectAsync(agentId, upload.FolderId, checksum, upload.Length, cancellationToken);
+        if (storageObject is null)
         {
-            storageResult = await storageService.UploadAsync(
-                new KnowledgeStorageUploadRequest(
-                    buffered,
-                    storageService.BucketName,
-                    objectKey,
-                    NormalizeContentType(upload.ContentType, extension),
-                    upload.Length,
-                    checksum),
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.StorageUnavailable, exception.Message);
+            var objectKey = $"tenants/{tenantId:N}/agents/{agentId:N}/knowledge/{fileId:N}{extension}";
+            KnowledgeStorageUploadResult storageResult;
+            try
+            {
+                storageResult = await storageService.UploadAsync(
+                    new KnowledgeStorageUploadRequest(
+                        buffered,
+                        storageService.BucketName,
+                        objectKey,
+                        contentType,
+                        upload.Length,
+                        checksum),
+                    cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.StorageUnavailable, exception.Message);
+            }
+
+            storageObject = new KnowledgeStorageObject
+            {
+                Id = Guid.NewGuid(),
+                StorageBucket = storageResult.Bucket,
+                StorageObjectKey = storageResult.ObjectKey,
+                StorageEtag = storageResult.ETag,
+                StorageVersionId = storageResult.VersionId,
+                ChecksumSha256 = checksum,
+                SizeBytes = upload.Length,
+                ContentType = contentType,
+                Status = KnowledgeStorageObjectStatus.Active,
+                CreatedByUserId = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            knowledgeRepository.AddStorageObject(storageObject);
         }
 
-        var storageObject = new KnowledgeStorageObject
-        {
-            Id = Guid.NewGuid(),
-            StorageBucket = storageResult.Bucket,
-            StorageObjectKey = storageResult.ObjectKey,
-            StorageEtag = storageResult.ETag,
-            StorageVersionId = storageResult.VersionId,
-            ChecksumSha256 = checksum,
-            SizeBytes = upload.Length,
-            ContentType = NormalizeContentType(upload.ContentType, extension),
-            Status = KnowledgeStorageObjectStatus.Active,
-            CreatedByUserId = userId,
-            CreatedAt = DateTime.UtcNow
-        };
         var file = new AgentKnowledgeFile
         {
             Id = fileId,
@@ -445,7 +453,6 @@ public sealed class AgentKnowledgeService(
             CreatedAt = DateTime.UtcNow
         };
 
-        knowledgeRepository.AddStorageObject(storageObject);
         knowledgeRepository.AddFile(file);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         var actorUser = await authUserRepository.GetByIdAsync(userId, cancellationToken);
@@ -599,6 +606,14 @@ public sealed class AgentKnowledgeService(
             return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.ValidationError, "A file with the same name already exists in the target folder.");
         }
 
+        var currentChecksum = file.StorageObject?.ChecksumSha256;
+        var currentSize = file.StorageObject?.SizeBytes ?? 0;
+        if (currentChecksum is not null &&
+            await knowledgeRepository.ExactFileDuplicateExistsAsync(agentId, command.TargetFolderId, currentChecksum, currentSize, file.Id, cancellationToken))
+        {
+            return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.ValidationError, "An identical file already exists in the target folder.");
+        }
+
         file.FolderId = command.TargetFolderId;
         file.ModifiedByUserId = userId;
         file.ModifiedAt = DateTime.UtcNow;
@@ -631,21 +646,30 @@ public sealed class AgentKnowledgeService(
             return ServiceResult<bool>.Failure(KnowledgeErrorCodes.FileNotFound, "File was not found.");
         }
 
+        var now = DateTime.UtcNow;
+        var hasOtherReferences = await knowledgeRepository.HasOtherActiveFileReferencesAsync(agentId, file.StorageObjectId, file.Id, cancellationToken);
+
         file.Status = AgentKnowledgeFileStatus.Deleted;
-        file.DeletedAt = DateTime.UtcNow;
-        file.ModifiedAt = DateTime.UtcNow;
+        file.DeletedAt = now;
+        file.ModifiedAt = now;
         file.ModifiedByUserId = userId;
-        file.StorageObject.DeletedAt = DateTime.UtcNow;
-        file.StorageObject.Status = KnowledgeStorageObjectStatus.Deleted;
+        if (!hasOtherReferences)
+        {
+            file.StorageObject.DeletedAt = now;
+            file.StorageObject.Status = KnowledgeStorageObjectStatus.Deleted;
+        }
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        try
+        if (!hasOtherReferences)
         {
-            await storageService.DeleteAsync(file.StorageObject.StorageBucket, file.StorageObject.StorageObjectKey, cancellationToken);
-        }
-        catch
-        {
-            // Soft-delete metadata remains the source of truth even if physical cleanup is delayed.
+            try
+            {
+                await storageService.DeleteAsync(file.StorageObject.StorageBucket, file.StorageObject.StorageObjectKey, cancellationToken);
+            }
+            catch
+            {
+                // Soft-delete metadata remains the source of truth even if physical cleanup is delayed.
+            }
         }
 
         await RecordAuditAsync("knowledge.file.delete", userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was deleted.", "AgentKnowledgeFile", file.Id, cancellationToken);
