@@ -12,6 +12,10 @@ using Demo.Domain.Interfaces.Service;
 
 namespace Demo.Application.Services;
 
+/// <summary>
+/// Legacy service tích hợp cho quản lý tri thức agent: explorer, CRUD thư mục, upload/download/search file.
+/// Được giữ lại để backward compatibility. Ưu tiên sử dụng split services mới: KnowledgeExplorerService, KnowledgeFolderService, KnowledgeFileService.
+/// </summary>
 public sealed class AgentKnowledgeService(
     IAgentRepository agentRepository,
     ITenantRepository tenantRepository,
@@ -21,6 +25,11 @@ public sealed class AgentKnowledgeService(
     IAuthUserRepository authUserRepository,
     IUnitOfWork unitOfWork) : IAgentKnowledgeService
 {
+#region Declaration
+
+    /// <summary>
+    /// Danh sách phần mở rộng file được phép upload.
+    /// </summary>
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".pdf",
@@ -33,6 +42,13 @@ public sealed class AgentKnowledgeService(
         ".jpeg"
     };
 
+#endregion
+
+#region Method
+
+    /// <summary>
+    /// Tải trạng thái explorer hoàn chỉnh cho agent: cây thư mục, breadcrumb, thư mục con, và file trong thư mục được chọn.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeExplorerResponse>> GetExplorerAsync(
         Guid tenantId,
         Guid agentId,
@@ -69,6 +85,9 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<KnowledgeExplorerResponse>.Success(response);
     }
 
+    /// <summary>
+    /// Tìm kiếm file tri thức theo nhiều tiêu chí.
+    /// </summary>
     public async Task<ServiceResult<IReadOnlyList<KnowledgeFileItem>>> SearchFilesAsync(
         Guid tenantId,
         Guid agentId,
@@ -99,6 +118,9 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<IReadOnlyList<KnowledgeFileItem>>.Success(files.Select(MapFile).ToList());
     }
 
+    /// <summary>
+    /// Tạo mới thư mục tri thức agent.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> CreateFolderAsync(
         Guid tenantId,
         Guid agentId,
@@ -144,11 +166,16 @@ public sealed class AgentKnowledgeService(
 
         knowledgeRepository.AddFolder(folder);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        var actorUser = await authUserRepository.GetByIdAsync(userId, cancellationToken);
+        var actorName = actorUser?.FullName ?? actorUser?.Email ?? "Unknown";
         await RecordAuditAsync("knowledge.folder.create", userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was created.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
 
-        return ServiceResult<KnowledgeFolderItem>.Success(MapFolder(folder));
+        return ServiceResult<KnowledgeFolderItem>.Success(MapFolder(folder, actorName));
     }
 
+    /// <summary>
+    /// Đổi tên thư mục tri thức.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> RenameFolderAsync(
         Guid tenantId,
         Guid agentId,
@@ -193,6 +220,9 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<KnowledgeFolderItem>.Success(MapFolder(folder));
     }
 
+    /// <summary>
+    /// Di chuyển thư mục đến thư mục đích. Kiểm tra ràng buộc con cháu và trùng tên.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> MoveFolderAsync(
         Guid tenantId,
         Guid agentId,
@@ -249,6 +279,9 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<KnowledgeFolderItem>.Success(MapFolder(folder));
     }
 
+    /// <summary>
+    /// Xóa mềm toàn bộ subtree thư mục và file thuộc subtree.
+    /// </summary>
     public async Task<ServiceResult<bool>> DeleteFolderAsync(
         Guid tenantId,
         Guid agentId,
@@ -302,6 +335,9 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<bool>.Success(true);
     }
 
+    /// <summary>
+    /// Upload file tri thức lên MinIO và lưu metadata vào database.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> UploadFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -411,11 +447,16 @@ public sealed class AgentKnowledgeService(
         knowledgeRepository.AddStorageObject(storageObject);
         knowledgeRepository.AddFile(file);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        var actorUser = await authUserRepository.GetByIdAsync(userId, cancellationToken);
+        var actorName = actorUser?.FullName ?? actorUser?.Email ?? "Unknown";
         await RecordAuditAsync("knowledge.file.upload", userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was uploaded.", "AgentKnowledgeFile", file.Id, cancellationToken);
 
-        return ServiceResult<KnowledgeFileItem>.Success(MapFile(file));
+        return ServiceResult<KnowledgeFileItem>.Success(MapFile(file, actorName));
     }
 
+    /// <summary>
+    /// Tải file tri thức từ MinIO về.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeDownloadResult>> DownloadFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -449,6 +490,9 @@ public sealed class AgentKnowledgeService(
         }
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết file tri thức.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFileDetail>> GetFileDetailAsync(
         Guid tenantId,
         Guid agentId,
@@ -470,6 +514,9 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<KnowledgeFileDetail>.Success(MapFileDetail(file));
     }
 
+    /// <summary>
+    /// Đổi tên file tri thức.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> RenameFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -516,6 +563,9 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<KnowledgeFileItem>.Success(MapFile(file));
     }
 
+    /// <summary>
+    /// Di chuyển file đến thư mục đích.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> MoveFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -557,6 +607,9 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<KnowledgeFileItem>.Success(MapFile(file));
     }
 
+    /// <summary>
+    /// Xóa mềm file tri thức và xóa vật lý object khỏi MinIO.
+    /// </summary>
     public async Task<ServiceResult<bool>> DeleteFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -598,12 +651,22 @@ public sealed class AgentKnowledgeService(
         return ServiceResult<bool>.Success(true);
     }
 
+#endregion
+
+#region Declaration
+
+    /// <summary>
+    /// Kiểm tra agent tồn tại và có thể đọc được.
+    /// </summary>
     private async Task<(string Code, string Message)?> EnsureReadableAgentAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken)
     {
         var agent = await agentRepository.GetTenantAgentByIdAsync(tenantId, agentId, cancellationToken);
         return agent is null ? (KnowledgeErrorCodes.AgentNotFound, "Agent was not found.") : null;
     }
 
+    /// <summary>
+    /// Kiểm tra tenant tồn tại, không bị khóa, và agent có thể ghi được.
+    /// </summary>
     private async Task<(string Code, string Message)?> EnsureWritableAgentAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken)
     {
         var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
@@ -620,6 +683,9 @@ public sealed class AgentKnowledgeService(
         return await EnsureReadableAgentAsync(tenantId, agentId, cancellationToken);
     }
 
+    /// <summary>
+    /// Ghi audit log với tên actor được resolve từ authenticated user.
+    /// </summary>
     private async Task RecordAuditAsync(
         string action,
         Guid userId,
@@ -643,6 +709,21 @@ public sealed class AgentKnowledgeService(
             cancellationToken);
     }
 
+    /// <summary>
+    /// Ánh xạ entity folder sang DTO với tên người tạo đã resolve trước.
+    /// </summary>
+    private static KnowledgeFolderItem MapFolder(AgentKnowledgeFolder folder, string createdByUserName) => new(
+        folder.Id,
+        folder.ParentFolderId,
+        folder.Name,
+        folder.CreatedByUserId,
+        createdByUserName,
+        folder.CreatedAt,
+        folder.ModifiedAt);
+
+    /// <summary>
+    /// Ánh xạ entity folder sang DTO.
+    /// </summary>
     private static KnowledgeFolderItem MapFolder(AgentKnowledgeFolder folder) => new(
         folder.Id,
         folder.ParentFolderId,
@@ -652,6 +733,26 @@ public sealed class AgentKnowledgeService(
         folder.CreatedAt,
         folder.ModifiedAt);
 
+    /// <summary>
+    /// Ánh xạ entity file sang DTO với tên người tạo đã resolve trước.
+    /// </summary>
+    private static KnowledgeFileItem MapFile(AgentKnowledgeFile file, string createdByUserName) => new(
+        file.Id,
+        file.FolderId,
+        file.Name,
+        file.OriginalName,
+        file.Extension,
+        file.StorageObject?.ContentType ?? "application/octet-stream",
+        file.StorageObject?.SizeBytes ?? 0,
+        file.Status.ToString(),
+        file.CreatedByUserId,
+        createdByUserName,
+        file.CreatedAt,
+        file.ModifiedAt);
+
+    /// <summary>
+    /// Ánh xạ entity file sang DTO.
+    /// </summary>
     private static KnowledgeFileItem MapFile(AgentKnowledgeFile file) => new(
         file.Id,
         file.FolderId,
@@ -666,6 +767,9 @@ public sealed class AgentKnowledgeService(
         file.CreatedAt,
         file.ModifiedAt);
 
+    /// <summary>
+    /// Ánh xạ entity file sang DTO chi tiết.
+    /// </summary>
     private static KnowledgeFileDetail MapFileDetail(AgentKnowledgeFile file) => new(
         file.Id,
         file.FolderId,
@@ -682,6 +786,9 @@ public sealed class AgentKnowledgeService(
         file.CreatedAt,
         file.ModifiedAt);
 
+    /// <summary>
+    /// Xây dựng cấu trúc cây thư mục từ danh sách phẳng.
+    /// </summary>
     private static IReadOnlyList<KnowledgeFolderTreeItem> BuildTree(IReadOnlyList<AgentKnowledgeFolder> folders, Guid? parentFolderId)
     {
         return folders
@@ -691,6 +798,9 @@ public sealed class AgentKnowledgeService(
             .ToList();
     }
 
+    /// <summary>
+    /// Xây dựng breadcrumb từ thư mục được chọn lên root.
+    /// </summary>
     private static IReadOnlyList<KnowledgeBreadcrumbItem> BuildBreadcrumb(
         IReadOnlyList<AgentKnowledgeFolder> folders,
         AgentKnowledgeFolder? selectedFolder)
@@ -715,6 +825,9 @@ public sealed class AgentKnowledgeService(
         return path;
     }
 
+    /// <summary>
+    /// Kiểm tra candidateId có phải là con cháu của ancestorId không.
+    /// </summary>
     private static bool IsDescendant(IReadOnlyList<AgentKnowledgeFolder> folders, Guid ancestorId, Guid candidateId)
     {
         var byId = folders.ToDictionary(folder => folder.Id);
@@ -732,14 +845,23 @@ public sealed class AgentKnowledgeService(
         return false;
     }
 
+    /// <summary>
+    /// Normalize tên hiển thị: trim whitespace và trả về null nếu rỗng.
+    /// </summary>
     private static string? NormalizeDisplayName(string? value)
     {
         var normalized = value?.Trim();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
     }
 
+    /// <summary>
+    /// Normalize tên để so sánh: trim và chuyển sang uppercase.
+    /// </summary>
     private static string NormalizeName(string? value) => (value ?? string.Empty).Trim().ToUpperInvariant();
 
+    /// <summary>
+    /// Xác định content type từ extension nếu không có content type từ client.
+    /// </summary>
     private static string NormalizeContentType(string contentType, string extension)
     {
         if (!string.IsNullOrWhiteSpace(contentType))
@@ -759,4 +881,6 @@ public sealed class AgentKnowledgeService(
             _ => "application/octet-stream"
         };
     }
+
+#endregion
 }

@@ -215,6 +215,8 @@ export function deleteKnowledgeFile(tenantId: string, agentId: string, fileId: s
   });
 }
 
+// Tải file về dưới dạng blob và trigger download qua temporary link element.
+// Không dùng window.open vì browser có thể block popup.
 export async function downloadKnowledgeFile(tenantId: string, agentId: string, file: KnowledgeFileItem): Promise<void> {
   const response = await apiClient.request<Blob>({
     url: `${basePath(tenantId, agentId)}/files/${file.id}/download`,

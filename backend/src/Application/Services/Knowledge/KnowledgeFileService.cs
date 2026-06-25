@@ -12,14 +12,24 @@ using Demo.Domain.Interfaces.Service;
 
 namespace Demo.Application.Services.Knowledge;
 
+/// <summary>
+/// Xử lý các thao tác ghi đối với file tri thức agent: upload, tải xuống, xem chi tiết, đổi tên, di chuyển, và xóa mềm file.
+/// Bao gồm xử lý lỗi storage typed (unreachable/timed-out/rejected) và ánh xạ tên actor cho audit.
+/// </summary>
 public sealed class KnowledgeFileService(
     IAgentRepository agentRepository,
     ITenantRepository tenantRepository,
     IAgentKnowledgeRepository knowledgeRepository,
     IKnowledgeStorageService storageService,
+    IAuthUserRepository authUserRepository,
     IAuditLogService auditLogService,
     IUnitOfWork unitOfWork) : IKnowledgeFileService
 {
+#region Declaration
+
+    /// <summary>
+    /// Danh sách phần mở rộng file được phép upload. Dùng để xác thực loại file trước khi lưu vào storage.
+    /// </summary>
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".pdf",
@@ -32,6 +42,14 @@ public sealed class KnowledgeFileService(
         ".jpeg"
     };
 
+#endregion
+
+#region Method
+
+    /// <summary>
+    /// Upload file tri thức lên MinIO và lưu metadata vào database. Kiểm tra quyền ghi, dung lượng, loại file, trùng tên,
+    /// và xử lý các lỗi storage typed (unreachable/timed-out/rejected) để trả về thông báo lỗi rõ ràng.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> UploadFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -69,6 +87,7 @@ public sealed class KnowledgeFileService(
             return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.InvalidName, "File name is required.");
         }
 
+        // Xác thực thư mục tồn tại nếu có chỉ định
         if (upload.FolderId is not null &&
             await knowledgeRepository.GetFolderAsync(agentId, upload.FolderId.Value, trackChanges: false, cancellationToken) is null)
         {
@@ -82,6 +101,7 @@ public sealed class KnowledgeFileService(
             return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.ValidationError, "A file with the same name already exists.");
         }
 
+        // Buffer file content để tính checksum SHA256 và upload lên storage
         await using var buffered = new MemoryStream();
         await upload.Content.CopyToAsync(buffered, cancellationToken);
         buffered.Position = 0;
@@ -153,11 +173,17 @@ public sealed class KnowledgeFileService(
         knowledgeRepository.AddStorageObject(storageObject);
         knowledgeRepository.AddFile(file);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RecordAuditAsync("knowledge.file.upload", userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was uploaded.", "AgentKnowledgeFile", file.Id, cancellationToken);
+        // Resolve tên actor trước khi trả response vì navigation CreatedByUser chưa được nạp trên entity vừa tạo
+        var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
+        await RecordAuditAsync("knowledge.file.upload", actorName, userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was uploaded.", "AgentKnowledgeFile", file.Id, cancellationToken);
 
-        return ServiceResult<KnowledgeFileItem>.Success(KnowledgeServiceHelper.MapFile(file));
+        return ServiceResult<KnowledgeFileItem>.Success(KnowledgeServiceHelper.MapFile(file, actorName));
     }
 
+    /// <summary>
+    /// Tải file tri thức từ MinIO về. Trả về nội dung file, tên hiển thị, content type, và dung lượng.
+    /// Xử lý lỗi storage unreachable và timed-out.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeDownloadResult>> DownloadFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -199,6 +225,9 @@ public sealed class KnowledgeFileService(
         }
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết file tri thức bao gồm metadata storage và thông tin người tạo.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFileDetail>> GetFileDetailAsync(
         Guid tenantId,
         Guid agentId,
@@ -220,6 +249,9 @@ public sealed class KnowledgeFileService(
         return ServiceResult<KnowledgeFileDetail>.Success(KnowledgeServiceHelper.MapFileDetail(file));
     }
 
+    /// <summary>
+    /// Đổi tên file tri thức. Kiểm tra trùng tên trong cùng thư mục và ghi nhận audit log với tên actor đã resolve.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> RenameFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -247,6 +279,7 @@ public sealed class KnowledgeFileService(
             return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.InvalidName, "File name is required.");
         }
 
+        // Giữ nguyên extension của file gốc nếu người dùng không nhập
         var extension = file.Extension.StartsWith('.') ? file.Extension : $".{file.Extension}";
         var displayName = Path.HasExtension(name) ? name : $"{name}{extension}";
         var normalizedName = KnowledgeServiceHelper.NormalizeName(displayName);
@@ -261,11 +294,15 @@ public sealed class KnowledgeFileService(
         file.ModifiedByUserId = userId;
         file.ModifiedAt = DateTime.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RecordAuditAsync("knowledge.file.rename", userId, tenantId, ipAddress, $"Knowledge file '{previousName}' was renamed to '{file.Name}'.", "AgentKnowledgeFile", file.Id, cancellationToken);
+        var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
+        await RecordAuditAsync("knowledge.file.rename", actorName, userId, tenantId, ipAddress, $"Knowledge file '{previousName}' was renamed to '{file.Name}'.", "AgentKnowledgeFile", file.Id, cancellationToken);
 
-        return ServiceResult<KnowledgeFileItem>.Success(KnowledgeServiceHelper.MapFile(file));
+        return ServiceResult<KnowledgeFileItem>.Success(KnowledgeServiceHelper.MapFile(file, actorName));
     }
 
+    /// <summary>
+    /// Di chuyển file đến thư mục đích. Kiểm tra thư mục đích tồn tại và trùng tên trong thư mục đích.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> MoveFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -302,11 +339,16 @@ public sealed class KnowledgeFileService(
         file.ModifiedByUserId = userId;
         file.ModifiedAt = DateTime.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RecordAuditAsync("knowledge.file.move", userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was moved.", "AgentKnowledgeFile", file.Id, cancellationToken);
+        var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
+        await RecordAuditAsync("knowledge.file.move", actorName, userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was moved.", "AgentKnowledgeFile", file.Id, cancellationToken);
 
-        return ServiceResult<KnowledgeFileItem>.Success(KnowledgeServiceHelper.MapFile(file));
+        return ServiceResult<KnowledgeFileItem>.Success(KnowledgeServiceHelper.MapFile(file, actorName));
     }
 
+    /// <summary>
+    /// Xóa mềm file tri thức: đánh dấu deleted cho file và storage object, sau đó xóa vật lý object khỏi MinIO.
+    /// Nếu xóa vật lý thất bại, metadata vẫn được giữ làm source of truth để rollback an toàn.
+    /// </summary>
     public async Task<ServiceResult<bool>> DeleteFileAsync(
         Guid tenantId,
         Guid agentId,
@@ -344,12 +386,17 @@ public sealed class KnowledgeFileService(
             // Soft-delete metadata remains the source of truth even if physical cleanup is delayed.
         }
 
-        await RecordAuditAsync("knowledge.file.delete", userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was deleted.", "AgentKnowledgeFile", file.Id, cancellationToken);
+        var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
+        await RecordAuditAsync("knowledge.file.delete", actorName, userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was deleted.", "AgentKnowledgeFile", file.Id, cancellationToken);
         return ServiceResult<bool>.Success(true);
     }
 
+    /// <summary>
+    /// Ghi audit log cho các thao tác file với tên actor đã resolve từ authenticated user.
+    /// </summary>
     private async Task RecordAuditAsync(
         string action,
+        string actorName,
         Guid userId,
         Guid tenantId,
         string? ipAddress,
@@ -360,7 +407,7 @@ public sealed class KnowledgeFileService(
     {
         await auditLogService.RecordAsync(
             action,
-            "System",
+            actorName,
             userId,
             tenantId,
             ipAddress,
@@ -369,4 +416,6 @@ public sealed class KnowledgeFileService(
             targetId.ToString(),
             cancellationToken);
     }
+
+#endregion
 }

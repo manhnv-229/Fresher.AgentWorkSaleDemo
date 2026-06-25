@@ -39,9 +39,12 @@ const props = defineProps<{ agentId: string }>();
 const route = useRoute();
 const router = useRouter();
 
+// Explorer state: tree, breadcrumb, current folders/files từ API
 const explorer = ref<KnowledgeExplorerResponse | null>(null);
+// Search results: khác với explorer files vì search cross-folder
 const searchResults = ref<KnowledgeFileItem[]>([]);
 const selectedFolderId = ref<string | null>(null);
+// Search text đồng bộ với watcher để auto-search khi thay đổi
 const searchText = ref('');
 const message = ref('');
 const error = ref('');
@@ -64,22 +67,27 @@ type ActiveItem =
 const tenantId = computed(() => (route.query.tenantId as string) || '');
 const breadcrumb = computed(() => explorer.value?.breadcrumb ?? []);
 const currentFolders = computed(() => explorer.value?.folders ?? []);
+// Hiển thị: ưu tiên search results nếu có search text, không thì dùng explorer files
 const displayedFiles = computed(() => searchText.value.trim() ? searchResults.value : explorer.value?.files ?? []);
+// Flatten tree để dùng trong modal di chuyển (hiển thị tất cả thư mục)
 const allFolders = computed(() => flattenFolders(explorer.value?.tree ?? []));
 
 onMounted(() => {
   void loadExplorer();
 });
 
+// Khi agentId hoặc tenantId thay đổi, reset folder selection và reload explorer
 watch(() => [props.agentId, tenantId.value], () => {
   selectedFolderId.value = null;
   void loadExplorer();
 });
 
+// Auto-search khi search text thay đổi (debounce không cần vì API nhanh)
 watch(searchText, () => {
   void runSearch();
 });
 
+// Tải explorer state: tree, breadcrumb, folders, files. Gọi khi mount, khi chọn folder, và sau mỗi mutation.
 async function loadExplorer(folderId = selectedFolderId.value) {
   error.value = '';
   message.value = '';
@@ -100,11 +108,13 @@ async function loadExplorer(folderId = selectedFolderId.value) {
   }
 }
 
+// Chọn folder: cập nhật selectedFolderId và reload explorer với folder mới
 async function openFolder(folderId: string | null) {
   selectedFolderId.value = folderId;
   await loadExplorer(folderId);
 }
 
+// Tìm kiếm file theo tên trong folder hiện tại. Nếu query rỗng thì clear search results.
 async function runSearch() {
   const query = searchText.value.trim();
   if (!query || !tenantId.value) {
@@ -127,6 +137,7 @@ function openCreateFolder() {
   isCreateFolderOpen.value = true;
 }
 
+// Tạo thư mục: gọi API, đóng modal, hiển thị message, và refresh explorer
 async function submitCreateFolder() {
   const name = folderName.value.trim();
   if (!name) {
@@ -145,10 +156,12 @@ async function submitCreateFolder() {
   });
 }
 
+// Trigger file input click để mở file picker
 function triggerUpload() {
   fileInput.value?.click();
 }
 
+// Xử lý file được chọn: upload lên server và refresh explorer
 async function onFileSelected(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -168,6 +181,7 @@ function openRename(item: ActiveItem) {
   isRenameOpen.value = true;
 }
 
+// Đổi tên: gọi API tương ứng (folder/file), đóng modal, và refresh explorer
 async function submitRename() {
   const item = activeItem.value;
   const name = renameValue.value.trim();
@@ -195,6 +209,7 @@ function openMove(item: ActiveItem) {
   isMoveOpen.value = true;
 }
 
+// Di chuyển: gọi API tương ứng (folder/file), đóng modal, và refresh explorer
 async function submitMove() {
   const item = activeItem.value;
   if (!item) return;
@@ -221,6 +236,7 @@ function openDelete(item: ActiveItem) {
   isDeleteOpen.value = true;
 }
 
+// Xóa: gọi API tương ứng (folder/file), đóng modal, và refresh explorer
 async function submitDelete() {
   const item = activeItem.value;
   if (!item) return;
@@ -244,6 +260,7 @@ async function downloadFile(file: KnowledgeFileItem) {
   });
 }
 
+// Wrapper để set isBusy state trong suốt quá trình thực hiện action. Clear error/message trước khi chạy.
 async function runBusy(action: () => Promise<void>) {
   error.value = '';
   message.value = '';
@@ -257,6 +274,7 @@ async function runBusy(action: () => Promise<void>) {
   }
 }
 
+// Xử lý lỗi: phân biệt storage errors (unreachable/timed-out/rejected) để hiển thị thông báo chi tiết hơn
 function handleError(err: unknown, fallback: string) {
   if (err instanceof ApiError && err.status === 401) {
     router.push({ name: 'login' });
@@ -280,6 +298,7 @@ function handleError(err: unknown, fallback: string) {
   error.value = fallback;
 }
 
+// Flatten tree structure thành array phẳng cho dropdown di chuyển
 function flattenFolders(nodes: KnowledgeFolderTreeItem[]): KnowledgeFolderItem[] {
   return nodes.flatMap((node) => [
     {

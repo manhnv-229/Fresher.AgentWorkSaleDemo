@@ -10,13 +10,22 @@ using Demo.Domain.Interfaces.Service;
 
 namespace Demo.Application.Services.Knowledge;
 
+/// <summary>
+/// Xử lý các thao tác ghi đối với thư mục tri thức agent: tạo, đổi tên, di chuyển, và xóa mềm (soft delete) toàn bộ subtree.
+/// </summary>
 public sealed class KnowledgeFolderService(
     IAgentRepository agentRepository,
     ITenantRepository tenantRepository,
     IAgentKnowledgeRepository knowledgeRepository,
+    IAuthUserRepository authUserRepository,
     IAuditLogService auditLogService,
     IUnitOfWork unitOfWork) : IKnowledgeFolderService
 {
+#region Method
+
+    /// <summary>
+    /// Tạo mới một thư mục tri thức agent. Kiểm tra quyền ghi, tên hợp lệ, và trùng tên trong cùng thư mục cha trước khi persist.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> CreateFolderAsync(
         Guid tenantId,
         Guid agentId,
@@ -37,6 +46,7 @@ public sealed class KnowledgeFolderService(
             return ServiceResult<KnowledgeFolderItem>.Failure(KnowledgeErrorCodes.InvalidName, "Folder name is required.");
         }
 
+        // Xác thực thư mục cha tồn tại nếu có chỉ định
         if (command.ParentFolderId is not null &&
             await knowledgeRepository.GetFolderAsync(agentId, command.ParentFolderId.Value, trackChanges: false, cancellationToken) is null)
         {
@@ -62,11 +72,16 @@ public sealed class KnowledgeFolderService(
 
         knowledgeRepository.AddFolder(folder);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RecordAuditAsync("knowledge.folder.create", userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was created.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
+        // Resolve tên actor trước khi trả response vì navigation CreatedByUser chưa được nạp trên entity vừa tạo
+        var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
+        await RecordAuditAsync("knowledge.folder.create", actorName, userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was created.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
 
-        return ServiceResult<KnowledgeFolderItem>.Success(KnowledgeServiceHelper.MapFolder(folder));
+        return ServiceResult<KnowledgeFolderItem>.Success(KnowledgeServiceHelper.MapFolder(folder, actorName));
     }
 
+    /// <summary>
+    /// Đổi tên thư mục tri thức. Kiểm tra trùng tên trong cùng thư mục cha và ghi nhận audit log với tên actor đã resolve.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> RenameFolderAsync(
         Guid tenantId,
         Guid agentId,
@@ -106,11 +121,15 @@ public sealed class KnowledgeFolderService(
         folder.ModifiedByUserId = userId;
         folder.ModifiedAt = DateTime.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RecordAuditAsync("knowledge.folder.rename", userId, tenantId, ipAddress, $"Knowledge folder '{previousName}' was renamed to '{folder.Name}'.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
+        var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
+        await RecordAuditAsync("knowledge.folder.rename", actorName, userId, tenantId, ipAddress, $"Knowledge folder '{previousName}' was renamed to '{folder.Name}'.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
 
-        return ServiceResult<KnowledgeFolderItem>.Success(KnowledgeServiceHelper.MapFolder(folder));
+        return ServiceResult<KnowledgeFolderItem>.Success(KnowledgeServiceHelper.MapFolder(folder, actorName));
     }
 
+    /// <summary>
+    /// Di chuyển thư mục đến thư mục đích. Kiểm tra không di chuyển vào chính nó hoặc con cháu, và trùng tên trong thư mục đích.
+    /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> MoveFolderAsync(
         Guid tenantId,
         Guid agentId,
@@ -137,6 +156,7 @@ public sealed class KnowledgeFolderService(
             return ServiceResult<KnowledgeFolderItem>.Failure(KnowledgeErrorCodes.InvalidMove, "Folder cannot be moved into itself.");
         }
 
+        // Kiểm tra thư mục đích tồn tại và không phải là con cháu của thư mục đang di chuyển
         var allFolders = await knowledgeRepository.GetFoldersAsync(agentId, cancellationToken);
         if (command.TargetFolderId is not null)
         {
@@ -162,11 +182,16 @@ public sealed class KnowledgeFolderService(
         folder.ModifiedByUserId = userId;
         folder.ModifiedAt = DateTime.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RecordAuditAsync("knowledge.folder.move", userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was moved.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
+        var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
+        await RecordAuditAsync("knowledge.folder.move", actorName, userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was moved.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
 
-        return ServiceResult<KnowledgeFolderItem>.Success(KnowledgeServiceHelper.MapFolder(folder));
+        return ServiceResult<KnowledgeFolderItem>.Success(KnowledgeServiceHelper.MapFolder(folder, actorName));
     }
 
+    /// <summary>
+    /// Xóa mềm toàn bộ subtree thư mục: đánh dấu deleted cho thư mục, tất cả con cháu, và file thuộc subtree.
+    /// Không xóa vật lý object storage để giữ an toàn rollback.
+    /// </summary>
     public async Task<ServiceResult<bool>> DeleteFolderAsync(
         Guid tenantId,
         Guid agentId,
@@ -187,6 +212,7 @@ public sealed class KnowledgeFolderService(
             return ServiceResult<bool>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
         }
 
+        // Soft delete toàn bộ subtree: folder con và file thuộc subtree
         var allFolders = await knowledgeRepository.GetFoldersAsync(agentId, cancellationToken);
         var now = DateTime.UtcNow;
         foreach (var descendant in allFolders.Where(item => item.Id == folder.Id || KnowledgeServiceHelper.IsDescendant(allFolders, folder.Id, item.Id)))
@@ -215,13 +241,18 @@ public sealed class KnowledgeFolderService(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        await RecordAuditAsync("knowledge.folder.delete", userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was deleted.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
+        var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
+        await RecordAuditAsync("knowledge.folder.delete", actorName, userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was deleted.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
 
         return ServiceResult<bool>.Success(true);
     }
 
+    /// <summary>
+    /// Ghi audit log cho các thao tác folder với tên actor đã resolve từ authenticated user.
+    /// </summary>
     private async Task RecordAuditAsync(
         string action,
+        string actorName,
         Guid userId,
         Guid tenantId,
         string? ipAddress,
@@ -232,7 +263,7 @@ public sealed class KnowledgeFolderService(
     {
         await auditLogService.RecordAsync(
             action,
-            "System",
+            actorName,
             userId,
             tenantId,
             ipAddress,
@@ -241,4 +272,6 @@ public sealed class KnowledgeFolderService(
             targetId.ToString(),
             cancellationToken);
     }
+
+#endregion
 }
