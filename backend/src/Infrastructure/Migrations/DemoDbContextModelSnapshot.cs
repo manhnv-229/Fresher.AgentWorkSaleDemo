@@ -415,8 +415,7 @@ namespace Demo.Infrastructure.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
-                    b.HasIndex("ChecksumSha256", "SizeBytes")
-                        .IsUnique();
+                    b.HasIndex("ChecksumSha256", "SizeBytes");
 
                     b.HasIndex("StorageBucket", "StorageObjectKey")
                         .IsUnique();
