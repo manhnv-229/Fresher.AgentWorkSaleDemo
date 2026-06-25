@@ -1,4 +1,4 @@
-import { httpJson } from './http';
+import { apiRequest } from './http';
 import type { AdminUserSummary } from './auth.types';
 
 export interface MemberListFilters {
@@ -13,27 +13,30 @@ export async function getUsers(filters?: MemberListFilters): Promise<AdminUserSu
 
   const query = params.toString();
   const url = `/api/admin/users${query ? `?${query}` : ''}`;
-  return httpJson<AdminUserSummary[]>(url, { auth: true });
+  return apiRequest<AdminUserSummary[]>({ url, requiresAuth: true });
 }
 
 export async function lockUser(userId: string): Promise<AdminUserSummary> {
-  return httpJson<AdminUserSummary>(`/api/admin/users/${userId}/lock`, {
+  return apiRequest<AdminUserSummary>({
+    url: `/api/admin/users/${userId}/lock`,
     method: 'POST',
-    auth: true
+    requiresAuth: true
   });
 }
 
 export async function unlockUser(userId: string): Promise<AdminUserSummary> {
-  return httpJson<AdminUserSummary>(`/api/admin/users/${userId}/unlock`, {
+  return apiRequest<AdminUserSummary>({
+    url: `/api/admin/users/${userId}/unlock`,
     method: 'POST',
-    auth: true
+    requiresAuth: true
   });
 }
 
 export async function updateJobPosition(userId: string, jobPosition: string | null): Promise<AdminUserSummary> {
-  return httpJson<AdminUserSummary>(`/api/admin/users/${userId}/job-position`, {
+  return apiRequest<AdminUserSummary>({
+    url: `/api/admin/users/${userId}/job-position`,
     method: 'PUT',
-    body: { jobPosition },
-    auth: true
+    data: { jobPosition },
+    requiresAuth: true
   });
 }

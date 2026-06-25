@@ -3,26 +3,31 @@ using Demo.Application.DTOs;
 using Demo.Application.Errors;
 using Demo.Domain.Entities;
 using Demo.Domain.Enums;
+using Demo.Application.Interfaces.Repository;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
+using AutoMapper;
 
 namespace Demo.Application.Services;
 
 public sealed class TenantCatalogService(
+    ITenantCatalogQueryRepository tenantQueryRepository,
     ITenantCatalogRepository tenantRepository,
+    IMapper mapper,
     IUnitOfWork unitOfWork) : ITenantCatalogService
 {
     public async Task<ServiceResult<IReadOnlyList<TenantListItem>>> GetTenantsAsync(CancellationToken cancellationToken)
     {
-        var tenants = await tenantRepository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<TenantListItem>>.Success(tenants.Select(MapTenantListItem).ToList());
+        var tenants = await tenantQueryRepository.GetAllAsync(cancellationToken);
+        return ServiceResult<IReadOnlyList<TenantListItem>>.Success(
+            tenants.Select(tenant => mapper.Map<TenantListItem>(tenant)).ToList());
     }
 
     public async Task<ServiceResult<TenantDetailItem>> GetTenantByIdAsync(
         Guid tenantId,
         CancellationToken cancellationToken)
     {
-        var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        var tenant = await tenantQueryRepository.GetByIdAsync(tenantId, cancellationToken);
         if (tenant is null)
         {
             return ServiceResult<TenantDetailItem>.Failure(
@@ -30,7 +35,7 @@ public sealed class TenantCatalogService(
                 "Tenant not found.");
         }
 
-        return ServiceResult<TenantDetailItem>.Success(MapTenantDetailItem(tenant));
+        return ServiceResult<TenantDetailItem>.Success(mapper.Map<TenantDetailItem>(tenant));
     }
 
     public async Task<ServiceResult<TenantListItem>> CreateTenantAsync(
@@ -64,7 +69,7 @@ public sealed class TenantCatalogService(
         tenantRepository.Add(tenant);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ServiceResult<TenantListItem>.Success(MapTenantListItem(tenant));
+        return ServiceResult<TenantListItem>.Success(mapper.Map<TenantListItem>(tenant));
     }
 
     public async Task<ServiceResult<TenantDetailItem>> UpdateTenantAsync(
@@ -102,7 +107,7 @@ public sealed class TenantCatalogService(
         tenantRepository.Update(tenant);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ServiceResult<TenantDetailItem>.Success(MapTenantDetailItem(tenant));
+        return ServiceResult<TenantDetailItem>.Success(mapper.Map<TenantDetailItem>(tenant));
     }
 
     public async Task<ServiceResult<TenantDetailItem>> LockTenantAsync(
@@ -130,22 +135,6 @@ public sealed class TenantCatalogService(
         tenantRepository.Update(tenant);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ServiceResult<TenantDetailItem>.Success(MapTenantDetailItem(tenant));
+        return ServiceResult<TenantDetailItem>.Success(mapper.Map<TenantDetailItem>(tenant));
     }
-
-    private static TenantListItem MapTenantListItem(Tenant tenant) =>
-        new(
-            tenant.Id,
-            tenant.Name,
-            tenant.Code,
-            tenant.Status.ToString());
-
-    private static TenantDetailItem MapTenantDetailItem(Tenant tenant) =>
-        new(
-            tenant.Id,
-            tenant.Name,
-            tenant.Code,
-            tenant.Status.ToString(),
-            tenant.CreatedAt,
-            tenant.ModifiedAt);
 }

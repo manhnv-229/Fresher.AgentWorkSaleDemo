@@ -9,6 +9,7 @@ using Demo.Infrastructure.Persistence;
 using Demo.Infrastructure.Options;
 using Demo.Infrastructure.Services;
 
+using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -187,6 +188,11 @@ builder.Services
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider.GetRequiredService<IMapper>().ConfigurationProvider.AssertConfigurationIsValid();
+}
 
 if (app.Environment.IsDevelopment())
 {

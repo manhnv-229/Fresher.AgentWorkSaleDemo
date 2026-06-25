@@ -1,5 +1,6 @@
-import { getAccessToken } from '../stores/auth';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export function isAuthenticatedRoute() {
-  return getAccessToken() !== null;
+  // Guard mức client chỉ kiểm tra token đang có; quyền thực tế vẫn do API xác nhận.
+  return useAuthStore().getAccessToken() !== null;
 }

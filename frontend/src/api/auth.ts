@@ -1,12 +1,12 @@
-import { ApiError, httpJson } from './http';
+import { ApiError, apiRequest } from './http';
 import type { ChangePasswordRequest, LoginRequest, TokenResponse } from './auth.types';
 
 export async function login(payload: LoginRequest): Promise<TokenResponse> {
   try {
-    return await httpJson<TokenResponse, LoginRequest>('/api/auth/login', {
+    return await apiRequest<TokenResponse, LoginRequest>({
+      url: '/api/auth/login',
       method: 'POST',
-      body: payload,
-      credentials: 'include'
+      data: payload
     });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
@@ -14,6 +14,7 @@ export async function login(payload: LoginRequest): Promise<TokenResponse> {
         throw new ApiError('Tài khoản đang bị khóa.', error.status, error.body);
       }
 
+      // Giữ mapping message tại đây để UI login không phải biết chi tiết mã lỗi backend.
       throw new ApiError('Email hoặc mật khẩu không đúng.', error.status, error.body);
     }
 
@@ -23,14 +24,15 @@ export async function login(payload: LoginRequest): Promise<TokenResponse> {
 
 export async function changePassword(payload: ChangePasswordRequest): Promise<void> {
   try {
-    await httpJson<void, ChangePasswordRequest>('/api/auth/change-password', {
+    await apiRequest<void, ChangePasswordRequest>({
+      url: '/api/auth/change-password',
       method: 'POST',
-      body: payload,
-      credentials: 'include',
-      auth: true
+      data: payload,
+      requiresAuth: true
     });
   } catch (error) {
     if (error instanceof ApiError && error.status === 400 && error.body?.code === 'invalid_current_password') {
+      // Chuyển mã lỗi kỹ thuật sang message hiển thị ổn định cho form đổi mật khẩu.
       throw new ApiError('Mật khẩu hiện tại không đúng.', error.status, error.body);
     }
 
@@ -39,15 +41,15 @@ export async function changePassword(payload: ChangePasswordRequest): Promise<vo
 }
 
 export async function refreshAccessToken(): Promise<TokenResponse> {
-  return httpJson<TokenResponse>('/api/auth/refresh-token', {
+  return apiRequest<TokenResponse>({
+    url: '/api/auth/refresh-token',
     method: 'POST',
-    credentials: 'include'
   });
 }
 
 export async function logout(): Promise<void> {
-  await httpJson<void>('/api/auth/logout', {
+  await apiRequest<void>({
+    url: '/api/auth/logout',
     method: 'POST',
-    credentials: 'include'
   });
 }

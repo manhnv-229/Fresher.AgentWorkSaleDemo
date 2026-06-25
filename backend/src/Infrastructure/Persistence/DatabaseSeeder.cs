@@ -216,8 +216,8 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
     private async Task SeedUsersAsync(CancellationToken cancellationToken)
     {
         await AddUserAsync(AdminUserId, "admin@example.com", "Gorner Robin", "EMP001", "Nội bộ", "Quản trị hệ thống", cancellationToken);
-        await AddUserAsync(TenantUserId, "tenant@example.com", "Nguyển Văn A", "EMP002", "Dự án Alpha", "Quản lý dự án", cancellationToken);
-        await AddUserAsync(StaffUserId, "staff@example.com", "Trần Thị B", "EMP003", "Dự án Beta", "Nhân viên kỹ thuật", cancellationToken);
+        await AddUserAsync(TenantUserId, "staff1@example.com", "Nguyển Văn A", "EMP002", "Dự án Alpha", "Quản lý dự án", cancellationToken);
+        await AddUserAsync(StaffUserId, "staff2@example.com", "Trần Thị B", "EMP003", "Dự án Beta", "Nhân viên kỹ thuật", cancellationToken);
     }
 
     private async Task AddUserAsync(Guid id, string email, string fullName, string employeeCode, string project, string jobPosition, CancellationToken cancellationToken)

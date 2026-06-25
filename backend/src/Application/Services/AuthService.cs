@@ -20,6 +20,11 @@ public sealed class AuthService(
     IAuthOptions authOptions,
     IUnitOfWork unitOfWork) : IAuthService
 {
+    #region Method
+
+    /// <summary>
+    /// Xác thực thông tin đăng nhập và tạo phiên đăng nhập mới cho người dùng hợp lệ.
+    /// </summary>
     public async Task<ServiceResult<AuthTokenResult>> LoginAsync(
         LoginRequest request,
         string? ipAddress,
@@ -57,6 +62,9 @@ public sealed class AuthService(
         return ServiceResult<AuthTokenResult>.Success(tokenResult);
     }
 
+    /// <summary>
+    /// Đổi mật khẩu và thu hồi toàn bộ phiên đang còn hiệu lực của người dùng.
+    /// </summary>
     public async Task<ServiceResult<bool>> ChangePasswordAsync(
         Guid userId,
         ChangePasswordRequest request,
@@ -94,6 +102,9 @@ public sealed class AuthService(
         return ServiceResult<bool>.Success(true);
     }
 
+    /// <summary>
+    /// Làm mới access token bằng refresh token còn hiệu lực và xoay vòng refresh token cũ.
+    /// </summary>
     public async Task<ServiceResult<AuthTokenResult>> RefreshAsync(
         RefreshTokenRequest request,
         string? ipAddress,
@@ -135,6 +146,7 @@ public sealed class AuthService(
         }
 
         var replacement = refreshTokenHasher.GenerateToken();
+        // Refresh token cũ được đánh dấu thu hồi trước khi phát hành token mới để tránh tái sử dụng.
         refreshToken.RevokedAt = DateTime.UtcNow;
         refreshToken.RevokedByIp = ipAddress;
         refreshToken.ReasonRevoked = "Rotated";
@@ -162,6 +174,9 @@ public sealed class AuthService(
             newRefreshToken.ExpiresAt));
     }
 
+    /// <summary>
+    /// Thu hồi refresh token hiện tại và đánh dấu phiên đăng xuất nếu còn hoạt động.
+    /// </summary>
     public async Task LogoutAsync(LogoutRequest request, string? ipAddress, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
@@ -190,6 +205,9 @@ public sealed class AuthService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Lấy thông tin người dùng hiện tại từ định danh đã xác thực.
+    /// </summary>
     public async Task<ServiceResult<CurrentUserResponse>> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await authUserRepository.GetByIdAsync(userId, cancellationToken);
@@ -205,6 +223,9 @@ public sealed class AuthService(
             user.Status.ToString()));
     }
 
+    /// <summary>
+    /// Thu hồi toàn bộ phiên đang còn hiệu lực để buộc người dùng đăng nhập lại.
+    /// </summary>
     private async Task RevokeActiveSessionsAsync(
         Guid userId,
         string? ipAddress,
@@ -214,12 +235,16 @@ public sealed class AuthService(
         var activeSessions = await userSessionRepository.GetActiveByUserIdAsync(userId, cancellationToken);
         foreach (var session in activeSessions)
         {
+            // Giữ nguyên thời điểm thu hồi cũ nếu phiên đã bị đánh dấu trước đó bởi luồng khác.
             session.RevokedAt ??= DateTime.UtcNow;
             session.RevokedByIp = ipAddress;
             session.ReasonRevoked = reason;
         }
     }
 
+    /// <summary>
+    /// Tạo bản ghi phiên và refresh token mới sau khi đăng nhập thành công.
+    /// </summary>
     private async Task<AuthTokenResult> CreateSessionAsync(User user, string? ipAddress, CancellationToken cancellationToken)
     {
         var session = new UserSession
@@ -250,4 +275,6 @@ public sealed class AuthService(
 
         return new AuthTokenResult(jwt.AccessToken, refreshToken.RawToken, jwt.ExpiresAt, refreshTokenEntity.ExpiresAt);
     }
+
+    #endregion
 }

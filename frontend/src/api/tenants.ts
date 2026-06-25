@@ -1,4 +1,4 @@
-import { httpJson } from './http';
+import { apiRequest } from './http';
 
 export interface TenantDetail {
   id: string;
@@ -20,28 +20,31 @@ export interface UpdateTenantPayload {
 }
 
 export function getTenantDetail(tenantId: string): Promise<TenantDetail> {
-  return httpJson<TenantDetail>(`/api/tenants/${tenantId}`, { auth: true });
+  return apiRequest<TenantDetail>({ url: `/api/tenants/${tenantId}`, requiresAuth: true });
 }
 
 export function createTenant(payload: CreateTenantPayload): Promise<TenantDetail> {
-  return httpJson<TenantDetail, CreateTenantPayload>('/api/tenants', {
+  return apiRequest<TenantDetail, CreateTenantPayload>({
+    url: '/api/tenants',
     method: 'POST',
-    body: payload,
-    auth: true
+    data: payload,
+    requiresAuth: true
   });
 }
 
 export function updateTenant(tenantId: string, payload: UpdateTenantPayload): Promise<TenantDetail> {
-  return httpJson<TenantDetail, UpdateTenantPayload>(`/api/tenants/${tenantId}`, {
+  return apiRequest<TenantDetail, UpdateTenantPayload>({
+    url: `/api/tenants/${tenantId}`,
     method: 'PUT',
-    body: payload,
-    auth: true
+    data: payload,
+    requiresAuth: true
   });
 }
 
 export function lockTenant(tenantId: string): Promise<TenantDetail> {
-  return httpJson<TenantDetail>(`/api/tenants/${tenantId}/lock`, {
+  return apiRequest<TenantDetail>({
+    url: `/api/tenants/${tenantId}/lock`,
     method: 'POST',
-    auth: true
+    requiresAuth: true
   });
 }

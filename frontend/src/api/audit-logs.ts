@@ -1,4 +1,4 @@
-import { httpJson } from './http';
+import { apiRequest } from './http';
 
 export interface AuditLogEntry {
   id: string;
@@ -33,5 +33,5 @@ export async function getAuditLogs(filters?: AuditLogFilters): Promise<AuditLogE
 
   const query = params.toString();
   const url = `/api/admin/audit-logs${query ? `?${query}` : ''}`;
-  return httpJson<AuditLogEntry[]>(url, { auth: true });
+  return apiRequest<AuditLogEntry[]>({ url, requiresAuth: true });
 }

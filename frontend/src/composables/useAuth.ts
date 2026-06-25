@@ -1,7 +1,7 @@
 import { computed, ref, type ComputedRef, type DeepReadonly, type Ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { changePassword as changePasswordRequest, login as loginRequest, logout as logoutRequest, refreshAccessToken } from '../api';
-import { clearAuthState, getAccessToken, getAuthState, readonlyAuthState, setAuthState } from '../stores/auth';
-import { setAccessTokenProvider } from '../api/interceptors';
+import { useAuthStore } from '../stores/useAuthStore';
 import type { AuthState } from '../api/auth.types';
 
 export interface UseAuthResult {
@@ -20,11 +20,10 @@ export interface UseAuthResult {
 const isInitializing = ref(false);
 let startupRefreshAttempted = false;
 
-setAccessTokenProvider(getAccessToken);
-
 export function useAuth(): UseAuthResult {
-  const authState = readonlyAuthState;
-  const isAuthenticated = computed(() => authState.value !== null);
+  const authStore = useAuthStore();
+  const { authState } = storeToRefs(authStore);
+  const isAuthenticated = computed(() => authStore.isAuthenticated);
   const accessTokenPreview = computed(() => {
     const token = authState.value?.accessToken;
     if (!token) {
@@ -36,35 +35,39 @@ export function useAuth(): UseAuthResult {
 
   async function login(email: string, password: string) {
     const tokens = await loginRequest({ email, password });
-    setAuthState(tokens);
+    authStore.setAuthState(tokens);
   }
 
   async function refresh() {
     const tokens = await refreshAccessToken();
-    setAuthState(tokens);
+    authStore.setAuthState(tokens);
   }
 
   async function changePassword(currentPassword: string, newPassword: string) {
     await changePasswordRequest({ currentPassword, newPassword });
-    clearAuthState();
+    // Sau khi đổi mật khẩu, frontend chủ động xóa phiên hiện tại để buộc đăng nhập lại bằng thông tin mới.
+    authStore.clearAuthState();
   }
 
   async function initializeAuth() {
     if (startupRefreshAttempted) {
+      // Chỉ thử khôi phục phiên một lần khi khởi động để tránh refresh lặp vô hạn.
       return;
     }
 
     startupRefreshAttempted = true;
     isInitializing.value = true;
     try {
-      const currentAuthState = getAuthState();
+      const currentAuthState = authStore.getAuthState();
       if (currentAuthState && !isExpired(currentAuthState.accessTokenExpiresAt)) {
+        // Nếu access token vẫn còn hạn thì giữ nguyên state hiện tại thay vì gọi refresh thừa.
         return;
       }
 
       await refresh();
     } catch {
-      clearAuthState();
+      // Khi refresh thất bại, frontend dọn trạng thái cục bộ để router xử lý như phiên hết hạn.
+      authStore.clearAuthState();
     } finally {
       isInitializing.value = false;
     }
@@ -74,7 +77,7 @@ export function useAuth(): UseAuthResult {
     try {
       await logoutRequest();
     } finally {
-      clearAuthState();
+      authStore.clearAuthState();
     }
   }
 
@@ -88,7 +91,7 @@ export function useAuth(): UseAuthResult {
     changePassword,
     refresh,
     logout,
-    clearSession: clearAuthState
+    clearSession: authStore.clearAuthState
   };
 }
 

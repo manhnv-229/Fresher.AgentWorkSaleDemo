@@ -59,6 +59,7 @@ async function loadAgent() {
     await loadInternal(props.agentId);
   }
 
+  // Form luôn đồng bộ lại từ dữ liệu mới nhất để tránh giữ state cũ khi đổi route hoặc scope.
   syncFormFromAgent();
 }
 
@@ -95,6 +96,7 @@ async function submitSave() {
     } else {
       await saveInternal(props.agentId, payload);
     }
+    // Nạp lại chi tiết sau khi lưu để đồng bộ dữ liệu chuẩn hóa từ server.
     await loadAgent();
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
@@ -125,6 +127,7 @@ async function confirmDelete() {
       await removeInternal(props.agentId);
     }
     closeDelete();
+    // Điều hướng sau khi xóa để tránh giữ page ở trạng thái tham chiếu đến agent không còn tồn tại.
     goBack();
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {

@@ -1,5 +1,13 @@
+import axios, { AxiosHeaders, type AxiosRequestConfig } from 'axios';
 import type { ApiErrorBody } from './api.types';
 import { getAccessToken } from './interceptors';
+
+declare module 'axios' {
+  interface AxiosRequestConfig<D = any> {
+    // Flag để các API module bật gắn Bearer token Authorization header. Nếu false thì request vẫn đi qua nhưng không có header Authorization.
+    requiresAuth?: boolean;
+  }
+}
 
 export const API_BASE_URL = (__API_BASE_URL__ || 'http://localhost:5066').replace(/\/$/, '');
 
@@ -13,57 +21,59 @@ export class ApiError extends Error {
   }
 }
 
-export async function httpJson<TResponse, TBody = unknown>(
-  path: string,
-  options: {
-    method?: string;
-    body?: TBody;
-    headers?: HeadersInit;
-    credentials?: RequestCredentials;
-    auth?: boolean;
-  } = {}
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true
+});
+
+apiClient.interceptors.request.use((config) => {
+  if (!config.requiresAuth) {
+    return config;
+  }
+
+  const accessToken = getAccessToken();
+  if (!accessToken) {
+    // Giữ request tiếp tục đi qua để backend tự trả 401 nếu phiên phía client đã hết.
+    return config;
+  }
+
+  const headers = AxiosHeaders.from(config.headers);
+  headers.set('Authorization', `Bearer ${accessToken}`);
+  config.headers = headers;
+
+  return config;
+});
+
+export async function apiRequest<TResponse, TBody = unknown>(
+  config: AxiosRequestConfig<TBody>
 ): Promise<TResponse> {
-  let response: Response;
-  const headers = new Headers(options.headers);
-
-  if (options.body !== undefined && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  if (options.auth) {
-    const accessToken = getAccessToken();
-    if (accessToken && !headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${accessToken}`);
-    }
-  }
-
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method: options.method ?? 'GET',
-      headers,
-      credentials: options.credentials,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body)
-    });
-  } catch {
-    throw new ApiError(`Không thể kết nối API. Hãy kiểm tra backend đang chạy ở ${API_BASE_URL}.`);
-  }
+    const response = await apiClient.request<TResponse>(config);
+    if (response.status === 204) {
+      // Chuẩn hóa nhánh no-content để các API module vẫn có thể dùng generic Promise<void>.
+      return undefined as TResponse;
+    }
 
-  if (!response.ok) {
-    const body = await readErrorBody(response);
-    throw new ApiError(body?.message || 'Yêu cầu không thành công. Vui lòng thử lại.', response.status, body);
+    return response.data;
+  } catch (error) {
+    throw toApiError(error);
   }
-
-  if (response.status === 204) {
-    return undefined as TResponse;
-  }
-
-  return response.json() as Promise<TResponse>;
 }
 
-async function readErrorBody(response: Response): Promise<ApiErrorBody | undefined> {
-  try {
-    return (await response.json()) as ApiErrorBody;
-  } catch {
-    return undefined;
+function toApiError(error: unknown): ApiError {
+  if (!axios.isAxiosError(error)) {
+    return new ApiError('Yêu cầu không thành công. Vui lòng thử lại.');
   }
+
+  if (!error.response) {
+    // Không có response nghĩa là lỗi mạng hoặc backend không reachable từ frontend.
+    return new ApiError(`Không thể kết nối API. Hãy kiểm tra backend đang chạy ở ${API_BASE_URL}.`);
+  }
+
+  const body = isApiErrorBody(error.response.data) ? error.response.data : undefined;
+  return new ApiError(body?.message || 'Yêu cầu không thành công. Vui lòng thử lại.', error.response.status, body);
+}
+
+function isApiErrorBody(value: unknown): value is ApiErrorBody {
+  return typeof value === 'object' && value !== null;
 }

@@ -1,32 +1,44 @@
 using Demo.Application.Common;
 using Demo.Application.DTOs;
 using Demo.Domain.Entities;
+using Demo.Application.Interfaces.Repository;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
+using AutoMapper;
 
 namespace Demo.Application.Services;
 
 public sealed class AuditLogService(
+    IAuditLogQueryRepository auditLogQueryRepository,
     IAuditLogRepository auditLogRepository,
+    IMapper mapper,
     IUnitOfWork unitOfWork) : IAuditLogService
 {
+    #region Method
+
+    /// <summary>
+    /// Lấy danh sách audit log theo bộ lọc thời gian và hành động.
+    /// </summary>
     public async Task<ServiceResult<IReadOnlyList<AuditLogEntryResponse>>> GetAuditLogsAsync(
         AuditLogFilterRequest? filter,
         CancellationToken cancellationToken)
     {
         ResolveTimePreset(filter?.TimePreset, out var dateFrom, out var dateTo);
 
-        var entries = await auditLogRepository.GetFilteredAsync(
+        var entries = await auditLogQueryRepository.GetFilteredAsync(
             filter?.Search,
             dateFrom,
             dateTo,
             filter?.Actions,
             filter?.TargetTypes,
             cancellationToken);
-        var response = entries.Select(MapToResponse).ToList();
+        var response = entries.Select(entry => mapper.Map<AuditLogEntryResponse>(entry)).ToList();
         return ServiceResult<IReadOnlyList<AuditLogEntryResponse>>.Success(response);
     }
 
+    /// <summary>
+    /// Ghi một bản ghi audit log mới xuống cơ sở dữ liệu.
+    /// </summary>
     public async Task RecordAsync(
         string action,
         string userName,
@@ -56,6 +68,9 @@ public sealed class AuditLogService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Chuyển time preset từ API sang khoảng thời gian UTC phục vụ lọc dữ liệu.
+    /// </summary>
     private static void ResolveTimePreset(string? preset, out DateTime? from, out DateTime? to)
     {
         from = null;
@@ -65,6 +80,7 @@ public sealed class AuditLogService(
             return;
         }
 
+        // Luôn tính toán theo UTC để kết quả lọc đồng nhất với thời gian lưu trong database.
         var now = DateTime.UtcNow;
         var today = now.Date;
 
@@ -108,12 +124,5 @@ public sealed class AuditLogService(
         }
     }
 
-    private static AuditLogEntryResponse MapToResponse(AuditLogEntry entry) =>
-        new(
-            entry.Id,
-            entry.Action,
-            entry.UserName,
-            DateTime.SpecifyKind(entry.CreatedAt, DateTimeKind.Utc),
-            entry.TargetType,
-            entry.Description);
+    #endregion
 }

@@ -15,6 +15,11 @@ namespace Demo.Api.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(IAuthService authService) : ControllerBase
 {
+    #region Method
+
+    /// <summary>
+    /// Đăng nhập và ghi refresh token về cookie HTTP-only khi xác thực thành công.
+    /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<ActionResult<TokenResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
@@ -29,6 +34,9 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return Unauthorized(new ApiErrorResponse(result.ErrorCode ?? AuthErrorCodes.InvalidCredentials, result.ErrorMessage ?? "Login failed."));
     }
 
+    /// <summary>
+    /// Làm mới access token từ refresh token lấy ưu tiên từ cookie an toàn.
+    /// </summary>
     [HttpPost("refresh-token")]
     [AllowAnonymous]
     public async Task<ActionResult<TokenResponse>> Refresh([FromBody] RefreshTokenRequest? request, CancellationToken cancellationToken)
@@ -44,6 +52,9 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return Unauthorized(new ApiErrorResponse(result.ErrorCode ?? AuthErrorCodes.InvalidRefreshToken, result.ErrorMessage ?? "Refresh failed."));
     }
 
+    /// <summary>
+    /// Đăng xuất phiên hiện tại và xóa refresh token cookie phía trình duyệt.
+    /// </summary>
     [HttpPost("logout")]
     [AllowAnonymous]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest? request, CancellationToken cancellationToken)
@@ -54,10 +65,14 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Đổi mật khẩu cho người dùng đang đăng nhập.
+    /// </summary>
     [HttpPost("change-password")]
     [Authorize]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
     {
+        // Chấp nhận cả claim tùy biến lẫn NameIdentifier để tương thích với nhiều nguồn token.
         var userIdValue = User.FindFirstValue("userId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
         {
@@ -81,10 +96,14 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
             result.ErrorMessage ?? "Password change failed."));
     }
 
+    /// <summary>
+    /// Trả về hồ sơ cơ bản của người dùng hiện tại.
+    /// </summary>
     [HttpGet("me")]
     [Authorize]
     public async Task<ActionResult<CurrentUserResponse>> Me(CancellationToken cancellationToken)
     {
+        // Chấp nhận cả claim tùy biến lẫn NameIdentifier để tương thích với nhiều nguồn token.
         var userIdValue = User.FindFirstValue("userId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
         {
@@ -100,5 +119,10 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return NotFound(new ApiErrorResponse(result.ErrorCode ?? AuthErrorCodes.UserNotFound, result.ErrorMessage ?? "User was not found."));
     }
 
+    /// <summary>
+    /// Lấy địa chỉ IP của client hiện tại để phục vụ audit và quản lý phiên.
+    /// </summary>
     private string? ClientIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
+
+    #endregion
 }
