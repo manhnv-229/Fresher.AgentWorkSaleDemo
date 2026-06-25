@@ -47,8 +47,8 @@ public sealed class KnowledgeFileService(
 #region Method
 
     /// <summary>
-    /// Upload file tri thức lên MinIO và lưu metadata vào database. Kiểm tra quyền ghi, dung lượng, loại file, trùng tên,
-    /// và xử lý các lỗi storage typed (unreachable/timed-out/rejected) để trả về thông báo lỗi rõ ràng.
+    /// Upload file tri thức lên MinIO và lưu metadata vào database. Kiểm tra quyền ghi, dung lượng, loại file,
+    /// và chặn upload trùng nội dung trong toàn agent theo checksum trước khi gọi storage.
     /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> UploadFileAsync(
         Guid tenantId,
@@ -96,17 +96,18 @@ public sealed class KnowledgeFileService(
 
         var displayName = $"{name}{extension}";
         var normalizedName = KnowledgeServiceHelper.NormalizeName(displayName);
-        if (await knowledgeRepository.FileNameExistsAsync(agentId, upload.FolderId, normalizedName, null, cancellationToken))
-        {
-            return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.ValidationError, "A file with the same name already exists.");
-        }
-
         // Buffer file content để tính checksum SHA256 và upload lên storage
         await using var buffered = new MemoryStream();
         await upload.Content.CopyToAsync(buffered, cancellationToken);
         buffered.Position = 0;
         var checksum = Convert.ToHexString(SHA256.HashData(buffered)).ToLowerInvariant();
         buffered.Position = 0;
+
+        // Chặn upload cùng nội dung trong cùng thư mục để không tạo thêm metadata/object trùng tại một vị trí.
+        if (await knowledgeRepository.ExactFileDuplicateExistsAsync(agentId, upload.FolderId, checksum, upload.Length, cancellationToken))
+        {
+            return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.ValidationError, "An identical file already exists in this folder.");
+        }
 
         var fileId = Guid.NewGuid();
         var objectKey = $"tenants/{tenantId:N}/agents/{agentId:N}/knowledge/{fileId:N}{extension}";

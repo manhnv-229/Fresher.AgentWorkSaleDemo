@@ -252,6 +252,30 @@ public sealed class AgentKnowledgeRepository(DemoDbContext dbContext) : IAgentKn
     }
 
     /// <summary>
+    /// Kiểm tra trong cùng thư mục của agent đã có file active trùng nội dung theo checksum hay chưa.
+    /// Dùng để chặn upload cùng nội dung trong cùng thư mục nhưng vẫn cho phép ở thư mục khác.
+    /// </summary>
+    public async Task<bool> ExactFileDuplicateExistsAsync(
+        Guid agentId,
+        Guid? folderId,
+        string checksumSha256,
+        long sizeBytes,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.AgentKnowledgeFiles.AnyAsync(file =>
+            file.AgentId == agentId &&
+            file.FolderId == folderId &&
+            file.DeletedAt == null &&
+            file.Status == AgentKnowledgeFileStatus.Active &&
+            file.StorageObject != null &&
+            file.StorageObject.DeletedAt == null &&
+            file.StorageObject.Status == KnowledgeStorageObjectStatus.Active &&
+            file.StorageObject.ChecksumSha256 == checksumSha256 &&
+            file.StorageObject.SizeBytes == sizeBytes,
+            cancellationToken);
+    }
+
+    /// <summary>
     /// Thêm mới file tri thức vào DbContext. Changes sẽ được lưu khi gọi UnitOfWork.SaveChangesAsync.
     /// </summary>
     public void AddFile(AgentKnowledgeFile file)

@@ -33,6 +33,13 @@ public interface IAgentKnowledgeRepository
 
     Task<bool> FileNameExistsAsync(Guid agentId, Guid? folderId, string normalizedName, Guid? excludeFileId, CancellationToken cancellationToken);
 
+    Task<bool> ExactFileDuplicateExistsAsync(
+        Guid agentId,
+        Guid? folderId,
+        string checksumSha256,
+        long sizeBytes,
+        CancellationToken cancellationToken);
+
     void AddFile(AgentKnowledgeFile file);
 
     void AddStorageObject(KnowledgeStorageObject storageObject);

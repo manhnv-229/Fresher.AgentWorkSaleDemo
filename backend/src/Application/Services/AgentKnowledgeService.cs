@@ -383,16 +383,17 @@ public sealed class AgentKnowledgeService(
 
         var displayName = $"{name}{extension}";
         var normalizedName = NormalizeName(displayName);
-        if (await knowledgeRepository.FileNameExistsAsync(agentId, upload.FolderId, normalizedName, null, cancellationToken))
-        {
-            return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.ValidationError, "A file with the same name already exists.");
-        }
-
         await using var buffered = new MemoryStream();
         await upload.Content.CopyToAsync(buffered, cancellationToken);
         buffered.Position = 0;
         var checksum = Convert.ToHexString(SHA256.HashData(buffered)).ToLowerInvariant();
         buffered.Position = 0;
+
+        // Chặn upload cùng nội dung trong cùng thư mục để tránh tạo thêm metadata/object trùng tại một vị trí.
+        if (await knowledgeRepository.ExactFileDuplicateExistsAsync(agentId, upload.FolderId, checksum, upload.Length, cancellationToken))
+        {
+            return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.ValidationError, "An identical file already exists in this folder.");
+        }
 
         var fileId = Guid.NewGuid();
         var objectKey = $"tenants/{tenantId:N}/agents/{agentId:N}/knowledge/{fileId:N}{extension}";
