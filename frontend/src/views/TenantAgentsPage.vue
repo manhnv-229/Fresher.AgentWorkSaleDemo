@@ -31,11 +31,11 @@ const isSaving = ref(false);
 const selectedTenant = computed(() => tenants.value.find(t => t.id === props.tenantId) ?? null);
 
 const avatarOptions = [
-  { id: 'mint', label: 'MN', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
-  { id: 'amber', label: 'AM', accent: 'linear-gradient(135deg, #ffd43b, #f08c00)' },
-  { id: 'rose', label: 'RS', accent: 'linear-gradient(135deg, #ff8787, #f03e3e)' },
-  { id: 'ocean', label: 'OC', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
-  { id: 'violet', label: 'VT', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
+  { id: 'mint', label: 'Mint', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
+  { id: 'amber', label: 'Amber', accent: 'linear-gradient(135deg, #ffd43b, #f08c00)' },
+  { id: 'rose', label: 'Rose', accent: 'linear-gradient(135deg, #ff8787, #f03e3e)' },
+  { id: 'ocean', label: 'Ocean', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
+  { id: 'violet', label: 'Violet', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
 
 onMounted(async () => {
@@ -67,16 +67,11 @@ function avatarStyle(icon: string | null | undefined) {
   return { background: option.accent };
 }
 
-function avatarLabel(agent: AgentSummary) {
-  if (agent.name.trim().length === 0) return 'AI';
-  return agent.name.split(/\s+/).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
-}
-
-function openDetail(agent: AgentSummary) {
+function openDetail(agent: AgentSummary, startInEdit = false) {
   router.push({
     name: 'agent-detail',
     params: { agentId: agent.id },
-    query: { scope: 'tenant', tenantId: props.tenantId }
+    query: { scope: 'tenant', tenantId: props.tenantId, ...(startInEdit ? { edit: '1' } : {}) }
   });
 }
 
@@ -99,7 +94,7 @@ function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete
     return;
   }
 
-  openDetail(agent);
+  openDetail(agent, action === 'edit');
 }
 
 function openCreateModal() {
@@ -176,18 +171,6 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <header class="content-header">
-    <div>
-      <p class="content-header__eyebrow">Ngữ cảnh đơn vị</p>
-      <h2>{{ selectedTenant?.name || 'Chọn đơn vị' }}</h2>
-      <p class="content-header__copy">Đang thao tác như trong tài khoản của đơn vị được chọn.</p>
-    </div>
-    <BaseButton type="button" :disabled="!selectedTenant || Boolean(error)" @click="openCreateModal">
-      <Plus :size="18" aria-hidden="true" />
-      Thêm mới
-    </BaseButton>
-  </header>
-
   <div class="filter-bar">
     <BaseInput v-model="filters.searchText.value" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
     <label class="filter-select">
@@ -198,6 +181,12 @@ async function confirmDelete() {
         </option>
       </select>
     </label>
+    <div class="filter-bar__actions">
+      <BaseButton type="button" :disabled="!selectedTenant || Boolean(error)" @click="openCreateModal">
+        <Plus :size="18" aria-hidden="true" />
+        Thêm mới
+      </BaseButton>
+    </div>
   </div>
 
   <div class="content-panel">
@@ -216,7 +205,7 @@ async function confirmDelete() {
     </div>
     <div v-else class="agent-grid">
       <article v-for="agent in agents.items" :key="agent.id" class="agent-card" @click="openDetail(agent)">
-        <div class="agent-card__avatar" :style="avatarStyle(agent.icon)">{{ avatarLabel(agent) }}</div>
+        <div class="agent-card__avatar" :style="avatarStyle(agent.icon)" aria-hidden="true"></div>
         <div class="agent-card__body">
           <div class="agent-card__top">
             <div>
@@ -249,7 +238,7 @@ async function confirmDelete() {
             </div>
             <div class="agent-meta__row">
               <dt>Trạng thái</dt>
-              <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
+              <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
             </div>
           </dl>
         </div>
@@ -284,9 +273,17 @@ async function confirmDelete() {
       <div class="create-agent__group">
         <p class="create-agent__label">Hình đại diện</p>
         <div class="avatar-picker">
-          <button v-for="opt in avatarOptions" :key="opt.id" class="avatar-choice" :class="{ 'avatar-choice--active': createIcon === opt.id }" :style="{ background: opt.accent }" type="button" @click="createIcon = opt.id">
-            {{ opt.label }}
-          </button>
+          <button
+            v-for="opt in avatarOptions"
+            :key="opt.id"
+            class="avatar-choice"
+            :class="{ 'avatar-choice--active': createIcon === opt.id }"
+            :style="{ background: opt.accent }"
+            type="button"
+            :aria-label="opt.label"
+            :title="opt.label"
+            @click="createIcon = opt.id"
+          />
         </div>
       </div>
       <div class="create-agent__group">

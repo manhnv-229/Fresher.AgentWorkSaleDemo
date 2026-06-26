@@ -11,6 +11,10 @@ import {
 } from '../api';
 import { ApiError } from '../api/http';
 
+function isVisibleAgent(agent: AgentDetail) {
+  return agent.status !== 'Deleted' && !agent.deletedAt;
+}
+
 export function useAgentDetail() {
   const agent = ref<AgentDetail | null>(null);
   const isLoading = ref(false);
@@ -21,7 +25,12 @@ export function useAgentDetail() {
     isLoading.value = true;
     agent.value = null;
     try {
-      agent.value = await getInternalAgentDetail(agentId);
+      const result = await getInternalAgentDetail(agentId);
+      if (!isVisibleAgent(result)) {
+        error.value = 'Agent không còn tồn tại.';
+        return;
+      }
+      agent.value = result;
     } catch (err) {
       // 401 được đẩy ra ngoài để page quyết định redirect thay vì composable tự điều hướng.
       if (err instanceof ApiError && err.status === 401) throw err;
@@ -36,7 +45,12 @@ export function useAgentDetail() {
     isLoading.value = true;
     agent.value = null;
     try {
-      agent.value = await getTenantAgentDetail(tenantId, agentId);
+      const result = await getTenantAgentDetail(tenantId, agentId);
+      if (!isVisibleAgent(result)) {
+        error.value = 'Agent không còn tồn tại.';
+        return;
+      }
+      agent.value = result;
     } catch (err) {
       // 401 được đẩy ra ngoài để page quyết định redirect thay vì composable tự điều hướng.
       if (err instanceof ApiError && err.status === 401) throw err;

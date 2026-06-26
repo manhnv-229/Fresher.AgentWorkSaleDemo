@@ -9,6 +9,20 @@ import {
 } from '../api';
 import { ApiError } from '../api/http';
 
+function isVisibleAgent(agent: AgentSummary) {
+  return agent.status !== 'Deleted';
+}
+
+function filterVisibleAgents(result: PagedResult<AgentSummary>): PagedResult<AgentSummary> {
+  const visibleItems = result.items.filter(isVisibleAgent);
+  return {
+    ...result,
+    items: visibleItems,
+    totalCount: visibleItems.length,
+    totalPages: visibleItems.length === 0 ? 0 : Math.ceil(visibleItems.length / result.pageSize)
+  };
+}
+
 export function useAgentList() {
   const searchText = ref('');
   const statusFilter = ref<'' | AgentStatusFilter>('');
@@ -40,11 +54,12 @@ export function useInternalAgents(filters: ReturnType<typeof useAgentList>) {
     error.value = '';
     isLoading.value = true;
     try {
-      agents.value = await getInternalAgents({
+      const result = await getInternalAgents({
         ...filters.activeFilters.value,
         page: filters.currentPage.value,
         pageSize: filters.pageSize.value
       });
+      agents.value = filterVisibleAgents(result);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         throw err;
@@ -68,11 +83,12 @@ export function useTenantAgents(filters: ReturnType<typeof useAgentList>) {
     error.value = '';
     isLoading.value = true;
     try {
-      agents.value = await getTenantAgents(tenantId, {
+      const result = await getTenantAgents(tenantId, {
         ...filters.activeFilters.value,
         page: filters.currentPage.value,
         pageSize: filters.pageSize.value
       });
+      agents.value = filterVisibleAgents(result);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         throw err;
