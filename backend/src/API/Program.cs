@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 
 using Demo.Api.Authorization;
+using Demo.Api.Filters;
 using Demo.Domain.Interfaces.Service;
 using Demo.Infrastructure;
 using Demo.Infrastructure.Persistence;
@@ -47,6 +48,8 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddSwaggerGen(options =>
 {
+    options.OperationFilter<FormFileUploadFilter>();
+
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Type = SecuritySchemeType.Http,

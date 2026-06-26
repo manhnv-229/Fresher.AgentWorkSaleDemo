@@ -312,7 +312,7 @@ internal sealed class KnowledgeStorageObjectConfiguration : IEntityTypeConfigura
         builder.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id").HasMaxLength(36).IsRequired();
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(x => x.DeletedAt).HasColumnName("deleted_at");
-        builder.HasIndex(x => new { x.ChecksumSha256, x.SizeBytes }).IsUnique();
+        builder.HasIndex(x => new { x.ChecksumSha256, x.SizeBytes });
         builder.HasIndex(x => new { x.StorageBucket, x.StorageObjectKey }).IsUnique();
         builder.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
     }

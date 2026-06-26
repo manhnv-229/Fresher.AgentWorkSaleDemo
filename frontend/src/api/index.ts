@@ -3,6 +3,19 @@ export { API_BASE_URL, ApiError, apiClient, apiRequest } from './http';
 export { setAccessTokenProvider, getAccessToken } from './interceptors';
 export { changePassword, login, logout, refreshAccessToken } from './auth';
 export {
+  createKnowledgeFolder,
+  deleteKnowledgeFile,
+  deleteKnowledgeFolder,
+  downloadKnowledgeFile,
+  getKnowledgeExplorer,
+  moveKnowledgeFile,
+  moveKnowledgeFolder,
+  renameKnowledgeFile,
+  renameKnowledgeFolder,
+  searchKnowledgeFiles,
+  uploadKnowledgeFile
+} from './agent-knowledge';
+export {
   createInternalAgent,
   createTenantAgent,
   deleteInternalAgent,
@@ -34,6 +47,19 @@ export type {
   TenantSummary,
   UpdateAgentPayload
 } from './agents';
+export type {
+  CreateKnowledgeFolderPayload,
+  KnowledgeAgentContext,
+  KnowledgeBreadcrumbItem,
+  KnowledgeExplorerResponse,
+  KnowledgeFileDetail,
+  KnowledgeFileItem,
+  KnowledgeFolderItem,
+  KnowledgeFolderTreeItem,
+  KnowledgeSearchFilters,
+  MoveKnowledgeItemPayload,
+  RenameKnowledgeItemPayload
+} from './agent-knowledge';
 export type {
   CreateTenantPayload,
   TenantDetail,
