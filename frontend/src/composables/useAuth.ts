@@ -1,4 +1,5 @@
 import { computed, ref, type ComputedRef, type DeepReadonly, type Ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { changePassword as changePasswordRequest, login as loginRequest, logout as logoutRequest, refreshAccessToken } from '../api';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -22,6 +23,7 @@ let startupRefreshAttempted = false;
 
 export function useAuth(): UseAuthResult {
   const authStore = useAuthStore();
+  const router = useRouter();
   const { authState } = storeToRefs(authStore);
   const isAuthenticated = computed(() => authStore.isAuthenticated);
   const accessTokenPreview = computed(() => {
@@ -47,6 +49,12 @@ export function useAuth(): UseAuthResult {
     await changePasswordRequest({ currentPassword, newPassword });
     // Sau khi đổi mật khẩu, frontend chủ động xóa phiên hiện tại để buộc đăng nhập lại bằng thông tin mới.
     authStore.clearAuthState();
+    // Điều hướng đến trang login 
+    const currentPath = router.currentRoute.value.fullPath;
+    router.replace({
+      name: 'login',
+      query: { reason: 'password-changed', redirect: currentPath }
+    });
   }
 
   async function initializeAuth() {
