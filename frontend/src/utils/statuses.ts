@@ -6,6 +6,7 @@ export interface StatusOption {
 export const AGENT_STATUSES: StatusOption[] = [
   { value: 'Draft', label: 'Nháp' },
   { value: 'Active', label: 'Hoạt động' },
+  { value: 'Published', label: 'Đã phát hành' },
   { value: 'Inactive', label: 'Ngừng hoạt động' }
 ];
 
@@ -25,9 +26,10 @@ export function getStatusLabel(statusMap: StatusOption[], code: string): string 
 const AGENT_STATUS_LABELS: Record<string, string> = {
   Draft: 'Nháp',
   Active: 'Hoạt động',
+  Published: 'Đã phát hành',
   Inactive: 'Ngừng hoạt động',
   Deleted: 'Đã xóa',
-  Publish: 'Đã xuất bản'
+  Publish: 'Đã phát hành'
 };
 
 export function getAgentStatusLabel(code: string): string {

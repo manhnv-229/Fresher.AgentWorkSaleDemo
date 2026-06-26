@@ -1,6 +1,6 @@
 import { apiRequest } from './http';
 
-export type AgentStatusFilter = 'Draft' | 'Active' | 'Inactive';
+export type AgentStatusFilter = 'Draft' | 'Active' | 'Published' | 'Inactive';
 
 export interface TenantSummary {
   id: string;

@@ -32,11 +32,11 @@ const agentToDelete = ref<AgentSummary | null>(null);
 const isDeleting = ref(false);
 
 const avatarOptions = [
-  { id: 'mint', label: 'MN', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
-  { id: 'amber', label: 'AM', accent: 'linear-gradient(135deg, #ffd43b, #f08c00)' },
-  { id: 'rose', label: 'RS', accent: 'linear-gradient(135deg, #ff8787, #f03e3e)' },
-  { id: 'ocean', label: 'OC', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
-  { id: 'violet', label: 'VT', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
+  { id: 'mint', label: 'Mint', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
+  { id: 'amber', label: 'Amber', accent: 'linear-gradient(135deg, #ffd43b, #f08c00)' },
+  { id: 'rose', label: 'Rose', accent: 'linear-gradient(135deg, #ff8787, #f03e3e)' },
+  { id: 'ocean', label: 'Ocean', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
+  { id: 'violet', label: 'Violet', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
 
 onMounted(() => {
@@ -58,13 +58,12 @@ function avatarStyle(icon: string | null | undefined) {
   return { background: option.accent };
 }
 
-function avatarLabel(agent: AgentSummary) {
-  if (agent.name.trim().length === 0) return 'AI';
-  return agent.name.split(/\s+/).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
-}
-
-function openDetail(agent: AgentSummary) {
-  router.push({ name: 'agent-detail', params: { agentId: agent.id }, query: { scope: 'internal' } });
+function openDetail(agent: AgentSummary, startInEdit = false) {
+  router.push({
+    name: 'agent-detail',
+    params: { agentId: agent.id },
+    query: { scope: 'internal', ...(startInEdit ? { edit: '1' } : {}) }
+  });
 }
 
 function toggleCardMenu(agentId: string) {
@@ -86,7 +85,7 @@ function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete
     return;
   }
 
-  openDetail(agent);
+  openDetail(agent, action === 'edit');
 }
 
 function openCreateModal() {
@@ -194,7 +193,7 @@ async function confirmDelete() {
     </div>
     <div v-else class="agent-grid">
       <article v-for="agent in agents.items" :key="agent.id" class="agent-card" @click="openDetail(agent)">
-        <div class="agent-card__avatar" :style="avatarStyle(agent.icon)">{{ avatarLabel(agent) }}</div>
+        <div class="agent-card__avatar" :style="avatarStyle(agent.icon)" aria-hidden="true"></div>
         <div class="agent-card__body">
           <div class="agent-card__top">
             <div>
@@ -227,7 +226,7 @@ async function confirmDelete() {
             </div>
             <div class="agent-meta__row">
               <dt>Trạng thái</dt>
-              <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
+              <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
             </div>
           </dl>
         </div>
@@ -249,9 +248,17 @@ async function confirmDelete() {
       <div class="create-agent__group">
         <p class="create-agent__label">Hình đại diện</p>
         <div class="avatar-picker">
-          <button v-for="opt in avatarOptions" :key="opt.id" class="avatar-choice" :class="{ 'avatar-choice--active': createIcon === opt.id }" :style="{ background: opt.accent }" type="button" @click="createIcon = opt.id">
-            {{ opt.label }}
-          </button>
+          <button
+            v-for="opt in avatarOptions"
+            :key="opt.id"
+            class="avatar-choice"
+            :class="{ 'avatar-choice--active': createIcon === opt.id }"
+            :style="{ background: opt.accent }"
+            type="button"
+            :aria-label="opt.label"
+            :title="opt.label"
+            @click="createIcon = opt.id"
+          />
         </div>
       </div>
       <div class="create-agent__group">
