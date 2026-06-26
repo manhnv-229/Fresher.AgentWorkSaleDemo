@@ -123,66 +123,62 @@ async function handleSaveJobPosition() {
 </script>
 
 <template>
-  <header class="content-header">
-    <div>
-      <p class="content-header__eyebrow">Thiết lập</p>
-      <h2>Quản lý thành viên</h2>
-      <p class="content-header__copy">Quản lý thông tin và trạng thái tài khoản</p>
-    </div>
-    <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
-      <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
-    </BaseButton>
-  </header>
+  <div class="settings-content-card">
+    <div class="content-panel user-panel">
+      <div class="toolbar">
+        <BaseInput
+          v-model="searchText"
+          placeholder="Tìm kiếm nhân viên..."
+          class="toolbar__search"
+          :disabled="isLoading"
+        />
+        <select v-model="selectedStatus" class="toolbar__status-filter" :disabled="isLoading">
+          <option v-for="option in STATUS_OPTIONS" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+        <div class="toolbar__actions">
+          <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
+            <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
+          </BaseButton>
+        </div>
+      </div>
 
-  <div class="content-panel user-panel">
-    <div class="toolbar">
-      <BaseInput
-        v-model="searchText"
-        placeholder="Tìm kiếm nhân viên..."
-        class="toolbar__search"
-        :disabled="isLoading"
-      />
-      <select v-model="selectedStatus" class="toolbar__status-filter" :disabled="isLoading">
-        <option v-for="option in STATUS_OPTIONS" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
+      <p v-if="error" class="message message--error">{{ error }}</p>
+      <div v-else-if="isLoading && users.length === 0" class="loading-row">
+        <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+        <span>Đang tải danh sách tài khoản...</span>
+      </div>
+      <div v-else-if="users.length === 0" class="empty-card empty-card--tight">
+        <h3>Không tìm thấy kết quả</h3>
+        <p>{{ searchText || selectedStatus ? 'Không có nhân viên nào phù hợp với bộ lọc.' : 'Chưa có tài khoản.' }}</p>
+      </div>
+      <BaseTable v-else>
+        <thead>
+          <tr>
+            <th>Nhân viên</th>
+            <th>Vị trí công việc</th>
+            <th>Dự án</th>
+            <th>Email</th>
+            <th>Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="user in users" :key="user.id" class="clickable-row" @click="openPopup(user)">
+            <td>
+              <div class="user-cell">
+                <strong>{{ user.fullName || '—' }}</strong>
+                <span>{{ user.employeeCode || '—' }}</span>
+              </div>
+            </td>
+            <td>{{ user.jobPosition || '—' }}</td>
+            <td>{{ user.project || '—' }}</td>
+            <td>{{ user.email }}</td>
+            <td><span :class="statusTone(user.status)">{{ getMemberStatusLabel(user.status) }}</span></td>
+          </tr>
+        </tbody>
+      </BaseTable>
     </div>
-
-    <p v-if="error" class="message message--error">{{ error }}</p>
-    <div v-else-if="isLoading && users.length === 0" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-      <span>Đang tải danh sách tài khoản...</span>
-    </div>
-    <div v-else-if="users.length === 0" class="empty-card empty-card--tight">
-      <h3>Không tìm thấy kết quả</h3>
-      <p>{{ searchText || selectedStatus ? 'Không có nhân viên nào phù hợp với bộ lọc.' : 'Chưa có tài khoản.' }}</p>
-    </div>
-    <BaseTable v-else>
-      <thead>
-        <tr>
-          <th>Nhân viên</th>
-          <th>Vị trí công việc</th>
-          <th>Dự án</th>
-          <th>Email</th>
-          <th>Trạng thái</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="user in users" :key="user.id" class="clickable-row" @click="openPopup(user)">
-          <td>
-            <div class="user-cell">
-              <strong>{{ user.fullName || '—' }}</strong>
-              <span>{{ user.employeeCode || '—' }}</span>
-            </div>
-          </td>
-          <td>{{ user.jobPosition || '—' }}</td>
-          <td>{{ user.project || '—' }}</td>
-          <td>{{ user.email }}</td>
-          <td><span :class="statusTone(user.status)">{{ getMemberStatusLabel(user.status) }}</span></td>
-        </tr>
-      </tbody>
-    </BaseTable>
   </div>
 
   <Teleport to="body">
@@ -286,6 +282,10 @@ async function handleSaveJobPosition() {
 
 .toolbar__status-filter:focus {
   border-color: #2479ff;
+}
+
+.toolbar__actions {
+  margin-left: auto;
 }
 
 .clickable-row {

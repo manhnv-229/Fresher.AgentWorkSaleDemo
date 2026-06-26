@@ -166,11 +166,18 @@
 
 .workspace {
   display: grid;
+  grid-template-areas:
+    "header header"
+    "sidebar content";
   grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
   min-height: 100vh;
 }
 
 .workspace--settings {
+  grid-template-areas:
+    "header header header"
+    "sidebar settings content";
   grid-template-columns: 260px 220px minmax(0, 1fr);
 }
 
@@ -184,6 +191,7 @@
 }
 
 .workspace__sidebar {
+  grid-area: sidebar;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -193,6 +201,7 @@
 }
 
 .workspace__settings-sidebar {
+  grid-area: settings;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -213,6 +222,29 @@
 
 .workspace--agent .workspace__agent-sidebar {
   grid-area: sidebar;
+}
+
+.workspace-header {
+  grid-area: header;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 61px;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.workspace-header__title {
+  display: inline-block;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .agent-sidebar__header {
@@ -379,6 +411,8 @@
 
 .workspace__page {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 24px 28px;
 }
 
@@ -548,13 +582,18 @@
 
 .filter-bar {
   display: grid;
-  grid-template-columns: 360px 240px;
+  grid-template-columns: minmax(280px, 360px) 240px auto;
   gap: 14px;
   margin-bottom: 20px;
 }
 
 .filter-select {
   display: block;
+}
+
+.filter-bar__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .filter-select select {
@@ -579,6 +618,18 @@
 
 .content-panel {
   min-height: 420px;
+}
+
+.settings-content-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
 .settings-form-panel {

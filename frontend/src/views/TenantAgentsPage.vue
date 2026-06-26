@@ -171,18 +171,6 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <header class="content-header">
-    <div>
-      <p class="content-header__eyebrow">Ngữ cảnh đơn vị</p>
-      <h2>{{ selectedTenant?.name || 'Chọn đơn vị' }}</h2>
-      <p class="content-header__copy">Đang thao tác như trong tài khoản của đơn vị được chọn.</p>
-    </div>
-    <BaseButton type="button" :disabled="!selectedTenant || Boolean(error)" @click="openCreateModal">
-      <Plus :size="18" aria-hidden="true" />
-      Thêm mới
-    </BaseButton>
-  </header>
-
   <div class="filter-bar">
     <BaseInput v-model="filters.searchText.value" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
     <label class="filter-select">
@@ -193,6 +181,12 @@ async function confirmDelete() {
         </option>
       </select>
     </label>
+    <div class="filter-bar__actions">
+      <BaseButton type="button" :disabled="!selectedTenant || Boolean(error)" @click="openCreateModal">
+        <Plus :size="18" aria-hidden="true" />
+        Thêm mới
+      </BaseButton>
+    </div>
   </div>
 
   <div class="content-panel">

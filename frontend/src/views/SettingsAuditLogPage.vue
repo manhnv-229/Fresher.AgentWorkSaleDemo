@@ -183,157 +183,153 @@ function toggleMenu() {
 </script>
 
 <template>
-  <header class="content-header">
-    <div>
-      <p class="content-header__eyebrow">Thiết lập</p>
-      <h2>Nhật ký hoạt động</h2>
-      <p class="content-header__copy">Xem lịch sử thao tác hệ thống</p>
-    </div>
-    <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
-      <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
-    </BaseButton>
-  </header>
-
-  <div class="content-panel">
-    <div class="audit-log-toolbar">
-      <BaseInput
-        v-model="searchText"
-        placeholder="Tìm kiếm nhật ký..."
-        class="field"
-        :disabled="isLoading"
-        @keydown.enter="applySearch"
-      />
-      <div class="filter-trigger" ref="menuRef">
-        <button
-          class="filter-button"
-          :class="{ 'filter-button--active': hasActiveMenuFilters }"
-          type="button"
+  <div class="settings-content-card">
+    <div class="content-panel">
+      <div class="audit-log-toolbar">
+        <BaseInput
+          v-model="searchText"
+          placeholder="Tìm kiếm nhật ký..."
+          class="field"
           :disabled="isLoading"
-          @click.stop="toggleMenu"
-        >
-          <Filter :size="18" aria-hidden="true" />
-          <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
-        </button>
+          @keydown.enter="applySearch"
+        />
+        <div class="filter-trigger" ref="menuRef">
+          <button
+            class="filter-button"
+            :class="{ 'filter-button--active': hasActiveMenuFilters }"
+            type="button"
+            :disabled="isLoading"
+            @click.stop="toggleMenu"
+          >
+            <Filter :size="18" aria-hidden="true" />
+            <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
+          </button>
 
-        <div v-if="isMenuOpen" class="filter-menu">
-          <div class="filter-menu__section">
-            <p class="filter-menu__label">Thời gian</p>
-            <select v-model="selectedTimePreset" class="filter-select">
-              <option value="">Tất cả</option>
-              <option v-for="preset in TIME_PRESETS" :key="preset.value" :value="preset.value">
-                {{ preset.label }}
-              </option>
-            </select>
-          </div>
+          <div v-if="isMenuOpen" class="filter-menu">
+            <div class="filter-menu__section">
+              <p class="filter-menu__label">Thời gian</p>
+              <select v-model="selectedTimePreset" class="filter-select">
+                <option value="">Tất cả</option>
+                <option v-for="preset in TIME_PRESETS" :key="preset.value" :value="preset.value">
+                  {{ preset.label }}
+                </option>
+              </select>
+            </div>
 
-          <div class="filter-menu__divider"></div>
+            <div class="filter-menu__divider"></div>
 
-          <div class="filter-menu__section">
-            <p class="filter-menu__label">Hành động</p>
-            <div class="filter-combo" ref="actionComboRef">
-              <button
-                class="filter-combo__trigger"
-                type="button"
-                @click.stop="isActionComboOpen = !isActionComboOpen"
-              >
-                <span class="filter-combo__value">
-                  {{ selectedActions.length === 0 ? 'Tất cả' : `${selectedActions.length} đã chọn` }}
-                </span>
-                <span class="filter-combo__arrow">▾</span>
-              </button>
-              <div v-if="isActionComboOpen" class="filter-combo__dropdown">
-                <label
-                  v-for="action in AVAILABLE_ACTIONS"
-                  :key="action"
-                  class="filter-combo__option"
+            <div class="filter-menu__section">
+              <p class="filter-menu__label">Hành động</p>
+              <div class="filter-combo" ref="actionComboRef">
+                <button
+                  class="filter-combo__trigger"
+                  type="button"
+                  @click.stop="isActionComboOpen = !isActionComboOpen"
                 >
-                  <input
-                    type="checkbox"
-                    :checked="selectedActions.includes(action)"
-                    @change="toggleAction(action)"
-                  />
-                  <span>{{ getActionLabel(action) }}</span>
-                </label>
+                  <span class="filter-combo__value">
+                    {{ selectedActions.length === 0 ? 'Tất cả' : `${selectedActions.length} đã chọn` }}
+                  </span>
+                  <span class="filter-combo__arrow">▾</span>
+                </button>
+                <div v-if="isActionComboOpen" class="filter-combo__dropdown">
+                  <label
+                    v-for="action in AVAILABLE_ACTIONS"
+                    :key="action"
+                    class="filter-combo__option"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="selectedActions.includes(action)"
+                      @change="toggleAction(action)"
+                    />
+                    <span>{{ getActionLabel(action) }}</span>
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="filter-menu__divider"></div>
+            <div class="filter-menu__divider"></div>
 
-          <div class="filter-menu__section">
-            <p class="filter-menu__label">Đối tượng</p>
-            <div class="filter-combo" ref="targetComboRef">
-              <button
-                class="filter-combo__trigger"
-                type="button"
-                @click.stop="isTargetComboOpen = !isTargetComboOpen"
-              >
-                <span class="filter-combo__value">
-                  {{ selectedTargetTypes.length === 0 ? 'Tất cả' : `${selectedTargetTypes.length} đã chọn` }}
-                </span>
-                <span class="filter-combo__arrow">▾</span>
-              </button>
-              <div v-if="isTargetComboOpen" class="filter-combo__dropdown">
-                <label
-                  v-for="targetType in AVAILABLE_TARGET_TYPES"
-                  :key="targetType"
-                  class="filter-combo__option"
+            <div class="filter-menu__section">
+              <p class="filter-menu__label">Đối tượng</p>
+              <div class="filter-combo" ref="targetComboRef">
+                <button
+                  class="filter-combo__trigger"
+                  type="button"
+                  @click.stop="isTargetComboOpen = !isTargetComboOpen"
                 >
-                  <input
-                    type="checkbox"
-                    :checked="selectedTargetTypes.includes(targetType)"
-                    @change="toggleTargetType(targetType)"
-                  />
-                  <span>{{ getTargetTypeLabel(targetType) }}</span>
-                </label>
+                  <span class="filter-combo__value">
+                    {{ selectedTargetTypes.length === 0 ? 'Tất cả' : `${selectedTargetTypes.length} đã chọn` }}
+                  </span>
+                  <span class="filter-combo__arrow">▾</span>
+                </button>
+                <div v-if="isTargetComboOpen" class="filter-combo__dropdown">
+                  <label
+                    v-for="targetType in AVAILABLE_TARGET_TYPES"
+                    :key="targetType"
+                    class="filter-combo__option"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="selectedTargetTypes.includes(targetType)"
+                      @change="toggleTargetType(targetType)"
+                    />
+                    <span>{{ getTargetTypeLabel(targetType) }}</span>
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="filter-menu__divider"></div>
+            <div class="filter-menu__divider"></div>
 
-          <div class="filter-menu__actions">
-            <BaseButton variant="primary" type="button" @click="applyMenuFilters">
-              Áp dụng
-            </BaseButton>
-            <BaseButton variant="secondary" type="button" @click="resetMenuFilters">
-              <X :size="14" aria-hidden="true" />
-              Đặt lại
-            </BaseButton>
+            <div class="filter-menu__actions">
+              <BaseButton variant="primary" type="button" @click="applyMenuFilters">
+                Áp dụng
+              </BaseButton>
+              <BaseButton variant="secondary" type="button" @click="resetMenuFilters">
+                <X :size="14" aria-hidden="true" />
+                Đặt lại
+              </BaseButton>
+            </div>
           </div>
         </div>
+        <div class="audit-log-toolbar__actions">
+          <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
+            <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
+          </BaseButton>
+        </div>
       </div>
-    </div>
 
-    <p v-if="error" class="message message--error">{{ error }}</p>
-    <div v-else-if="isLoading && entries.length === 0" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-      <span>Đang tải nhật ký hoạt động...</span>
+      <p v-if="error" class="message message--error">{{ error }}</p>
+      <div v-else-if="isLoading && entries.length === 0" class="loading-row">
+        <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+        <span>Đang tải nhật ký hoạt động...</span>
+      </div>
+      <div v-else-if="entries.length === 0" class="empty-card empty-card--tight">
+        <h3>Không tìm thấy kết quả</h3>
+        <p>{{ hasActiveMenuFilters || searchText ? 'Không có nhật ký nào phù hợp với bộ lọc.' : 'Chưa có nhật ký hoạt động.' }}</p>
+      </div>
+      <BaseTable v-else>
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Người dùng</th>
+            <th>Hành động</th>
+            <th>Đối tượng</th>
+            <th>Mô tả</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in entries" :key="entry.id">
+            <td>{{ formatDate(entry.createdAt) }}</td>
+            <td>{{ entry.userName }}</td>
+            <td><span class="status-chip">{{ entry.action }}</span></td>
+            <td>{{ entry.targetType ? getTargetTypeLabel(entry.targetType) : '—' }}</td>
+            <td>{{ entry.description }}</td>
+          </tr>
+        </tbody>
+      </BaseTable>
     </div>
-    <div v-else-if="entries.length === 0" class="empty-card empty-card--tight">
-      <h3>Không tìm thấy kết quả</h3>
-      <p>{{ hasActiveMenuFilters || searchText ? 'Không có nhật ký nào phù hợp với bộ lọc.' : 'Chưa có nhật ký hoạt động.' }}</p>
-    </div>
-    <BaseTable v-else>
-      <thead>
-        <tr>
-          <th>Thời gian</th>
-          <th>Người dùng</th>
-          <th>Hành động</th>
-          <th>Đối tượng</th>
-          <th>Mô tả</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="entry in entries" :key="entry.id">
-          <td>{{ formatDate(entry.createdAt) }}</td>
-          <td>{{ entry.userName }}</td>
-          <td><span class="status-chip">{{ entry.action }}</span></td>
-          <td>{{ entry.targetType ? getTargetTypeLabel(entry.targetType) : '—' }}</td>
-          <td>{{ entry.description }}</td>
-        </tr>
-      </tbody>
-    </BaseTable>
   </div>
 </template>
 
@@ -347,6 +343,10 @@ function toggleMenu() {
 
 .audit-log-toolbar .field {
   flex: 0 1 360px;
+}
+
+.audit-log-toolbar__actions {
+  margin-left: auto;
 }
 
 .filter-trigger {

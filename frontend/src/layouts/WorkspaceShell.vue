@@ -33,16 +33,6 @@ const agentStatusActionLabel = computed(() => {
 
 const { agent, isLoading: isLoadingAgent, loadInternal, loadTenant, clear: clearAgent } = useAgentDetail();
 
-const workspaceTitle = computed(() => {
-  if (isSettingsRoute.value) return 'Thiết lập';
-  if (route.name === 'agents-internal') return 'Agent nội bộ';
-  if (route.name === 'agents-tenant') {
-    const tenant = tenants.value.find(t => t.id === route.params.tenantId);
-    return tenant?.name || 'Đơn vị';
-  }
-  return 'Agent nội bộ';
-});
-
 const agentScope = computed(() => (route.query.scope as string) || 'internal');
 const agentTenantId = computed(() => (route.query.tenantId as string) || '');
 
@@ -149,6 +139,9 @@ function handlePointerDown(event: PointerEvent) {
   </main>
 
   <section v-else class="workspace" :class="{ 'workspace--settings': isSettingsRoute, 'workspace--agent': isAgentRoute }" aria-labelledby="workspace-title">
+    <header v-if="!isAgentRoute" class="workspace-header">
+      <span id="workspace-title" class="workspace-header__title">Demo AgentWorkSale</span>
+    </header>
     <header v-if="isAgentRoute" class="agent-header">
       <div class="agent-header__info">
         <div class="agent-header__title">
@@ -201,11 +194,6 @@ function handlePointerDown(event: PointerEvent) {
     </header>
 
     <aside v-if="!isAgentRoute" class="workspace__sidebar">
-      <div class="sidebar__brand">
-        <p class="sidebar__eyebrow">Demo AgentWorkSale</p>
-        <h1 id="workspace-title">{{ workspaceTitle }}</h1>
-      </div>
-
       <nav class="sidebar__nav" aria-label="Khu vực làm việc">
         <RouterLink
           class="scope-link"
@@ -255,11 +243,6 @@ function handlePointerDown(event: PointerEvent) {
     </aside>
 
     <aside v-if="isSettingsRoute" class="workspace__settings-sidebar">
-      <div class="settings-brand">
-        <p class="sidebar__eyebrow">Thiết lập</p>
-        <h2>Thiết lập</h2>
-      </div>
-
       <nav class="settings-nav" aria-label="Thiết lập">
         <RouterLink
           class="scope-link"
