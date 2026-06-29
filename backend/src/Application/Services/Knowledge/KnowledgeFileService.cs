@@ -38,8 +38,7 @@ public sealed class KnowledgeFileService(
         ".pptx",
         ".txt",
         ".png",
-        ".jpg",
-        ".jpeg"
+        ".jpg"
     };
 
 #endregion
@@ -78,7 +77,9 @@ public sealed class KnowledgeFileService(
         var extension = Path.GetExtension(originalName).ToLowerInvariant();
         if (!SupportedExtensions.Contains(extension))
         {
-            return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.UnsupportedFileType, "File type is not supported.");
+            return ServiceResult<KnowledgeFileItem>.Failure(
+                KnowledgeErrorCodes.UnsupportedFileType,
+                "File type is not supported. Allowed types: PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG.");
         }
 
         var name = KnowledgeServiceHelper.NormalizeDisplayName(Path.GetFileNameWithoutExtension(originalName));

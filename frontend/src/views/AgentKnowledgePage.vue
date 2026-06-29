@@ -11,7 +11,7 @@ import {
   Trash2,
   Upload
 } from '@lucide/vue';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   apiClient,
@@ -60,6 +60,7 @@ const isDeleteOpen = ref(false);
 const isContentViewOpen = ref(false);
 const contentViewFile = ref<KnowledgeFileItem | null>(null);
 const contentViewContent = ref('');
+const contentViewObjectUrl = ref('');
 const isContentViewLoading = ref(false);
 const contentViewError = ref('');
 const folderName = ref('');
@@ -81,13 +82,30 @@ const knowledgeContext = computed<KnowledgeAgentContext>(() => ({
 }));
 const breadcrumb = computed(() => explorer.value?.breadcrumb ?? []);
 const currentFolders = computed(() => explorer.value?.folders ?? []);
-// Hiển thị: ưu tiên search results nếu có search text, không thì dùng explorer files
-const displayedFiles = computed(() => searchText.value.trim() ? searchResults.value : explorer.value?.files ?? []);
+const normalizedSearchText = computed(() => searchText.value.trim().toLowerCase());
+const searchableFolders = computed(() =>
+  flattenFolders(explorer.value?.tree ?? []).filter((folder) => folder.id !== selectedFolderId.value)
+);
+const isSearchActive = computed(() => normalizedSearchText.value.length > 0);
+const displayedFolders = computed(() => {
+  if (!isSearchActive.value) {
+    return currentFolders.value;
+  }
+
+  return searchableFolders.value.filter((folder) => folder.name.toLowerCase().includes(normalizedSearchText.value));
+});
+// Hiển thị: ưu tiên search results nếu có search/filter, không thì dùng explorer files
+const displayedFiles = computed(() => (isSearchActive.value ? searchResults.value : explorer.value?.files ?? []));
 // Flatten tree để dùng trong modal di chuyển (hiển thị tất cả thư mục)
 const allFolders = computed(() => flattenFolders(explorer.value?.tree ?? []));
+const supportedUploadTypesLabel = 'PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG';
 
 onMounted(() => {
   void loadExplorer();
+});
+
+onBeforeUnmount(() => {
+  clearContentViewObjectUrl();
 });
 
 // Khi agentId, scope, hoặc tenantId thay đổi, reset folder selection và reload explorer
@@ -138,8 +156,7 @@ async function runSearch() {
 
   try {
     searchResults.value = await searchKnowledgeFiles(knowledgeContext.value, {
-      name: query,
-      folderId: selectedFolderId.value
+      name: query
     });
   } catch (err) {
     handleError(err, 'Không tìm kiếm được tài liệu.');
@@ -197,12 +214,45 @@ function openRename(item: ActiveItem) {
 
 const previewableExtensions = new Set(['.txt', '.md', '.json', '.csv', '.xml', '.html', '.css', '.js', '.ts', '.py', '.java', '.c', '.cpp', '.cs', '.rb', '.go', '.rs', '.sh', '.sql', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.log']);
 
-function isPreviewable(file: KnowledgeFileItem): boolean {
-  const ext = file.extension.startsWith('.') ? file.extension : `.${file.extension}`;
+function getFileExtension(file: KnowledgeFileItem | null): string {
+  if (!file) return '';
+  return file.extension.startsWith('.') ? file.extension.toLowerCase() : `.${file.extension.toLowerCase()}`;
+}
+
+function isPreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  const ext = getFileExtension(file);
   return previewableExtensions.has(ext.toLowerCase()) || file.contentType.startsWith('text/');
 }
 
+function isImagePreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  const ext = getFileExtension(file);
+  return ext === '.png' || ext === '.jpg' || ext === '.jpeg' || file.contentType.startsWith('image/');
+}
+
+function isPdfPreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  return getFileExtension(file) === '.pdf' || file.contentType === 'application/pdf';
+}
+
+function clearContentViewObjectUrl() {
+  if (!contentViewObjectUrl.value) return;
+  URL.revokeObjectURL(contentViewObjectUrl.value);
+  contentViewObjectUrl.value = '';
+}
+
+function closeContentView() {
+  isContentViewOpen.value = false;
+  contentViewFile.value = null;
+  contentViewContent.value = '';
+  contentViewError.value = '';
+  isContentViewLoading.value = false;
+  clearContentViewObjectUrl();
+}
+
 async function openContentView(file: KnowledgeFileItem) {
+  clearContentViewObjectUrl();
   isContentViewOpen.value = true;
   contentViewFile.value = file;
   contentViewContent.value = '';
@@ -219,8 +269,8 @@ async function openContentView(file: KnowledgeFileItem) {
     });
     if (isPreviewable(file)) {
       contentViewContent.value = await response.data.text();
-    } else {
-      contentViewContent.value = '';
+    } else if (isImagePreviewable(file) || isPdfPreviewable(file)) {
+      contentViewObjectUrl.value = URL.createObjectURL(response.data);
     }
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
@@ -378,6 +428,14 @@ function formatDate(value: string) {
     timeStyle: 'short'
   }).format(new Date(value));
 }
+
+function formatFolderCreatedBy(folder: KnowledgeFolderItem) {
+  return folder.createdByUserName || '-';
+}
+
+function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
+  return folder.createdAt ? formatDate(folder.createdAt) : '-';
+}
 </script>
 
 <template>
@@ -396,7 +454,14 @@ function formatDate(value: string) {
         <Upload :size="16" aria-hidden="true" />
         Upload
       </BaseButton>
-      <input ref="fileInput" class="knowledge-upload" type="file" @change="onFileSelected" />
+      <input
+        ref="fileInput"
+        class="knowledge-upload"
+        type="file"
+        accept=".pdf,.docx,.xlsx,.pptx,.txt,.png,.jpg"
+        @change="onFileSelected"
+      />
+      <!-- <p class="knowledge-header__hint">Hỗ trợ: {{ supportedUploadTypesLabel }}</p> -->
     </div>
   </header>
 
@@ -417,7 +482,7 @@ function formatDate(value: string) {
         </div>
         <label class="knowledge-search">
           <Search :size="16" aria-hidden="true" />
-          <input v-model="searchText" type="search" placeholder="Tìm theo tên file" />
+          <input v-model="searchText" type="search" placeholder="Tìm theo tên file hoặc folder trong agent" />
         </label>
       </div>
 
@@ -436,13 +501,13 @@ function formatDate(value: string) {
             <span></span>
           </div>
 
-          <div v-for="folder in currentFolders" :key="folder.id" class="knowledge-row knowledge-row--folder" @dblclick="openFolder(folder.id)">
+          <div v-for="folder in displayedFolders" :key="folder.id" class="knowledge-row knowledge-row--folder" @dblclick="openFolder(folder.id)">
             <span class="knowledge-name">
               <Folder :size="17" aria-hidden="true" />
               {{ folder.name }}
             </span>
-            <span>{{ folder.createdByUserName }}</span>
-            <span>{{ formatDate(folder.createdAt) }}</span>
+            <span>{{ formatFolderCreatedBy(folder) }}</span>
+            <span>{{ formatFolderCreatedAt(folder) }}</span>
             <span>Folder</span>
             <span class="knowledge-actions">
               <button title="Đổi tên" type="button" @click.stop="openRename({ type: 'folder', item: folder })">
@@ -480,9 +545,9 @@ function formatDate(value: string) {
             </span>
           </div>
 
-          <div v-if="currentFolders.length === 0 && displayedFiles.length === 0" class="knowledge-empty">
+          <div v-if="displayedFolders.length === 0 && displayedFiles.length === 0" class="knowledge-empty">
             <Folder :size="28" aria-hidden="true" />
-            <template v-if="searchText.trim()">
+            <template v-if="isSearchActive">
               <p>Không có file phù hợp.</p>
             </template>
             <template v-else-if="(explorer?.tree ?? []).length === 0 && !selectedFolderId">
@@ -542,7 +607,7 @@ function formatDate(value: string) {
     </div>
   </BaseModal>
 
-  <BaseModal :open="isContentViewOpen" title="Xem nội dung" @close="isContentViewOpen = false">
+  <BaseModal :open="isContentViewOpen" title="Xem nội dung" @close="closeContentView">
     <div class="knowledge-modal knowledge-content-view">
       <div class="knowledge-content-view__header">
         <span class="knowledge-content-view__name">{{ contentViewFile?.name }}</span>
@@ -557,6 +622,16 @@ function formatDate(value: string) {
       <template v-else-if="contentViewError">
         <p class="message message--error">{{ contentViewError }}</p>
       </template>
+      <template v-else-if="isImagePreviewable(contentViewFile) && contentViewObjectUrl">
+        <img class="knowledge-content-view__image" :src="contentViewObjectUrl" :alt="contentViewFile?.name ?? 'Image preview'" />
+      </template>
+      <template v-else-if="isPdfPreviewable(contentViewFile) && contentViewObjectUrl">
+        <iframe
+          class="knowledge-content-view__frame"
+          :src="contentViewObjectUrl"
+          :title="contentViewFile?.name ?? 'PDF preview'"
+        />
+      </template>
       <template v-else-if="contentViewContent">
         <pre class="knowledge-content-view__pre">{{ contentViewContent }}</pre>
       </template>
@@ -568,7 +643,7 @@ function formatDate(value: string) {
         </div>
       </template>
       <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" @click="isContentViewOpen = false">Đóng</BaseButton>
+        <BaseButton variant="secondary" type="button" @click="closeContentView">Đóng</BaseButton>
         <BaseButton v-if="contentViewFile" type="button" @click="downloadFile(contentViewFile)">
           <Download :size="16" aria-hidden="true" />
           Tải xuống
@@ -596,6 +671,13 @@ function formatDate(value: string) {
 
 .knowledge-header__actions {
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.knowledge-header__hint {
+  margin: 0;
+  color: #667085;
+  font-size: 12px;
 }
 
 .knowledge-upload {
@@ -654,6 +736,14 @@ function formatDate(value: string) {
   padding: 0 10px;
   background: #fff;
   color: #667085;
+}
+
+.knowledge-select-wrap {
+  display: grid;
+  gap: 6px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .knowledge-search input {
@@ -845,6 +935,24 @@ function formatDate(value: string) {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.knowledge-content-view__image,
+.knowledge-content-view__frame {
+  width: 100%;
+  max-height: 70vh;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #f7f9fd;
+}
+
+.knowledge-content-view__image {
+  display: block;
+  object-fit: contain;
+}
+
+.knowledge-content-view__frame {
+  min-height: 70vh;
 }
 
 .knowledge-content-view__fallback {
