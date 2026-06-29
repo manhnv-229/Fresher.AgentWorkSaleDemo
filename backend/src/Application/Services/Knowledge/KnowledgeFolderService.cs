@@ -103,6 +103,12 @@ public sealed class KnowledgeFolderService(
             return ServiceResult<KnowledgeFolderItem>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
         }
 
+        var ownerAccess = EnsureFolderOwnerAccess(folder, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgeFolderItem>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
+        }
+
         var name = KnowledgeServiceHelper.NormalizeDisplayName(command.Name);
         if (name is null)
         {
@@ -149,6 +155,12 @@ public sealed class KnowledgeFolderService(
         if (folder is null)
         {
             return ServiceResult<KnowledgeFolderItem>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
+        }
+
+        var ownerAccess = EnsureFolderOwnerAccess(folder, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgeFolderItem>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
         }
 
         if (folder.Id == command.TargetFolderId)
@@ -212,6 +224,12 @@ public sealed class KnowledgeFolderService(
             return ServiceResult<bool>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
         }
 
+        var ownerAccess = EnsureFolderOwnerAccess(folder, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<bool>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
+        }
+
         // Soft delete toàn bộ subtree: folder con và file thuộc subtree
         var allFolders = await knowledgeRepository.GetFoldersAsync(agentId, cancellationToken);
         var now = DateTime.UtcNow;
@@ -271,6 +289,13 @@ public sealed class KnowledgeFolderService(
             targetType,
             targetId.ToString(),
             cancellationToken);
+    }
+
+    private static (string Code, string Message)? EnsureFolderOwnerAccess(AgentKnowledgeFolder folder, Guid userId)
+    {
+        return folder.CreatedByUserId == userId
+            ? null
+            : (KnowledgeErrorCodes.FolderOwnerRequired, "Only the folder creator can rename, move, or delete this folder.");
     }
 
 #endregion

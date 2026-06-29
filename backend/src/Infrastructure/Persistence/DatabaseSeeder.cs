@@ -17,6 +17,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
     private static readonly Guid AdminUserId = Guid.Parse("44444444-4444-4444-4444-444444444441");
     private static readonly Guid TenantUserId = Guid.Parse("44444444-4444-4444-4444-444444444442");
     private static readonly Guid StaffUserId = Guid.Parse("44444444-4444-4444-4444-444444444443");
+    private static readonly Guid AdminTwoUserId = Guid.Parse("44444444-4444-4444-4444-444444444444");
     private static readonly Guid InternalAgentId = Guid.Parse("55555555-5555-5555-5555-555555555550");
     private static readonly Guid TenantOneAgentId = Guid.Parse("55555555-5555-5555-5555-555555555551");
     private static readonly Guid TenantTwoAgentId = Guid.Parse("55555555-5555-5555-5555-555555555552");
@@ -218,6 +219,7 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         await AddUserAsync(AdminUserId, "admin@example.com", "Gorner Robin", "EMP001", "Nội bộ", "Quản trị hệ thống", cancellationToken);
         await AddUserAsync(TenantUserId, "staff1@example.com", "Nguyển Văn A", "EMP002", "Dự án Alpha", "Quản lý dự án", cancellationToken);
         await AddUserAsync(StaffUserId, "staff2@example.com", "Trần Thị B", "EMP003", "Dự án Beta", "Nhân viên kỹ thuật", cancellationToken);
+        await AddUserAsync(AdminTwoUserId, "admin2@example.com", "Lê Văn C", "EMP004", "Dự án Alpha", "Trưởng nhóm", cancellationToken);
     }
 
     private async Task AddUserAsync(Guid id, string email, string fullName, string employeeCode, string project, string jobPosition, CancellationToken cancellationToken)
@@ -254,10 +256,12 @@ public sealed class DatabaseSeeder(DemoDbContext dbContext, IPasswordHasher pass
         await AddUserTenantAsync(TenantUserId, TenantOneId, cancellationToken);
         await AddUserTenantAsync(TenantUserId, TenantTwoId, cancellationToken);
         await AddUserTenantAsync(StaffUserId, TenantOneId, cancellationToken);
+        await AddUserTenantAsync(AdminTwoUserId, TenantOneId, cancellationToken);
 
         await AddUserRoleAsync(AdminUserId, SystemAdminRoleId, null, cancellationToken);
         await AddUserRoleAsync(TenantUserId, TenantManagerRoleId, TenantOneId, cancellationToken);
         await AddUserRoleAsync(StaffUserId, StaffRoleId, TenantOneId, cancellationToken);
+        await AddUserRoleAsync(AdminTwoUserId, SystemAdminRoleId, null, cancellationToken);
     }
 
     private async Task AddUserTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken)

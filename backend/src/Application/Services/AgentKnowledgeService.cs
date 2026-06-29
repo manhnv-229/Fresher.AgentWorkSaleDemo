@@ -197,6 +197,12 @@ public sealed class AgentKnowledgeService(
             return ServiceResult<KnowledgeFolderItem>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
         }
 
+        var ownerAccess = EnsureFolderOwnerAccess(folder, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgeFolderItem>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
+        }
+
         var name = NormalizeDisplayName(command.Name);
         if (name is null)
         {
@@ -242,6 +248,12 @@ public sealed class AgentKnowledgeService(
         if (folder is null)
         {
             return ServiceResult<KnowledgeFolderItem>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
+        }
+
+        var ownerAccess = EnsureFolderOwnerAccess(folder, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgeFolderItem>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
         }
 
         if (folder.Id == command.TargetFolderId)
@@ -300,6 +312,12 @@ public sealed class AgentKnowledgeService(
         if (folder is null)
         {
             return ServiceResult<bool>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
+        }
+
+        var ownerAccess = EnsureFolderOwnerAccess(folder, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<bool>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
         }
 
         var allFolders = await knowledgeRepository.GetFoldersAsync(agentId, cancellationToken);
@@ -883,6 +901,13 @@ public sealed class AgentKnowledgeService(
     /// Normalize tên để so sánh: trim và chuyển sang uppercase.
     /// </summary>
     private static string NormalizeName(string? value) => (value ?? string.Empty).Trim().ToUpperInvariant();
+
+    private static (string Code, string Message)? EnsureFolderOwnerAccess(AgentKnowledgeFolder folder, Guid userId)
+    {
+        return folder.CreatedByUserId == userId
+            ? null
+            : (KnowledgeErrorCodes.FolderOwnerRequired, "Only the folder creator can rename, move, or delete this folder.");
+    }
 
     /// <summary>
     /// Xác định content type từ extension nếu không có content type từ client.

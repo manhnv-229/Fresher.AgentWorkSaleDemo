@@ -12,6 +12,8 @@ public static class KnowledgeErrorCodes
     public const string UnsupportedFileType = "knowledge.unsupported_file_type";
     public const string FileTooLarge = "knowledge.file_too_large";
     public const string EmptyFile = "knowledge.empty_file";
+    public const string FileOwnerRequired = "knowledge.file_owner_required";
+    public const string FolderOwnerRequired = "knowledge.folder_owner_required";
     public const string StorageUnavailable = "knowledge.storage_unavailable";
     public const string StorageUnreachable = "knowledge.storage_unreachable";
     public const string StorageTimedOut = "knowledge.storage_timed_out";

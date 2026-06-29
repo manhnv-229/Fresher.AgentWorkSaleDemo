@@ -9,7 +9,9 @@ import {
   Folder,
   FolderPlus,
   LoaderCircle,
+  Move,
   MoreHorizontal,
+  Pencil,
   Search,
   Trash2,
   Upload
@@ -17,11 +19,12 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-  apiClient,
+  apiRequest,
   createKnowledgeFolder,
   deleteKnowledgeFile,
   deleteKnowledgeFolder,
   downloadKnowledgeFile,
+  getAccessToken,
   getKnowledgeExplorer,
   moveKnowledgeFile,
   moveKnowledgeFolder,
@@ -75,10 +78,33 @@ const renameValue = ref('');
 const moveTargetFolderId = ref<string | null>(null);
 const activeItem = ref<ActiveItem | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const openOverflowMenuId = ref<string | null>(null);
+const contextMenu = ref<{ x: number; y: number; item: ActiveItem } | null>(null);
 
 type ActiveItem =
   | { type: 'folder'; item: KnowledgeFolderItem }
   | { type: 'file'; item: KnowledgeFileItem };
+
+function toggleOverflowMenu(itemId: string, event: MouseEvent) {
+  event.stopPropagation();
+  contextMenu.value = null;
+  openOverflowMenuId.value = openOverflowMenuId.value === itemId ? null : itemId;
+}
+
+function openContextMenu(x: number, y: number, item: ActiveItem) {
+  openOverflowMenuId.value = null;
+  contextMenu.value = { x, y, item };
+}
+
+function closeContextMenu() {
+  contextMenu.value = null;
+}
+
+function onContextMenu(event: MouseEvent, item: ActiveItem) {
+  event.preventDefault();
+  event.stopPropagation();
+  openContextMenu(event.clientX, event.clientY, item);
+}
 
 const tenantId = computed(() => (route.query.tenantId as string) || '');
 const scope = computed(() => (route.query.scope as string) || 'internal');
@@ -113,14 +139,22 @@ const currentFolderParentId = computed<string | null>(() => {
 const canGoUp = computed(() => selectedFolderId.value !== null);
 const canGoBack = computed(() => backHistory.value.length > 0);
 const canGoForward = computed(() => forwardHistory.value.length > 0);
+const currentUserId = computed(() => getCurrentUserIdFromAccessToken());
 const supportedUploadTypesLabel = 'PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG';
+
+function onDocumentClick() {
+  openOverflowMenuId.value = null;
+  contextMenu.value = null;
+}
 
 onMounted(() => {
   void loadExplorer();
+  document.addEventListener('click', onDocumentClick);
 });
 
 onBeforeUnmount(() => {
   clearContentViewObjectUrl();
+  document.removeEventListener('click', onDocumentClick);
 });
 
 // Khi agentId, scope, hoặc tenantId thay đổi, reset folder selection và reload explorer
@@ -305,6 +339,7 @@ function onDrop(event: DragEvent) {
 }
 
 function openRename(item: ActiveItem) {
+  if (!ensureItemOwner(item)) return;
   activeItem.value = item;
   renameValue.value = item.item.name;
   isRenameOpen.value = true;
@@ -350,6 +385,7 @@ function closeContentView() {
 }
 
 async function openContentView(file: KnowledgeFileItem) {
+  if (!ensureFileOwner(file)) return;
   clearContentViewObjectUrl();
   isContentViewOpen.value = true;
   contentViewFile.value = file;
@@ -357,7 +393,7 @@ async function openContentView(file: KnowledgeFileItem) {
   contentViewError.value = '';
   isContentViewLoading.value = true;
   try {
-    const response = await apiClient.request<Blob>({
+    const fileBlob = await apiRequest<Blob>({
       url: `${knowledgeContext.value.scope === 'tenant'
         ? `/api/tenants/${tenantId.value}/agents/${props.agentId}/knowledge`
         : `/api/admin/agents/internal/${props.agentId}/knowledge`}/files/${file.id}/download`,
@@ -366,9 +402,9 @@ async function openContentView(file: KnowledgeFileItem) {
       requiresAuth: true
     });
     if (isPreviewable(file)) {
-      contentViewContent.value = await response.data.text();
+      contentViewContent.value = await fileBlob.text();
     } else if (isImagePreviewable(file) || isPdfPreviewable(file)) {
-      contentViewObjectUrl.value = URL.createObjectURL(response.data);
+      contentViewObjectUrl.value = URL.createObjectURL(fileBlob);
     }
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
@@ -404,6 +440,7 @@ async function submitRename() {
 }
 
 function openMove(item: ActiveItem) {
+  if (!ensureItemOwner(item)) return;
   activeItem.value = item;
   moveTargetFolderId.value = item.type === 'folder' ? item.item.parentFolderId ?? null : item.item.folderId ?? null;
   isMoveOpen.value = true;
@@ -432,6 +469,7 @@ async function submitMove() {
 }
 
 function openDelete(item: ActiveItem) {
+  if (!ensureItemOwner(item)) return;
   activeItem.value = item;
   isDeleteOpen.value = true;
 }
@@ -455,6 +493,7 @@ async function submitDelete() {
 }
 
 async function downloadFile(file: KnowledgeFileItem) {
+  if (!ensureFileOwner(file)) return;
   await runBusy(async () => {
     await downloadKnowledgeFile(knowledgeContext.value, file);
   });
@@ -483,7 +522,11 @@ function handleError(err: unknown, fallback: string) {
 
   if (err instanceof ApiError) {
     const code = (err as any).code as string | undefined;
-    if (code === 'knowledge.storage_unreachable') {
+    if (code === 'knowledge.file_owner_required') {
+      error.value = 'Chỉ người tải lên mới có thể xem nội dung, tải xuống, đổi tên, di chuyển hoặc xóa file này.';
+    } else if (code === 'knowledge.folder_owner_required') {
+      error.value = 'Chỉ người tạo thư mục mới có thể đổi tên, di chuyển hoặc xóa thư mục này.';
+    } else if (code === 'knowledge.storage_unreachable') {
       error.value = 'Không thể kết nối đến dịch vụ lưu trữ. Kiểm tra kết nối mạng và cấu hình MinIO.';
     } else if (code === 'knowledge.storage_timed_out') {
       error.value = 'Thao tác lưu trữ bị hết thời gian chờ. Thử lại sau hoặc kiểm tra cấu hình timeout.';
@@ -533,6 +576,57 @@ function formatFolderCreatedBy(folder: KnowledgeFolderItem) {
 
 function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
   return folder.createdAt ? formatDate(folder.createdAt) : '-';
+}
+
+function normalizeGuid(value: string | null | undefined): string | null {
+  return value ? value.toLowerCase() : null;
+}
+
+function getCurrentUserIdFromAccessToken(): string | null {
+  const accessToken = getAccessToken();
+  if (!accessToken) return null;
+
+  const [, payload] = accessToken.split('.');
+  if (!payload) return null;
+
+  try {
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
+    const binaryPayload = atob(paddedPayload);
+    const jsonPayload = new TextDecoder().decode(Uint8Array.from(binaryPayload, (char) => char.charCodeAt(0)));
+    const claims = JSON.parse(jsonPayload) as { userId?: string; sub?: string };
+    return normalizeGuid(claims.userId ?? claims.sub ?? null);
+  } catch {
+    return null;
+  }
+}
+
+function isFileOwner(file: KnowledgeFileItem): boolean {
+  return normalizeGuid(file.createdByUserId) === currentUserId.value;
+}
+
+function isFolderOwner(folder: KnowledgeFolderItem): boolean {
+  return normalizeGuid(folder.createdByUserId) === currentUserId.value;
+}
+
+function ensureFileOwner(file: KnowledgeFileItem): boolean {
+  if (isFileOwner(file)) return true;
+  error.value = 'Chỉ người tải lên mới có thể xem nội dung, tải xuống, đổi tên, di chuyển hoặc xóa file này.';
+  message.value = '';
+  openOverflowMenuId.value = null;
+  return false;
+}
+
+function ensureFolderOwner(folder: KnowledgeFolderItem): boolean {
+  if (isFolderOwner(folder)) return true;
+  error.value = 'Chỉ người tạo thư mục mới có thể đổi tên, di chuyển hoặc xóa thư mục này.';
+  message.value = '';
+  openOverflowMenuId.value = null;
+  return false;
+}
+
+function ensureItemOwner(item: ActiveItem): boolean {
+  return item.type === 'file' ? ensureFileOwner(item.item) : ensureFolderOwner(item.item);
 }
 </script>
 
@@ -614,7 +708,7 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
             <span></span>
           </div>
 
-          <div v-for="folder in displayedFolders" :key="folder.id" class="knowledge-row knowledge-row--folder" @dblclick="openFolder(folder.id)">
+          <div v-for="folder in displayedFolders" :key="folder.id" class="knowledge-row knowledge-row--folder" @dblclick="openFolder(folder.id)" @contextmenu="onContextMenu($event, { type: 'folder', item: folder })">
             <span class="knowledge-name">
               <Folder :size="17" aria-hidden="true" />
               {{ folder.name }}
@@ -623,17 +717,26 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
             <span>{{ formatFolderCreatedAt(folder) }}</span>
             <span>Folder</span>
             <span class="knowledge-actions">
-              <button title="Đổi tên" type="button" @click.stop="openRename({ type: 'folder', item: folder })">
-                <MoreHorizontal :size="16" aria-hidden="true" />
-              </button>
-              <button title="Di chuyển" type="button" @click.stop="openMove({ type: 'folder', item: folder })">Move</button>
-              <button title="Xóa" type="button" @click.stop="openDelete({ type: 'folder', item: folder })">
-                <Trash2 :size="16" aria-hidden="true" />
-              </button>
+              <span class="knowledge-overflow-wrap">
+                <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('folder-' + folder.id, $event)">
+                  <MoreHorizontal :size="16" aria-hidden="true" />
+                </button>
+                <div v-if="openOverflowMenuId === 'folder-' + folder.id" class="knowledge-overflow-menu" @click.stop>
+                  <button type="button" :disabled="!isFolderOwner(folder)" @click="openRename({ type: 'folder', item: folder }); openOverflowMenuId = null">
+                    <Pencil :size="14" aria-hidden="true" /> Đổi tên
+                  </button>
+                  <button type="button" :disabled="!isFolderOwner(folder)" @click="openMove({ type: 'folder', item: folder }); openOverflowMenuId = null">
+                    <Move :size="14" aria-hidden="true" /> Di chuyển
+                  </button>
+                  <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFolderOwner(folder)" @click="openDelete({ type: 'folder', item: folder }); openOverflowMenuId = null">
+                    <Trash2 :size="14" aria-hidden="true" /> Xóa
+                  </button>
+                </div>
+              </span>
             </span>
           </div>
 
-          <div v-for="file in displayedFiles" :key="file.id" class="knowledge-row">
+          <div v-for="file in displayedFiles" :key="file.id" class="knowledge-row" @contextmenu="onContextMenu($event, { type: 'file', item: file })">
             <span class="knowledge-name">
               <FileText :size="17" aria-hidden="true" />
               {{ file.name }}
@@ -642,19 +745,28 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
             <span>{{ formatDate(file.createdAt) }}</span>
             <span>{{ formatSize(file.sizeBytes) }}</span>
             <span class="knowledge-actions">
-              <button title="Tải xuống" type="button" @click="downloadFile(file)">
-                <Download :size="16" aria-hidden="true" />
-              </button>
-              <button title="Xem nội dung" type="button" @click="openContentView(file)">
-                <Eye :size="16" aria-hidden="true" />
-              </button>
-              <button title="Đổi tên" type="button" @click="openRename({ type: 'file', item: file })">
-                <MoreHorizontal :size="16" aria-hidden="true" />
-              </button>
-              <button title="Di chuyển" type="button" @click="openMove({ type: 'file', item: file })">Move</button>
-              <button title="Xóa" type="button" @click="openDelete({ type: 'file', item: file })">
-                <Trash2 :size="16" aria-hidden="true" />
-              </button>
+              <span class="knowledge-overflow-wrap">
+                <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('file-' + file.id, $event)">
+                  <MoreHorizontal :size="16" aria-hidden="true" />
+                </button>
+                <div v-if="openOverflowMenuId === 'file-' + file.id" class="knowledge-overflow-menu" @click.stop>
+                  <button type="button" :disabled="!isFileOwner(file)" @click="downloadFile(file); openOverflowMenuId = null">
+                    <Download :size="14" aria-hidden="true" /> Tải xuống
+                  </button>
+                  <button type="button" :disabled="!isFileOwner(file)" @click="openContentView(file); openOverflowMenuId = null">
+                    <Eye :size="14" aria-hidden="true" /> Xem nội dung
+                  </button>
+                  <button type="button" :disabled="!isFileOwner(file)" @click="openRename({ type: 'file', item: file }); openOverflowMenuId = null">
+                    <Pencil :size="14" aria-hidden="true" /> Đổi tên
+                  </button>
+                  <button type="button" :disabled="!isFileOwner(file)" @click="openMove({ type: 'file', item: file }); openOverflowMenuId = null">
+                    <Move :size="14" aria-hidden="true" /> Di chuyển
+                  </button>
+                  <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFileOwner(file)" @click="openDelete({ type: 'file', item: file }); openOverflowMenuId = null">
+                    <Trash2 :size="14" aria-hidden="true" /> Xóa
+                  </button>
+                </div>
+              </span>
             </span>
           </div>
 
@@ -674,6 +786,44 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
       </div>
     </template>
   </div>
+
+  <Teleport to="body">
+    <div
+      v-if="contextMenu"
+      class="knowledge-context-menu"
+      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      @click.stop
+    >
+      <template v-if="contextMenu.item.type === 'file'">
+        <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="downloadFile(contextMenu.item.item); closeContextMenu()">
+          <Download :size="14" aria-hidden="true" /> Tải xuống
+        </button>
+        <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openContentView(contextMenu.item.item); closeContextMenu()">
+          <Eye :size="14" aria-hidden="true" /> Xem nội dung
+        </button>
+        <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
+          <Pencil :size="14" aria-hidden="true" /> Đổi tên
+        </button>
+        <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
+          <Move :size="14" aria-hidden="true" /> Di chuyển
+        </button>
+        <button type="button" class="knowledge-context-menu--danger" :disabled="!isFileOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
+          <Trash2 :size="14" aria-hidden="true" /> Xóa
+        </button>
+      </template>
+      <template v-else>
+        <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
+          <Pencil :size="14" aria-hidden="true" /> Đổi tên
+        </button>
+        <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
+          <Move :size="14" aria-hidden="true" /> Di chuyển
+        </button>
+        <button type="button" class="knowledge-context-menu--danger" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
+          <Trash2 :size="14" aria-hidden="true" /> Xóa
+        </button>
+      </template>
+    </div>
+  </Teleport>
 
   <BaseModal :open="isCreateFolderOpen" title="Tạo thư mục" @close="isCreateFolderOpen = false">
     <div class="knowledge-modal">
@@ -1052,6 +1202,71 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
   background: #eef3ff;
 }
 
+.knowledge-overflow-wrap {
+  position: relative;
+}
+
+.knowledge-overflow-trigger {
+  display: inline-grid;
+  min-width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.knowledge-overflow-trigger:hover {
+  background: #eef3ff;
+}
+
+.knowledge-overflow-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 200;
+  min-width: 160px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.knowledge-overflow-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: #344054;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.knowledge-overflow-menu button:hover:not(:disabled) {
+  background: #f2f4f7;
+}
+
+.knowledge-overflow-menu button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.knowledge-overflow-menu--danger {
+  color: #dc2626 !important;
+}
+
+.knowledge-overflow-menu--danger:hover {
+  background: #fef2f2 !important;
+}
+
 .knowledge-empty {
   display: grid;
   gap: 8px;
@@ -1155,6 +1370,51 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
   padding: 0 10px;
   background: #fff;
   font: inherit;
+}
+
+.knowledge-context-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 160px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.knowledge-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: #344054;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.knowledge-context-menu button:hover:not(:disabled) {
+  background: #f2f4f7;
+}
+
+.knowledge-context-menu button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.knowledge-context-menu--danger {
+  color: #dc2626 !important;
+}
+
+.knowledge-context-menu--danger:hover:not(:disabled) {
+  background: #fef2f2 !important;
 }
 
 @media (max-width: 900px) {

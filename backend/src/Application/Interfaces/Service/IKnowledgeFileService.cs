@@ -13,9 +13,19 @@ public interface IKnowledgeFileService
         KnowledgeUploadContent upload,
         CancellationToken cancellationToken);
 
-    Task<ServiceResult<KnowledgeDownloadResult>> DownloadFileAsync(Guid tenantId, Guid agentId, Guid fileId, CancellationToken cancellationToken);
+    Task<ServiceResult<KnowledgeDownloadResult>> DownloadFileAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid fileId,
+        Guid userId,
+        CancellationToken cancellationToken);
 
-    Task<ServiceResult<KnowledgeFileDetail>> GetFileDetailAsync(Guid tenantId, Guid agentId, Guid fileId, CancellationToken cancellationToken);
+    Task<ServiceResult<KnowledgeFileDetail>> GetFileDetailAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid fileId,
+        Guid userId,
+        CancellationToken cancellationToken);
 
     Task<ServiceResult<KnowledgeFileItem>> RenameFileAsync(
         Guid tenantId,
