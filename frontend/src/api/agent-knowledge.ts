@@ -208,6 +208,13 @@ export function moveKnowledgeFile(
   });
 }
 
+export function getKnowledgeFileDetail(context: KnowledgeAgentContext, fileId: string): Promise<KnowledgeFileDetail> {
+  return apiRequest<KnowledgeFileDetail>({
+    url: `${basePath(context)}/files/${fileId}`,
+    requiresAuth: true
+  });
+}
+
 export function deleteKnowledgeFile(context: KnowledgeAgentContext, fileId: string): Promise<void> {
   return apiRequest<void>({
     url: `${basePath(context)}/files/${fileId}`,

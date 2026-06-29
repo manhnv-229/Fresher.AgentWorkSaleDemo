@@ -8,6 +8,7 @@ export {
   deleteKnowledgeFolder,
   downloadKnowledgeFile,
   getKnowledgeExplorer,
+  getKnowledgeFileDetail,
   moveKnowledgeFile,
   moveKnowledgeFolder,
   renameKnowledgeFile,

@@ -5,6 +5,7 @@ import type { KnowledgeFolderTreeItem } from '../../api';
 defineProps<{
   node: KnowledgeFolderTreeItem;
   activeId: string | null;
+  depth?: number;
 }>();
 
 const emit = defineEmits<{
@@ -13,11 +14,11 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <button class="tree-node tree-node--child" type="button" :class="{ 'tree-node--active': activeId === node.id }" @click="emit('select', node.id)">
+  <button class="tree-node" type="button" :class="{ 'tree-node--active': activeId === node.id }" :style="{ marginLeft: (depth ?? 0) * 14 + 'px' }" @click="emit('select', node.id)">
     <Folder :size="16" aria-hidden="true" />
     <span>{{ node.name }}</span>
   </button>
-  <KnowledgeTreeNode v-for="child in node.children" :key="child.id" :node="child" :active-id="activeId" @select="emit('select', $event)" />
+  <KnowledgeTreeNode v-for="child in node.children" :key="child.id" :node="child" :active-id="activeId" :depth="(depth ?? 0) + 1" @select="emit('select', $event)" />
 </template>
 
 <style scoped>
@@ -34,10 +35,6 @@ const emit = defineEmits<{
   font: inherit;
   padding: 8px;
   text-align: left;
-}
-
-.tree-node--child {
-  margin-left: 14px;
 }
 
 .tree-node span {

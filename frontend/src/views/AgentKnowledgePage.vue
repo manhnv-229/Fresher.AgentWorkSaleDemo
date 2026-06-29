@@ -4,6 +4,7 @@ import {
   FileText,
   Folder,
   FolderPlus,
+  Info,
   LoaderCircle,
   MoreHorizontal,
   Search,
@@ -18,6 +19,7 @@ import {
   deleteKnowledgeFolder,
   downloadKnowledgeFile,
   getKnowledgeExplorer,
+  getKnowledgeFileDetail,
   moveKnowledgeFile,
   moveKnowledgeFolder,
   renameKnowledgeFile,
@@ -26,6 +28,7 @@ import {
   uploadKnowledgeFile,
   type KnowledgeAgentContext,
   type KnowledgeExplorerResponse,
+  type KnowledgeFileDetail,
   type KnowledgeFileItem,
   type KnowledgeFolderItem,
   type KnowledgeFolderTreeItem
@@ -55,6 +58,10 @@ const isCreateFolderOpen = ref(false);
 const isRenameOpen = ref(false);
 const isMoveOpen = ref(false);
 const isDeleteOpen = ref(false);
+const isDetailOpen = ref(false);
+const detailFile = ref<KnowledgeFileDetail | null>(null);
+const isDetailLoading = ref(false);
+const detailError = ref('');
 const folderName = ref('');
 const renameValue = ref('');
 const moveTargetFolderId = ref<string | null>(null);
@@ -186,6 +193,24 @@ function openRename(item: ActiveItem) {
   activeItem.value = item;
   renameValue.value = item.item.name;
   isRenameOpen.value = true;
+}
+
+async function openDetail(file: KnowledgeFileItem) {
+  isDetailOpen.value = true;
+  detailFile.value = null;
+  detailError.value = '';
+  isDetailLoading.value = true;
+  try {
+    detailFile.value = await getKnowledgeFileDetail(knowledgeContext.value, file.id);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      router.push({ name: 'login' });
+      return;
+    }
+    detailError.value = err instanceof ApiError ? err.message : 'Không tải được chi tiết file.';
+  } finally {
+    isDetailLoading.value = false;
+  }
 }
 
 // Đổi tên: gọi API tương ứng (folder/file), đóng modal, và refresh explorer
@@ -365,10 +390,6 @@ function formatDate(value: string) {
       <p v-if="message" class="message message--success">{{ message }}</p>
 
       <div class="knowledge-toolbar">
-        <button class="knowledge-root" type="button" :class="{ 'knowledge-root--active': !selectedFolderId }" @click="openFolder(null)">
-          <Folder :size="16" aria-hidden="true" />
-          Gốc
-        </button>
         <div class="knowledge-breadcrumb">
           <button v-for="crumb in breadcrumb" :key="crumb.id" type="button" @click="openFolder(crumb.id)">
             {{ crumb.name }}
@@ -383,11 +404,7 @@ function formatDate(value: string) {
       <div class="knowledge-layout">
         <aside class="knowledge-tree">
           <p class="knowledge-section-title">Thư mục</p>
-          <button class="tree-node" type="button" :class="{ 'tree-node--active': !selectedFolderId }" @click="openFolder(null)">
-            <Folder :size="16" aria-hidden="true" />
-            <span>Gốc</span>
-          </button>
-          <KnowledgeTreeNode v-for="node in explorer?.tree ?? []" :key="node.id" :node="node" :active-id="selectedFolderId" @select="openFolder" />
+          <KnowledgeTreeNode v-for="node in explorer?.tree ?? []" :key="node.id" :node="node" :active-id="selectedFolderId" :depth="0" @select="openFolder" />
         </aside>
 
         <section class="knowledge-content">
@@ -430,6 +447,9 @@ function formatDate(value: string) {
               <button title="Tải xuống" type="button" @click="downloadFile(file)">
                 <Download :size="16" aria-hidden="true" />
               </button>
+              <button title="Chi tiết" type="button" @click="openDetail(file)">
+                <Info :size="16" aria-hidden="true" />
+              </button>
               <button title="Đổi tên" type="button" @click="openRename({ type: 'file', item: file })">
                 <MoreHorizontal :size="16" aria-hidden="true" />
               </button>
@@ -442,7 +462,15 @@ function formatDate(value: string) {
 
           <div v-if="currentFolders.length === 0 && displayedFiles.length === 0" class="knowledge-empty">
             <Folder :size="28" aria-hidden="true" />
-            <p>{{ searchText.trim() ? 'Không có file phù hợp.' : 'Thư mục này chưa có tài liệu.' }}</p>
+            <template v-if="searchText.trim()">
+              <p>Không có file phù hợp.</p>
+            </template>
+            <template v-else-if="(explorer?.tree ?? []).length === 0 && !selectedFolderId">
+              <p>Agent chưa có thư mục tri thức nào.</p>
+            </template>
+            <template v-else>
+              <p>Thư mục này chưa có tài liệu.</p>
+            </template>
           </div>
         </section>
       </div>
@@ -472,7 +500,7 @@ function formatDate(value: string) {
   <BaseModal :open="isMoveOpen" title="Di chuyển" @close="isMoveOpen = false">
     <div class="knowledge-modal">
       <select v-model="moveTargetFolderId" class="knowledge-select">
-        <option :value="null">Gốc</option>
+        <option :value="null">Cấp cao nhất</option>
         <option v-for="folder in allFolders" :key="folder.id" :value="folder.id" :disabled="activeItem?.type === 'folder' && activeItem.item.id === folder.id">
           {{ folder.name }}
         </option>
@@ -491,6 +519,63 @@ function formatDate(value: string) {
         <BaseButton variant="secondary" type="button" :disabled="isBusy" @click="isDeleteOpen = false">Hủy</BaseButton>
         <BaseButton variant="danger" type="button" :disabled="isBusy" @click="submitDelete">Xóa</BaseButton>
       </div>
+    </div>
+  </BaseModal>
+
+  <BaseModal :open="isDetailOpen" title="Chi tiết file" @close="isDetailOpen = false">
+    <div class="knowledge-modal knowledge-detail">
+      <template v-if="isDetailLoading">
+        <div class="knowledge-detail__loading">
+          <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+          <span>Đang tải chi tiết...</span>
+        </div>
+      </template>
+      <template v-else-if="detailError">
+        <p class="message message--error">{{ detailError }}</p>
+      </template>
+      <template v-else-if="detailFile">
+        <dl class="knowledge-detail__grid">
+          <div class="knowledge-detail__row">
+            <dt>Tên file</dt>
+            <dd>{{ detailFile.name }}</dd>
+          </div>
+          <div class="knowledge-detail__row">
+            <dt>Tên gốc</dt>
+            <dd>{{ detailFile.originalName }}</dd>
+          </div>
+          <div class="knowledge-detail__row">
+            <dt>Loại</dt>
+            <dd>{{ detailFile.contentType }}</dd>
+          </div>
+          <div class="knowledge-detail__row">
+            <dt>Dung lượng</dt>
+            <dd>{{ formatSize(detailFile.sizeBytes) }}</dd>
+          </div>
+          <div class="knowledge-detail__row">
+            <dt>Người tạo</dt>
+            <dd>{{ detailFile.createdByUserName }}</dd>
+          </div>
+          <div class="knowledge-detail__row">
+            <dt>Ngày tạo</dt>
+            <dd>{{ formatDate(detailFile.createdAt) }}</dd>
+          </div>
+          <div v-if="detailFile.modifiedAt" class="knowledge-detail__row">
+            <dt>Sửa lần cuối</dt>
+            <dd>{{ formatDate(detailFile.modifiedAt) }}</dd>
+          </div>
+          <div v-if="detailFile.storageBucket" class="knowledge-detail__row">
+            <dt>Storage bucket</dt>
+            <dd>{{ detailFile.storageBucket }}</dd>
+          </div>
+          <div v-if="detailFile.storageObjectKey" class="knowledge-detail__row">
+            <dt>Storage key</dt>
+            <dd class="knowledge-detail__key">{{ detailFile.storageObjectKey }}</dd>
+          </div>
+        </dl>
+        <div class="create-agent__actions">
+          <BaseButton variant="secondary" type="button" @click="isDetailOpen = false">Đóng</BaseButton>
+        </div>
+      </template>
     </div>
   </BaseModal>
 </template>
@@ -533,7 +618,6 @@ function formatDate(value: string) {
   min-width: 0;
 }
 
-.knowledge-root,
 .knowledge-breadcrumb button,
 .tree-node,
 .knowledge-actions button {
@@ -542,20 +626,6 @@ function formatDate(value: string) {
   color: #30405d;
   cursor: pointer;
   font: inherit;
-}
-
-.knowledge-root {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: var(--radius-md);
-  padding: 9px 10px;
-}
-
-.knowledge-root--active,
-.knowledge-root:hover {
-  background: var(--color-primary-soft);
-  color: #1d4ed8;
 }
 
 .knowledge-breadcrumb {
@@ -630,10 +700,6 @@ function formatDate(value: string) {
   border-radius: var(--radius-md);
   padding: 8px;
   text-align: left;
-}
-
-.tree-node--child {
-  margin-left: 14px;
 }
 
 .tree-node span {
@@ -773,5 +839,52 @@ function formatDate(value: string) {
   .knowledge-row > span:nth-child(4) {
     display: none;
   }
+}
+
+.knowledge-detail {
+  gap: 16px;
+}
+
+.knowledge-detail__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  padding: 24px;
+  color: #667085;
+}
+
+.knowledge-detail__grid {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.knowledge-detail__row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #edf0f6;
+}
+
+.knowledge-detail__row:last-child {
+  border-bottom: 0;
+}
+
+.knowledge-detail__row dt {
+  color: #667085;
+  font-size: 13px;
+}
+
+.knowledge-detail__row dd {
+  margin: 0;
+  color: #1f2937;
+  word-break: break-all;
+}
+
+.knowledge-detail__key {
+  font-family: monospace;
+  font-size: 12px;
 }
 </style>
