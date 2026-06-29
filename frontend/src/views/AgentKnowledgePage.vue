@@ -66,6 +66,8 @@ const contentViewContent = ref('');
 const contentViewObjectUrl = ref('');
 const isContentViewLoading = ref(false);
 const contentViewError = ref('');
+const dragCounter = ref(0);
+const isDragOver = ref(false);
 const backHistory = ref<string[]>([]);
 const forwardHistory = ref<string[]>([]);
 const folderName = ref('');
@@ -243,23 +245,63 @@ async function submitCreateFolder() {
   });
 }
 
-// Trigger file input click để mở file picker
-function triggerUpload() {
-  fileInput.value?.click();
-}
-
-// Xử lý file được chọn: upload lên server và refresh explorer
-async function onFileSelected(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-
+// Upload file vào thư mục hiện tại: dùng chung cho file picker và drag & drop
+async function uploadFile(file: File) {
   await runBusy(async () => {
     await uploadKnowledgeFile(knowledgeContext.value, file, selectedFolderId.value);
     message.value = 'Đã tải file lên.';
     await loadExplorer();
   });
+}
+
+// Trigger file input click để mở file picker
+function triggerUpload() {
+  fileInput.value?.click();
+}
+
+// Xử lý file được chọn từ file picker
+function onFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  void uploadFile(file);
+}
+
+// Drag & drop handlers: dùng counter để tránh nhấp nháy khi đi qua child elements
+function onDragEnter(event: DragEvent) {
+  event.preventDefault();
+  if (!event.dataTransfer?.types.includes('Files')) return;
+  dragCounter.value++;
+  isDragOver.value = true;
+}
+
+function onDragOver(event: DragEvent) {
+  event.preventDefault();
+}
+
+function onDragLeave(event: DragEvent) {
+  event.preventDefault();
+  dragCounter.value--;
+  if (dragCounter.value <= 0) {
+    dragCounter.value = 0;
+    isDragOver.value = false;
+  }
+}
+
+function onDrop(event: DragEvent) {
+  event.preventDefault();
+  dragCounter.value = 0;
+  isDragOver.value = false;
+  if (isBusy.value) return;
+  const files = event.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+  const file = files[0];
+  if (file.size <= 0) {
+    error.value = 'File trống.';
+    return;
+  }
+  void uploadFile(file);
 }
 
 function openRename(item: ActiveItem) {
@@ -542,7 +584,11 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
         </template>
       </div>
 
-      <div class="knowledge-layout">
+      <div class="knowledge-layout" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
+        <div v-if="isDragOver" class="knowledge-dropzone">
+          <Upload :size="32" aria-hidden="true" />
+          <p>Thả file vào đây để upload vào thư mục hiện tại</p>
+        </div>
         <aside class="knowledge-tree">
           <div class="knowledge-tree__nav">
             <button class="knowledge-tree__nav-btn" type="button" title="Lên trên (↑)" :disabled="!canGoUp" @click="goUp">
@@ -844,6 +890,27 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  position: relative;
+}
+
+.knowledge-dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(219, 234, 254, 0.85);
+  border: 2px dashed #60a5fa;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+
+.knowledge-dropzone p {
+  font-size: 0.875rem;
+  color: #1e40af;
 }
 
 .knowledge-tree {
