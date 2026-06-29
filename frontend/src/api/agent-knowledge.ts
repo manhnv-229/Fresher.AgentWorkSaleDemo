@@ -43,11 +43,6 @@ export interface KnowledgeFileItem {
   modifiedAt?: string | null;
 }
 
-export interface KnowledgeFileDetail extends KnowledgeFileItem {
-  storageBucket: string;
-  storageObjectKey: string;
-}
-
 export interface KnowledgeExplorerResponse {
   agentId: string;
   selectedFolderId?: string | null;
@@ -204,13 +199,6 @@ export function moveKnowledgeFile(
     url: `${basePath(context)}/files/${fileId}/move`,
     method: 'PUT',
     data: payload,
-    requiresAuth: true
-  });
-}
-
-export function getKnowledgeFileDetail(context: KnowledgeAgentContext, fileId: string): Promise<KnowledgeFileDetail> {
-  return apiRequest<KnowledgeFileDetail>({
-    url: `${basePath(context)}/files/${fileId}`,
     requiresAuth: true
   });
 }

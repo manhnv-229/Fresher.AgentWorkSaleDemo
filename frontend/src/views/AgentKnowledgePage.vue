@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import {
   Download,
+  Eye,
   FileText,
   Folder,
   FolderPlus,
-  Info,
   LoaderCircle,
   MoreHorizontal,
   Search,
@@ -14,12 +14,12 @@ import {
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
+  apiClient,
   createKnowledgeFolder,
   deleteKnowledgeFile,
   deleteKnowledgeFolder,
   downloadKnowledgeFile,
   getKnowledgeExplorer,
-  getKnowledgeFileDetail,
   moveKnowledgeFile,
   moveKnowledgeFolder,
   renameKnowledgeFile,
@@ -28,7 +28,6 @@ import {
   uploadKnowledgeFile,
   type KnowledgeAgentContext,
   type KnowledgeExplorerResponse,
-  type KnowledgeFileDetail,
   type KnowledgeFileItem,
   type KnowledgeFolderItem,
   type KnowledgeFolderTreeItem
@@ -58,10 +57,11 @@ const isCreateFolderOpen = ref(false);
 const isRenameOpen = ref(false);
 const isMoveOpen = ref(false);
 const isDeleteOpen = ref(false);
-const isDetailOpen = ref(false);
-const detailFile = ref<KnowledgeFileDetail | null>(null);
-const isDetailLoading = ref(false);
-const detailError = ref('');
+const isContentViewOpen = ref(false);
+const contentViewFile = ref<KnowledgeFileItem | null>(null);
+const contentViewContent = ref('');
+const isContentViewLoading = ref(false);
+const contentViewError = ref('');
 const folderName = ref('');
 const renameValue = ref('');
 const moveTargetFolderId = ref<string | null>(null);
@@ -195,21 +195,41 @@ function openRename(item: ActiveItem) {
   isRenameOpen.value = true;
 }
 
-async function openDetail(file: KnowledgeFileItem) {
-  isDetailOpen.value = true;
-  detailFile.value = null;
-  detailError.value = '';
-  isDetailLoading.value = true;
+const previewableExtensions = new Set(['.txt', '.md', '.json', '.csv', '.xml', '.html', '.css', '.js', '.ts', '.py', '.java', '.c', '.cpp', '.cs', '.rb', '.go', '.rs', '.sh', '.sql', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.log']);
+
+function isPreviewable(file: KnowledgeFileItem): boolean {
+  const ext = file.extension.startsWith('.') ? file.extension : `.${file.extension}`;
+  return previewableExtensions.has(ext.toLowerCase()) || file.contentType.startsWith('text/');
+}
+
+async function openContentView(file: KnowledgeFileItem) {
+  isContentViewOpen.value = true;
+  contentViewFile.value = file;
+  contentViewContent.value = '';
+  contentViewError.value = '';
+  isContentViewLoading.value = true;
   try {
-    detailFile.value = await getKnowledgeFileDetail(knowledgeContext.value, file.id);
+    const response = await apiClient.request<Blob>({
+      url: `${knowledgeContext.value.scope === 'tenant'
+        ? `/api/tenants/${tenantId.value}/agents/${props.agentId}/knowledge`
+        : `/api/admin/agents/internal/${props.agentId}/knowledge`}/files/${file.id}/download`,
+      method: 'GET',
+      responseType: 'blob',
+      requiresAuth: true
+    });
+    if (isPreviewable(file)) {
+      contentViewContent.value = await response.data.text();
+    } else {
+      contentViewContent.value = '';
+    }
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
       return;
     }
-    detailError.value = err instanceof ApiError ? err.message : 'Không tải được chi tiết file.';
+    contentViewError.value = err instanceof ApiError ? err.message : 'Không tải được nội dung file.';
   } finally {
-    isDetailLoading.value = false;
+    isContentViewLoading.value = false;
   }
 }
 
@@ -447,8 +467,8 @@ function formatDate(value: string) {
               <button title="Tải xuống" type="button" @click="downloadFile(file)">
                 <Download :size="16" aria-hidden="true" />
               </button>
-              <button title="Chi tiết" type="button" @click="openDetail(file)">
-                <Info :size="16" aria-hidden="true" />
+              <button title="Xem nội dung" type="button" @click="openContentView(file)">
+                <Eye :size="16" aria-hidden="true" />
               </button>
               <button title="Đổi tên" type="button" @click="openRename({ type: 'file', item: file })">
                 <MoreHorizontal :size="16" aria-hidden="true" />
@@ -522,60 +542,38 @@ function formatDate(value: string) {
     </div>
   </BaseModal>
 
-  <BaseModal :open="isDetailOpen" title="Chi tiết file" @close="isDetailOpen = false">
-    <div class="knowledge-modal knowledge-detail">
-      <template v-if="isDetailLoading">
-        <div class="knowledge-detail__loading">
+  <BaseModal :open="isContentViewOpen" title="Xem nội dung" @close="isContentViewOpen = false">
+    <div class="knowledge-modal knowledge-content-view">
+      <div class="knowledge-content-view__header">
+        <span class="knowledge-content-view__name">{{ contentViewFile?.name }}</span>
+        <span class="knowledge-content-view__type">{{ contentViewFile?.contentType }}</span>
+      </div>
+      <template v-if="isContentViewLoading">
+        <div class="knowledge-content-view__loading">
           <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-          <span>Đang tải chi tiết...</span>
+          <span>Đang tải nội dung...</span>
         </div>
       </template>
-      <template v-else-if="detailError">
-        <p class="message message--error">{{ detailError }}</p>
+      <template v-else-if="contentViewError">
+        <p class="message message--error">{{ contentViewError }}</p>
       </template>
-      <template v-else-if="detailFile">
-        <dl class="knowledge-detail__grid">
-          <div class="knowledge-detail__row">
-            <dt>Tên file</dt>
-            <dd>{{ detailFile.name }}</dd>
-          </div>
-          <div class="knowledge-detail__row">
-            <dt>Tên gốc</dt>
-            <dd>{{ detailFile.originalName }}</dd>
-          </div>
-          <div class="knowledge-detail__row">
-            <dt>Loại</dt>
-            <dd>{{ detailFile.contentType }}</dd>
-          </div>
-          <div class="knowledge-detail__row">
-            <dt>Dung lượng</dt>
-            <dd>{{ formatSize(detailFile.sizeBytes) }}</dd>
-          </div>
-          <div class="knowledge-detail__row">
-            <dt>Người tạo</dt>
-            <dd>{{ detailFile.createdByUserName }}</dd>
-          </div>
-          <div class="knowledge-detail__row">
-            <dt>Ngày tạo</dt>
-            <dd>{{ formatDate(detailFile.createdAt) }}</dd>
-          </div>
-          <div v-if="detailFile.modifiedAt" class="knowledge-detail__row">
-            <dt>Sửa lần cuối</dt>
-            <dd>{{ formatDate(detailFile.modifiedAt) }}</dd>
-          </div>
-          <div v-if="detailFile.storageBucket" class="knowledge-detail__row">
-            <dt>Storage bucket</dt>
-            <dd>{{ detailFile.storageBucket }}</dd>
-          </div>
-          <div v-if="detailFile.storageObjectKey" class="knowledge-detail__row">
-            <dt>Storage key</dt>
-            <dd class="knowledge-detail__key">{{ detailFile.storageObjectKey }}</dd>
-          </div>
-        </dl>
-        <div class="create-agent__actions">
-          <BaseButton variant="secondary" type="button" @click="isDetailOpen = false">Đóng</BaseButton>
+      <template v-else-if="contentViewContent">
+        <pre class="knowledge-content-view__pre">{{ contentViewContent }}</pre>
+      </template>
+      <template v-else>
+        <div class="knowledge-content-view__fallback">
+          <FileText :size="28" aria-hidden="true" />
+          <p>Loại file này chưa được hỗ trợ xem trước.</p>
+          <p>Vui lòng tải xuống để xem nội dung.</p>
         </div>
       </template>
+      <div class="create-agent__actions">
+        <BaseButton variant="secondary" type="button" @click="isContentViewOpen = false">Đóng</BaseButton>
+        <BaseButton v-if="contentViewFile" type="button" @click="downloadFile(contentViewFile)">
+          <Download :size="16" aria-hidden="true" />
+          Tải xuống
+        </BaseButton>
+      </div>
     </div>
   </BaseModal>
 </template>
@@ -802,6 +800,66 @@ function formatDate(value: string) {
   gap: 14px;
 }
 
+.knowledge-content-view {
+  gap: 12px;
+}
+
+.knowledge-content-view__header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.knowledge-content-view__name {
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-content-view__type {
+  color: #667085;
+  font-size: 13px;
+}
+
+.knowledge-content-view__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  padding: 32px;
+  color: #667085;
+}
+
+.knowledge-content-view__pre {
+  max-height: 400px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  background: #f7f9fd;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.knowledge-content-view__fallback {
+  display: grid;
+  gap: 8px;
+  place-items: center;
+  padding: 32px;
+  color: #667085;
+  text-align: center;
+}
+
+.knowledge-content-view__fallback p {
+  margin: 0;
+}
+
 .knowledge-select {
   width: 100%;
   height: 40px;
@@ -839,52 +897,5 @@ function formatDate(value: string) {
   .knowledge-row > span:nth-child(4) {
     display: none;
   }
-}
-
-.knowledge-detail {
-  gap: 16px;
-}
-
-.knowledge-detail__loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-  padding: 24px;
-  color: #667085;
-}
-
-.knowledge-detail__grid {
-  display: grid;
-  gap: 0;
-  margin: 0;
-}
-
-.knowledge-detail__row {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid #edf0f6;
-}
-
-.knowledge-detail__row:last-child {
-  border-bottom: 0;
-}
-
-.knowledge-detail__row dt {
-  color: #667085;
-  font-size: 13px;
-}
-
-.knowledge-detail__row dd {
-  margin: 0;
-  color: #1f2937;
-  word-break: break-all;
-}
-
-.knowledge-detail__key {
-  font-family: monospace;
-  font-size: 12px;
 }
 </style>
