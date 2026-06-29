@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Eye, EyeOff } from '@lucide/vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
@@ -13,6 +14,8 @@ const newPassword = ref('');
 const error = ref('');
 const notice = ref('');
 const isLoading = ref(false);
+const showCurrentPassword = ref(false);
+const showNewPassword = ref(false);
 
 function clearForm() {
   currentPassword.value = '';
@@ -54,11 +57,25 @@ async function submit() {
       <form class="create-agent" @submit.prevent="submit">
         <div class="create-agent__group">
           <label class="create-agent__label" for="current-password">Mật khẩu hiện tại</label>
-          <BaseInput id="current-password" v-model="currentPassword" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu hiện tại" />
+          <BaseInput id="current-password" v-model="currentPassword" :type="showCurrentPassword ? 'text' : 'password'" autocomplete="current-password" placeholder="Nhập mật khẩu hiện tại" has-action>
+            <template #action>
+              <button class="field__action" type="button" @click="showCurrentPassword = !showCurrentPassword">
+                <EyeOff v-if="showCurrentPassword" :size="16" aria-hidden="true" />
+                <Eye v-else :size="16" aria-hidden="true" />
+              </button>
+            </template>
+          </BaseInput>
         </div>
         <div class="create-agent__group">
           <label class="create-agent__label" for="new-password">Mật khẩu mới</label>
-          <BaseInput id="new-password" v-model="newPassword" type="password" autocomplete="new-password" placeholder="Nhập mật khẩu mới" />
+          <BaseInput id="new-password" v-model="newPassword" :type="showNewPassword ? 'text' : 'password'" autocomplete="new-password" placeholder="Nhập mật khẩu mới" has-action>
+            <template #action>
+              <button class="field__action" type="button" @click="showNewPassword = !showNewPassword">
+                <EyeOff v-if="showNewPassword" :size="16" aria-hidden="true" />
+                <Eye v-else :size="16" aria-hidden="true" />
+              </button>
+            </template>
+          </BaseInput>
         </div>
         <p v-if="error" class="message message--error">{{ error }}</p>
         <div class="create-agent__actions">
