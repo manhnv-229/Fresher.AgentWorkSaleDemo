@@ -445,24 +445,6 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
       <h2>Tri thức agent</h2>
       <p class="content-header__copy">Quản lý thư mục, tài liệu và file nguồn cho agent hiện tại.</p>
     </div>
-    <div class="knowledge-header__actions">
-      <BaseButton variant="secondary" type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="openCreateFolder">
-        <FolderPlus :size="16" aria-hidden="true" />
-        Thư mục
-      </BaseButton>
-      <BaseButton type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="triggerUpload">
-        <Upload :size="16" aria-hidden="true" />
-        Upload
-      </BaseButton>
-      <input
-        ref="fileInput"
-        class="knowledge-upload"
-        type="file"
-        accept=".pdf,.docx,.xlsx,.pptx,.txt,.png,.jpg"
-        @change="onFileSelected"
-      />
-      <!-- <p class="knowledge-header__hint">Hỗ trợ: {{ supportedUploadTypesLabel }}</p> -->
-    </div>
   </header>
 
   <div class="content-panel knowledge-panel">
@@ -475,15 +457,32 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
       <p v-if="message" class="message message--success">{{ message }}</p>
 
       <div class="knowledge-toolbar">
-        <div class="knowledge-breadcrumb">
-          <button v-for="crumb in breadcrumb" :key="crumb.id" type="button" @click="openFolder(crumb.id)">
-            {{ crumb.name }}
-          </button>
-        </div>
         <label class="knowledge-search">
           <Search :size="16" aria-hidden="true" />
-          <input v-model="searchText" type="search" placeholder="Tìm theo tên file hoặc folder trong agent" />
+          <input v-model="searchText" type="search" placeholder="Tìm kiếm tài liệu hoặc thư mục" />
         </label>
+        <div class="knowledge-toolbar__actions">
+          <BaseButton variant="secondary" type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="openCreateFolder">
+            <FolderPlus :size="16" aria-hidden="true" />
+            Thư mục
+          </BaseButton>
+          <BaseButton type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="triggerUpload">
+            <Upload :size="16" aria-hidden="true" />
+            Upload
+          </BaseButton>
+          <input
+            ref="fileInput"
+            class="knowledge-upload"
+            type="file"
+            accept=".pdf,.docx,.xlsx,.pptx,.txt,.png,.jpg"
+            @change="onFileSelected"
+          />
+        </div>
+      </div>
+      <div class="knowledge-breadcrumb" v-if="breadcrumb.length">
+        <button v-for="crumb in breadcrumb" :key="crumb.id" type="button" @click="openFolder(crumb.id)">
+          {{ crumb.name }}
+        </button>
       </div>
 
       <div class="knowledge-layout">
@@ -585,7 +584,7 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
   <BaseModal :open="isMoveOpen" title="Di chuyển" @close="isMoveOpen = false">
     <div class="knowledge-modal">
       <select v-model="moveTargetFolderId" class="knowledge-select">
-        <option :value="null">Cấp cao nhất</option>
+        <option :value="null">Gốc</option>
         <option v-for="folder in allFolders" :key="folder.id" :value="folder.id" :disabled="activeItem?.type === 'folder' && activeItem.item.id === folder.id">
           {{ folder.name }}
         </option>
@@ -657,19 +656,18 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
 .knowledge-header {
   align-items: flex-start;
   display: flex;
-  justify-content: space-between;
   gap: 16px;
 }
 
-.knowledge-header__actions,
 .knowledge-actions,
 .knowledge-toolbar,
+.knowledge-toolbar__actions,
 .knowledge-name {
   display: flex;
   align-items: center;
 }
 
-.knowledge-header__actions {
+.knowledge-toolbar__actions {
   gap: 10px;
   flex-wrap: wrap;
 }
@@ -694,8 +692,15 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
 }
 
 .knowledge-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
   min-width: 0;
+}
+
+.knowledge-toolbar .knowledge-search {
+  width: 280px;
 }
 
 .knowledge-breadcrumb button,
@@ -710,7 +715,6 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
 
 .knowledge-breadcrumb {
   display: flex;
-  flex: 1;
   gap: 4px;
   min-width: 0;
   overflow: hidden;
