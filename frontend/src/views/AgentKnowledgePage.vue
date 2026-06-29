@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   Download,
   Eye,
   FileText,
@@ -63,6 +66,8 @@ const contentViewContent = ref('');
 const contentViewObjectUrl = ref('');
 const isContentViewLoading = ref(false);
 const contentViewError = ref('');
+const backHistory = ref<string[]>([]);
+const forwardHistory = ref<string[]>([]);
 const folderName = ref('');
 const renameValue = ref('');
 const moveTargetFolderId = ref<string | null>(null);
@@ -98,6 +103,14 @@ const displayedFolders = computed(() => {
 const displayedFiles = computed(() => (isSearchActive.value ? searchResults.value : explorer.value?.files ?? []));
 // Flatten tree để dùng trong modal di chuyển (hiển thị tất cả thư mục)
 const allFolders = computed(() => flattenFolders(explorer.value?.tree ?? []));
+const currentFolderParentId = computed<string | null>(() => {
+  if (!selectedFolderId.value) return null;
+  const folder = allFolders.value.find((f) => f.id === selectedFolderId.value);
+  return folder?.parentFolderId ?? null;
+});
+const canGoUp = computed(() => selectedFolderId.value !== null);
+const canGoBack = computed(() => backHistory.value.length > 0);
+const canGoForward = computed(() => forwardHistory.value.length > 0);
 const supportedUploadTypesLabel = 'PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG';
 
 onMounted(() => {
@@ -140,13 +153,56 @@ async function loadExplorer(folderId = selectedFolderId.value) {
   }
 }
 
-// Chọn folder: cập nhật selectedFolderId và reload explorer với folder mới
+// Chọn folder từ tree hoặc breadcrumb: ghi lịch sử và reload
 async function openFolder(folderId: string | null) {
+  if (folderId === selectedFolderId.value) return;
+  const prevFolderId = selectedFolderId.value;
   selectedFolderId.value = folderId;
   await loadExplorer(folderId);
+  if (!error.value && prevFolderId !== null) {
+    backHistory.value.push(prevFolderId);
+    forwardHistory.value = [];
+  }
 }
 
-// Tìm kiếm file theo tên trong folder hiện tại. Nếu query rỗng thì clear search results.
+// Điều hướng lên thư mục cha
+async function goUp() {
+  const parentId = currentFolderParentId.value;
+  if (parentId === undefined) return;
+  const prevFolderId = selectedFolderId.value;
+  selectedFolderId.value = parentId;
+  await loadExplorer(parentId);
+  if (!error.value && prevFolderId !== null) {
+    backHistory.value.push(prevFolderId);
+    forwardHistory.value = [];
+  }
+}
+
+// Quay lại thư mục trước đó
+async function goBack() {
+  if (backHistory.value.length === 0) return;
+  const prev = backHistory.value.pop()!;
+  const current = selectedFolderId.value;
+  selectedFolderId.value = prev;
+  await loadExplorer(prev);
+  if (!error.value && current !== null) {
+    forwardHistory.value.push(current);
+  }
+}
+
+// Đi tới thư mục tiếp theo
+async function goForward() {
+  if (forwardHistory.value.length === 0) return;
+  const next = forwardHistory.value.pop()!;
+  const current = selectedFolderId.value;
+  selectedFolderId.value = next;
+  await loadExplorer(next);
+  if (!error.value && current !== null) {
+    backHistory.value.push(current);
+  }
+}
+
+// Tìm kiếm file theo tên trong toàn bộ agent. Nếu query rỗng thì clear search results.
 async function runSearch() {
   const query = searchText.value.trim();
   if (!query || (scope.value === 'tenant' && !tenantId.value)) {
@@ -480,13 +536,25 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
         </div>
       </div>
       <div class="knowledge-breadcrumb" v-if="breadcrumb.length">
-        <button v-for="crumb in breadcrumb" :key="crumb.id" type="button" @click="openFolder(crumb.id)">
-          {{ crumb.name }}
-        </button>
+        <template v-for="(crumb, idx) in breadcrumb" :key="crumb.id">
+          <span v-if="idx > 0" class="knowledge-breadcrumb__sep">&gt;</span>
+          <button type="button" @click="openFolder(crumb.id)">{{ crumb.name }}</button>
+        </template>
       </div>
 
       <div class="knowledge-layout">
         <aside class="knowledge-tree">
+          <div class="knowledge-tree__nav">
+            <button class="knowledge-tree__nav-btn" type="button" title="Lên trên (↑)" :disabled="!canGoUp" @click="goUp">
+              <ArrowUp :size="16" aria-hidden="true" />
+            </button>
+            <button class="knowledge-tree__nav-btn" type="button" title="Quay lại (←)" :disabled="!canGoBack" @click="goBack">
+              <ArrowLeft :size="16" aria-hidden="true" />
+            </button>
+            <button class="knowledge-tree__nav-btn" type="button" title="Đi tiếp (→)" :disabled="!canGoForward" @click="goForward">
+              <ArrowRight :size="16" aria-hidden="true" />
+            </button>
+          </div>
           <p class="knowledge-section-title">Thư mục</p>
           <KnowledgeTreeNode v-for="node in explorer?.tree ?? []" :key="node.id" :node="node" :active-id="selectedFolderId" :depth="0" @select="openFolder" />
         </aside>
@@ -715,18 +783,29 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
 
 .knowledge-breadcrumb {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
   min-width: 0;
   overflow: hidden;
 }
 
 .knowledge-breadcrumb button {
-  border-radius: var(--radius-sm);
-  padding: 8px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: #30405d;
+  padding: 2px 4px;
 }
 
 .knowledge-breadcrumb button:hover {
-  background: #f2f5fb;
+  color: #1d4ed8;
+}
+
+.knowledge-breadcrumb__sep {
+  color: #9ca3af;
+  margin: 0 4px;
 }
 
 .knowledge-search {
@@ -774,6 +853,35 @@ function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
   padding: 14px;
   border-right: 1px solid var(--color-border);
   background: #fafbfe;
+}
+
+.knowledge-tree__nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.knowledge-tree__nav-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: #30405d;
+  cursor: pointer;
+  font: inherit;
+}
+
+.knowledge-tree__nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.knowledge-tree__nav-btn:not(:disabled):hover {
+  background: #eef3ff;
+  color: #1d4ed8;
 }
 
 .knowledge-section-title {
