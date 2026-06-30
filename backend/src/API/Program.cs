@@ -219,10 +219,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     app.MapOpenApi();
+}
 
-    using var scope = app.Services.CreateScope();
+using (var scope = app.Services.CreateScope())
+{
     var dbContext = scope.ServiceProvider.GetRequiredService<DemoDbContext>();
-
     await dbContext.Database.MigrateAsync();
 
     if (app.Configuration.GetValue<bool>("Database:SeedOnStartup"))
