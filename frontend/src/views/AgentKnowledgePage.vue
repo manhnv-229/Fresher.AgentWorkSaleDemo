@@ -1,22 +1,30 @@
 <script setup lang="ts">
 import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   Download,
+  Eye,
   FileText,
   Folder,
   FolderPlus,
   LoaderCircle,
+  Move,
   MoreHorizontal,
+  Pencil,
   Search,
   Trash2,
   Upload
 } from '@lucide/vue';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
+  apiRequest,
   createKnowledgeFolder,
   deleteKnowledgeFile,
   deleteKnowledgeFolder,
   downloadKnowledgeFile,
+  getAccessToken,
   getKnowledgeExplorer,
   moveKnowledgeFile,
   moveKnowledgeFolder,
@@ -55,15 +63,48 @@ const isCreateFolderOpen = ref(false);
 const isRenameOpen = ref(false);
 const isMoveOpen = ref(false);
 const isDeleteOpen = ref(false);
+const isContentViewOpen = ref(false);
+const contentViewFile = ref<KnowledgeFileItem | null>(null);
+const contentViewContent = ref('');
+const contentViewObjectUrl = ref('');
+const isContentViewLoading = ref(false);
+const contentViewError = ref('');
+const dragCounter = ref(0);
+const isDragOver = ref(false);
+const backHistory = ref<string[]>([]);
+const forwardHistory = ref<string[]>([]);
 const folderName = ref('');
 const renameValue = ref('');
 const moveTargetFolderId = ref<string | null>(null);
 const activeItem = ref<ActiveItem | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const openOverflowMenuId = ref<string | null>(null);
+const contextMenu = ref<{ x: number; y: number; item: ActiveItem } | null>(null);
 
 type ActiveItem =
   | { type: 'folder'; item: KnowledgeFolderItem }
   | { type: 'file'; item: KnowledgeFileItem };
+
+function toggleOverflowMenu(itemId: string, event: MouseEvent) {
+  event.stopPropagation();
+  contextMenu.value = null;
+  openOverflowMenuId.value = openOverflowMenuId.value === itemId ? null : itemId;
+}
+
+function openContextMenu(x: number, y: number, item: ActiveItem) {
+  openOverflowMenuId.value = null;
+  contextMenu.value = { x, y, item };
+}
+
+function closeContextMenu() {
+  contextMenu.value = null;
+}
+
+function onContextMenu(event: MouseEvent, item: ActiveItem) {
+  event.preventDefault();
+  event.stopPropagation();
+  openContextMenu(event.clientX, event.clientY, item);
+}
 
 const tenantId = computed(() => (route.query.tenantId as string) || '');
 const scope = computed(() => (route.query.scope as string) || 'internal');
@@ -74,13 +115,46 @@ const knowledgeContext = computed<KnowledgeAgentContext>(() => ({
 }));
 const breadcrumb = computed(() => explorer.value?.breadcrumb ?? []);
 const currentFolders = computed(() => explorer.value?.folders ?? []);
-// Hiển thị: ưu tiên search results nếu có search text, không thì dùng explorer files
-const displayedFiles = computed(() => searchText.value.trim() ? searchResults.value : explorer.value?.files ?? []);
+const normalizedSearchText = computed(() => searchText.value.trim().toLowerCase());
+const searchableFolders = computed(() =>
+  flattenFolders(explorer.value?.tree ?? []).filter((folder) => folder.id !== selectedFolderId.value)
+);
+const isSearchActive = computed(() => normalizedSearchText.value.length > 0);
+const displayedFolders = computed(() => {
+  if (!isSearchActive.value) {
+    return currentFolders.value;
+  }
+
+  return searchableFolders.value.filter((folder) => folder.name.toLowerCase().includes(normalizedSearchText.value));
+});
+// Hiển thị: ưu tiên search results nếu có search/filter, không thì dùng explorer files
+const displayedFiles = computed(() => (isSearchActive.value ? searchResults.value : explorer.value?.files ?? []));
 // Flatten tree để dùng trong modal di chuyển (hiển thị tất cả thư mục)
 const allFolders = computed(() => flattenFolders(explorer.value?.tree ?? []));
+const currentFolderParentId = computed<string | null>(() => {
+  if (!selectedFolderId.value) return null;
+  const folder = allFolders.value.find((f) => f.id === selectedFolderId.value);
+  return folder?.parentFolderId ?? null;
+});
+const canGoUp = computed(() => selectedFolderId.value !== null);
+const canGoBack = computed(() => backHistory.value.length > 0);
+const canGoForward = computed(() => forwardHistory.value.length > 0);
+const currentUserId = computed(() => getCurrentUserIdFromAccessToken());
+const supportedUploadTypesLabel = 'PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG';
+
+function onDocumentClick() {
+  openOverflowMenuId.value = null;
+  contextMenu.value = null;
+}
 
 onMounted(() => {
   void loadExplorer();
+  document.addEventListener('click', onDocumentClick);
+});
+
+onBeforeUnmount(() => {
+  clearContentViewObjectUrl();
+  document.removeEventListener('click', onDocumentClick);
 });
 
 // Khi agentId, scope, hoặc tenantId thay đổi, reset folder selection và reload explorer
@@ -115,13 +189,56 @@ async function loadExplorer(folderId = selectedFolderId.value) {
   }
 }
 
-// Chọn folder: cập nhật selectedFolderId và reload explorer với folder mới
+// Chọn folder từ tree hoặc breadcrumb: ghi lịch sử và reload
 async function openFolder(folderId: string | null) {
+  if (folderId === selectedFolderId.value) return;
+  const prevFolderId = selectedFolderId.value;
   selectedFolderId.value = folderId;
   await loadExplorer(folderId);
+  if (!error.value && prevFolderId !== null) {
+    backHistory.value.push(prevFolderId);
+    forwardHistory.value = [];
+  }
 }
 
-// Tìm kiếm file theo tên trong folder hiện tại. Nếu query rỗng thì clear search results.
+// Điều hướng lên thư mục cha
+async function goUp() {
+  const parentId = currentFolderParentId.value;
+  if (parentId === undefined) return;
+  const prevFolderId = selectedFolderId.value;
+  selectedFolderId.value = parentId;
+  await loadExplorer(parentId);
+  if (!error.value && prevFolderId !== null) {
+    backHistory.value.push(prevFolderId);
+    forwardHistory.value = [];
+  }
+}
+
+// Quay lại thư mục trước đó
+async function goBack() {
+  if (backHistory.value.length === 0) return;
+  const prev = backHistory.value.pop()!;
+  const current = selectedFolderId.value;
+  selectedFolderId.value = prev;
+  await loadExplorer(prev);
+  if (!error.value && current !== null) {
+    forwardHistory.value.push(current);
+  }
+}
+
+// Đi tới thư mục tiếp theo
+async function goForward() {
+  if (forwardHistory.value.length === 0) return;
+  const next = forwardHistory.value.pop()!;
+  const current = selectedFolderId.value;
+  selectedFolderId.value = next;
+  await loadExplorer(next);
+  if (!error.value && current !== null) {
+    backHistory.value.push(current);
+  }
+}
+
+// Tìm kiếm file theo tên trong toàn bộ agent. Nếu query rỗng thì clear search results.
 async function runSearch() {
   const query = searchText.value.trim();
   if (!query || (scope.value === 'tenant' && !tenantId.value)) {
@@ -131,8 +248,7 @@ async function runSearch() {
 
   try {
     searchResults.value = await searchKnowledgeFiles(knowledgeContext.value, {
-      name: query,
-      folderId: selectedFolderId.value
+      name: query
     });
   } catch (err) {
     handleError(err, 'Không tìm kiếm được tài liệu.');
@@ -163,18 +279,8 @@ async function submitCreateFolder() {
   });
 }
 
-// Trigger file input click để mở file picker
-function triggerUpload() {
-  fileInput.value?.click();
-}
-
-// Xử lý file được chọn: upload lên server và refresh explorer
-async function onFileSelected(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-
+// Upload file vào thư mục hiện tại: dùng chung cho file picker và drag & drop
+async function uploadFile(file: File) {
   await runBusy(async () => {
     await uploadKnowledgeFile(knowledgeContext.value, file, selectedFolderId.value);
     message.value = 'Đã tải file lên.';
@@ -182,10 +288,133 @@ async function onFileSelected(event: Event) {
   });
 }
 
+// Trigger file input click để mở file picker
+function triggerUpload() {
+  fileInput.value?.click();
+}
+
+// Xử lý file được chọn từ file picker
+function onFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  void uploadFile(file);
+}
+
+// Drag & drop handlers: dùng counter để tránh nhấp nháy khi đi qua child elements
+function onDragEnter(event: DragEvent) {
+  event.preventDefault();
+  if (!event.dataTransfer?.types.includes('Files')) return;
+  dragCounter.value++;
+  isDragOver.value = true;
+}
+
+function onDragOver(event: DragEvent) {
+  event.preventDefault();
+}
+
+function onDragLeave(event: DragEvent) {
+  event.preventDefault();
+  dragCounter.value--;
+  if (dragCounter.value <= 0) {
+    dragCounter.value = 0;
+    isDragOver.value = false;
+  }
+}
+
+function onDrop(event: DragEvent) {
+  event.preventDefault();
+  dragCounter.value = 0;
+  isDragOver.value = false;
+  if (isBusy.value) return;
+  const files = event.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+  const file = files[0];
+  if (file.size <= 0) {
+    error.value = 'File trống.';
+    return;
+  }
+  void uploadFile(file);
+}
+
 function openRename(item: ActiveItem) {
+  if (!ensureItemOwner(item)) return;
   activeItem.value = item;
   renameValue.value = item.item.name;
   isRenameOpen.value = true;
+}
+
+const previewableExtensions = new Set(['.txt', '.md', '.json', '.csv', '.xml', '.html', '.css', '.js', '.ts', '.py', '.java', '.c', '.cpp', '.cs', '.rb', '.go', '.rs', '.sh', '.sql', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.log']);
+
+function getFileExtension(file: KnowledgeFileItem | null): string {
+  if (!file) return '';
+  return file.extension.startsWith('.') ? file.extension.toLowerCase() : `.${file.extension.toLowerCase()}`;
+}
+
+function isPreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  const ext = getFileExtension(file);
+  return previewableExtensions.has(ext.toLowerCase()) || file.contentType.startsWith('text/');
+}
+
+function isImagePreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  const ext = getFileExtension(file);
+  return ext === '.png' || ext === '.jpg' || ext === '.jpeg' || file.contentType.startsWith('image/');
+}
+
+function isPdfPreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  return getFileExtension(file) === '.pdf' || file.contentType === 'application/pdf';
+}
+
+function clearContentViewObjectUrl() {
+  if (!contentViewObjectUrl.value) return;
+  URL.revokeObjectURL(contentViewObjectUrl.value);
+  contentViewObjectUrl.value = '';
+}
+
+function closeContentView() {
+  isContentViewOpen.value = false;
+  contentViewFile.value = null;
+  contentViewContent.value = '';
+  contentViewError.value = '';
+  isContentViewLoading.value = false;
+  clearContentViewObjectUrl();
+}
+
+async function openContentView(file: KnowledgeFileItem) {
+  if (!ensureFileOwner(file)) return;
+  clearContentViewObjectUrl();
+  isContentViewOpen.value = true;
+  contentViewFile.value = file;
+  contentViewContent.value = '';
+  contentViewError.value = '';
+  isContentViewLoading.value = true;
+  try {
+    const fileBlob = await apiRequest<Blob>({
+      url: `${knowledgeContext.value.scope === 'tenant'
+        ? `/api/tenants/${tenantId.value}/agents/${props.agentId}/knowledge`
+        : `/api/admin/agents/internal/${props.agentId}/knowledge`}/files/${file.id}/download`,
+      method: 'GET',
+      responseType: 'blob',
+      requiresAuth: true
+    });
+    if (isPreviewable(file)) {
+      contentViewContent.value = await fileBlob.text();
+    } else if (isImagePreviewable(file) || isPdfPreviewable(file)) {
+      contentViewObjectUrl.value = URL.createObjectURL(fileBlob);
+    }
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      router.push({ name: 'login' });
+      return;
+    }
+    contentViewError.value = err instanceof ApiError ? err.message : 'Không tải được nội dung file.';
+  } finally {
+    isContentViewLoading.value = false;
+  }
 }
 
 // Đổi tên: gọi API tương ứng (folder/file), đóng modal, và refresh explorer
@@ -211,6 +440,7 @@ async function submitRename() {
 }
 
 function openMove(item: ActiveItem) {
+  if (!ensureItemOwner(item)) return;
   activeItem.value = item;
   moveTargetFolderId.value = item.type === 'folder' ? item.item.parentFolderId ?? null : item.item.folderId ?? null;
   isMoveOpen.value = true;
@@ -239,6 +469,7 @@ async function submitMove() {
 }
 
 function openDelete(item: ActiveItem) {
+  if (!ensureItemOwner(item)) return;
   activeItem.value = item;
   isDeleteOpen.value = true;
 }
@@ -262,6 +493,7 @@ async function submitDelete() {
 }
 
 async function downloadFile(file: KnowledgeFileItem) {
+  if (!ensureFileOwner(file)) return;
   await runBusy(async () => {
     await downloadKnowledgeFile(knowledgeContext.value, file);
   });
@@ -290,7 +522,11 @@ function handleError(err: unknown, fallback: string) {
 
   if (err instanceof ApiError) {
     const code = (err as any).code as string | undefined;
-    if (code === 'knowledge.storage_unreachable') {
+    if (code === 'knowledge.file_owner_required') {
+      error.value = 'Chỉ người tải lên mới có thể xem nội dung, tải xuống, đổi tên, di chuyển hoặc xóa file này.';
+    } else if (code === 'knowledge.folder_owner_required') {
+      error.value = 'Chỉ người tạo thư mục mới có thể đổi tên, di chuyển hoặc xóa thư mục này.';
+    } else if (code === 'knowledge.storage_unreachable') {
       error.value = 'Không thể kết nối đến dịch vụ lưu trữ. Kiểm tra kết nối mạng và cấu hình MinIO.';
     } else if (code === 'knowledge.storage_timed_out') {
       error.value = 'Thao tác lưu trữ bị hết thời gian chờ. Thử lại sau hoặc kiểm tra cấu hình timeout.';
@@ -333,6 +569,65 @@ function formatDate(value: string) {
     timeStyle: 'short'
   }).format(new Date(value));
 }
+
+function formatFolderCreatedBy(folder: KnowledgeFolderItem) {
+  return folder.createdByUserName || '-';
+}
+
+function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
+  return folder.createdAt ? formatDate(folder.createdAt) : '-';
+}
+
+function normalizeGuid(value: string | null | undefined): string | null {
+  return value ? value.toLowerCase() : null;
+}
+
+function getCurrentUserIdFromAccessToken(): string | null {
+  const accessToken = getAccessToken();
+  if (!accessToken) return null;
+
+  const [, payload] = accessToken.split('.');
+  if (!payload) return null;
+
+  try {
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
+    const binaryPayload = atob(paddedPayload);
+    const jsonPayload = new TextDecoder().decode(Uint8Array.from(binaryPayload, (char) => char.charCodeAt(0)));
+    const claims = JSON.parse(jsonPayload) as { userId?: string; sub?: string };
+    return normalizeGuid(claims.userId ?? claims.sub ?? null);
+  } catch {
+    return null;
+  }
+}
+
+function isFileOwner(file: KnowledgeFileItem): boolean {
+  return normalizeGuid(file.createdByUserId) === currentUserId.value;
+}
+
+function isFolderOwner(folder: KnowledgeFolderItem): boolean {
+  return normalizeGuid(folder.createdByUserId) === currentUserId.value;
+}
+
+function ensureFileOwner(file: KnowledgeFileItem): boolean {
+  if (isFileOwner(file)) return true;
+  error.value = 'Chỉ người tải lên mới có thể xem nội dung, tải xuống, đổi tên, di chuyển hoặc xóa file này.';
+  message.value = '';
+  openOverflowMenuId.value = null;
+  return false;
+}
+
+function ensureFolderOwner(folder: KnowledgeFolderItem): boolean {
+  if (isFolderOwner(folder)) return true;
+  error.value = 'Chỉ người tạo thư mục mới có thể đổi tên, di chuyển hoặc xóa thư mục này.';
+  message.value = '';
+  openOverflowMenuId.value = null;
+  return false;
+}
+
+function ensureItemOwner(item: ActiveItem): boolean {
+  return item.type === 'file' ? ensureFileOwner(item.item) : ensureFolderOwner(item.item);
+}
 </script>
 
 <template>
@@ -341,17 +636,6 @@ function formatDate(value: string) {
       <p class="content-header__eyebrow">Tri thức</p>
       <h2>Tri thức agent</h2>
       <p class="content-header__copy">Quản lý thư mục, tài liệu và file nguồn cho agent hiện tại.</p>
-    </div>
-    <div class="knowledge-header__actions">
-      <BaseButton variant="secondary" type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="openCreateFolder">
-        <FolderPlus :size="16" aria-hidden="true" />
-        Thư mục
-      </BaseButton>
-      <BaseButton type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="triggerUpload">
-        <Upload :size="16" aria-hidden="true" />
-        Upload
-      </BaseButton>
-      <input ref="fileInput" class="knowledge-upload" type="file" @change="onFileSelected" />
     </div>
   </header>
 
@@ -365,29 +649,54 @@ function formatDate(value: string) {
       <p v-if="message" class="message message--success">{{ message }}</p>
 
       <div class="knowledge-toolbar">
-        <button class="knowledge-root" type="button" :class="{ 'knowledge-root--active': !selectedFolderId }" @click="openFolder(null)">
-          <Folder :size="16" aria-hidden="true" />
-          Gốc
-        </button>
-        <div class="knowledge-breadcrumb">
-          <button v-for="crumb in breadcrumb" :key="crumb.id" type="button" @click="openFolder(crumb.id)">
-            {{ crumb.name }}
-          </button>
-        </div>
         <label class="knowledge-search">
           <Search :size="16" aria-hidden="true" />
-          <input v-model="searchText" type="search" placeholder="Tìm theo tên file" />
+          <input v-model="searchText" type="search" placeholder="Tìm kiếm tài liệu hoặc thư mục" />
         </label>
+        <div class="knowledge-toolbar__actions">
+          <BaseButton variant="secondary" type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="openCreateFolder">
+            <FolderPlus :size="16" aria-hidden="true" />
+            Thư mục
+          </BaseButton>
+          <BaseButton type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="triggerUpload">
+            <Upload :size="16" aria-hidden="true" />
+            Upload
+          </BaseButton>
+          <input
+            ref="fileInput"
+            class="knowledge-upload"
+            type="file"
+            accept=".pdf,.docx,.xlsx,.pptx,.txt,.png,.jpg"
+            @change="onFileSelected"
+          />
+        </div>
+      </div>
+      <div class="knowledge-breadcrumb" v-if="breadcrumb.length">
+        <template v-for="(crumb, idx) in breadcrumb" :key="crumb.id">
+          <span v-if="idx > 0" class="knowledge-breadcrumb__sep">&gt;</span>
+          <button type="button" @click="openFolder(crumb.id)">{{ crumb.name }}</button>
+        </template>
       </div>
 
-      <div class="knowledge-layout">
+      <div class="knowledge-layout" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
+        <div v-if="isDragOver" class="knowledge-dropzone">
+          <Upload :size="32" aria-hidden="true" />
+          <p>Thả file vào đây để upload vào thư mục hiện tại</p>
+        </div>
         <aside class="knowledge-tree">
+          <div class="knowledge-tree__nav">
+            <button class="knowledge-tree__nav-btn" type="button" title="Lên trên (↑)" :disabled="!canGoUp" @click="goUp">
+              <ArrowUp :size="16" aria-hidden="true" />
+            </button>
+            <button class="knowledge-tree__nav-btn" type="button" title="Quay lại (←)" :disabled="!canGoBack" @click="goBack">
+              <ArrowLeft :size="16" aria-hidden="true" />
+            </button>
+            <button class="knowledge-tree__nav-btn" type="button" title="Đi tiếp (→)" :disabled="!canGoForward" @click="goForward">
+              <ArrowRight :size="16" aria-hidden="true" />
+            </button>
+          </div>
           <p class="knowledge-section-title">Thư mục</p>
-          <button class="tree-node" type="button" :class="{ 'tree-node--active': !selectedFolderId }" @click="openFolder(null)">
-            <Folder :size="16" aria-hidden="true" />
-            <span>Gốc</span>
-          </button>
-          <KnowledgeTreeNode v-for="node in explorer?.tree ?? []" :key="node.id" :node="node" :active-id="selectedFolderId" @select="openFolder" />
+          <KnowledgeTreeNode v-for="node in explorer?.tree ?? []" :key="node.id" :node="node" :active-id="selectedFolderId" :depth="0" @select="openFolder" />
         </aside>
 
         <section class="knowledge-content">
@@ -399,26 +708,35 @@ function formatDate(value: string) {
             <span></span>
           </div>
 
-          <div v-for="folder in currentFolders" :key="folder.id" class="knowledge-row knowledge-row--folder" @dblclick="openFolder(folder.id)">
+          <div v-for="folder in displayedFolders" :key="folder.id" class="knowledge-row knowledge-row--folder" @dblclick="openFolder(folder.id)" @contextmenu="onContextMenu($event, { type: 'folder', item: folder })">
             <span class="knowledge-name">
               <Folder :size="17" aria-hidden="true" />
               {{ folder.name }}
             </span>
-            <span>{{ folder.createdByUserName }}</span>
-            <span>{{ formatDate(folder.createdAt) }}</span>
+            <span>{{ formatFolderCreatedBy(folder) }}</span>
+            <span>{{ formatFolderCreatedAt(folder) }}</span>
             <span>Folder</span>
             <span class="knowledge-actions">
-              <button title="Đổi tên" type="button" @click.stop="openRename({ type: 'folder', item: folder })">
-                <MoreHorizontal :size="16" aria-hidden="true" />
-              </button>
-              <button title="Di chuyển" type="button" @click.stop="openMove({ type: 'folder', item: folder })">Move</button>
-              <button title="Xóa" type="button" @click.stop="openDelete({ type: 'folder', item: folder })">
-                <Trash2 :size="16" aria-hidden="true" />
-              </button>
+              <span class="knowledge-overflow-wrap">
+                <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('folder-' + folder.id, $event)">
+                  <MoreHorizontal :size="16" aria-hidden="true" />
+                </button>
+                <div v-if="openOverflowMenuId === 'folder-' + folder.id" class="knowledge-overflow-menu" @click.stop>
+                  <button type="button" :disabled="!isFolderOwner(folder)" @click="openRename({ type: 'folder', item: folder }); openOverflowMenuId = null">
+                    <Pencil :size="14" aria-hidden="true" /> Đổi tên
+                  </button>
+                  <button type="button" :disabled="!isFolderOwner(folder)" @click="openMove({ type: 'folder', item: folder }); openOverflowMenuId = null">
+                    <Move :size="14" aria-hidden="true" /> Di chuyển
+                  </button>
+                  <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFolderOwner(folder)" @click="openDelete({ type: 'folder', item: folder }); openOverflowMenuId = null">
+                    <Trash2 :size="14" aria-hidden="true" /> Xóa
+                  </button>
+                </div>
+              </span>
             </span>
           </div>
 
-          <div v-for="file in displayedFiles" :key="file.id" class="knowledge-row">
+          <div v-for="file in displayedFiles" :key="file.id" class="knowledge-row" @contextmenu="onContextMenu($event, { type: 'file', item: file })">
             <span class="knowledge-name">
               <FileText :size="17" aria-hidden="true" />
               {{ file.name }}
@@ -427,27 +745,85 @@ function formatDate(value: string) {
             <span>{{ formatDate(file.createdAt) }}</span>
             <span>{{ formatSize(file.sizeBytes) }}</span>
             <span class="knowledge-actions">
-              <button title="Tải xuống" type="button" @click="downloadFile(file)">
-                <Download :size="16" aria-hidden="true" />
-              </button>
-              <button title="Đổi tên" type="button" @click="openRename({ type: 'file', item: file })">
-                <MoreHorizontal :size="16" aria-hidden="true" />
-              </button>
-              <button title="Di chuyển" type="button" @click="openMove({ type: 'file', item: file })">Move</button>
-              <button title="Xóa" type="button" @click="openDelete({ type: 'file', item: file })">
-                <Trash2 :size="16" aria-hidden="true" />
-              </button>
+              <span class="knowledge-overflow-wrap">
+                <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('file-' + file.id, $event)">
+                  <MoreHorizontal :size="16" aria-hidden="true" />
+                </button>
+                <div v-if="openOverflowMenuId === 'file-' + file.id" class="knowledge-overflow-menu" @click.stop>
+                  <button type="button" :disabled="!isFileOwner(file)" @click="downloadFile(file); openOverflowMenuId = null">
+                    <Download :size="14" aria-hidden="true" /> Tải xuống
+                  </button>
+                  <button type="button" :disabled="!isFileOwner(file)" @click="openContentView(file); openOverflowMenuId = null">
+                    <Eye :size="14" aria-hidden="true" /> Xem nội dung
+                  </button>
+                  <button type="button" :disabled="!isFileOwner(file)" @click="openRename({ type: 'file', item: file }); openOverflowMenuId = null">
+                    <Pencil :size="14" aria-hidden="true" /> Đổi tên
+                  </button>
+                  <button type="button" :disabled="!isFileOwner(file)" @click="openMove({ type: 'file', item: file }); openOverflowMenuId = null">
+                    <Move :size="14" aria-hidden="true" /> Di chuyển
+                  </button>
+                  <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFileOwner(file)" @click="openDelete({ type: 'file', item: file }); openOverflowMenuId = null">
+                    <Trash2 :size="14" aria-hidden="true" /> Xóa
+                  </button>
+                </div>
+              </span>
             </span>
           </div>
 
-          <div v-if="currentFolders.length === 0 && displayedFiles.length === 0" class="knowledge-empty">
+          <div v-if="displayedFolders.length === 0 && displayedFiles.length === 0" class="knowledge-empty">
             <Folder :size="28" aria-hidden="true" />
-            <p>{{ searchText.trim() ? 'Không có file phù hợp.' : 'Thư mục này chưa có tài liệu.' }}</p>
+            <template v-if="isSearchActive">
+              <p>Không có file phù hợp.</p>
+            </template>
+            <template v-else-if="(explorer?.tree ?? []).length === 0 && !selectedFolderId">
+              <p>Agent chưa có thư mục tri thức nào.</p>
+            </template>
+            <template v-else>
+              <p>Thư mục này chưa có tài liệu.</p>
+            </template>
           </div>
         </section>
       </div>
     </template>
   </div>
+
+  <Teleport to="body">
+    <div
+      v-if="contextMenu"
+      class="knowledge-context-menu"
+      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      @click.stop
+    >
+      <template v-if="contextMenu.item.type === 'file'">
+        <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="downloadFile(contextMenu.item.item); closeContextMenu()">
+          <Download :size="14" aria-hidden="true" /> Tải xuống
+        </button>
+        <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openContentView(contextMenu.item.item); closeContextMenu()">
+          <Eye :size="14" aria-hidden="true" /> Xem nội dung
+        </button>
+        <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
+          <Pencil :size="14" aria-hidden="true" /> Đổi tên
+        </button>
+        <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
+          <Move :size="14" aria-hidden="true" /> Di chuyển
+        </button>
+        <button type="button" class="knowledge-context-menu--danger" :disabled="!isFileOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
+          <Trash2 :size="14" aria-hidden="true" /> Xóa
+        </button>
+      </template>
+      <template v-else>
+        <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
+          <Pencil :size="14" aria-hidden="true" /> Đổi tên
+        </button>
+        <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
+          <Move :size="14" aria-hidden="true" /> Di chuyển
+        </button>
+        <button type="button" class="knowledge-context-menu--danger" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
+          <Trash2 :size="14" aria-hidden="true" /> Xóa
+        </button>
+      </template>
+    </div>
+  </Teleport>
 
   <BaseModal :open="isCreateFolderOpen" title="Tạo thư mục" @close="isCreateFolderOpen = false">
     <div class="knowledge-modal">
@@ -493,26 +869,77 @@ function formatDate(value: string) {
       </div>
     </div>
   </BaseModal>
+
+  <BaseModal :open="isContentViewOpen" title="Xem nội dung" @close="closeContentView">
+    <div class="knowledge-modal knowledge-content-view">
+      <div class="knowledge-content-view__header">
+        <span class="knowledge-content-view__name">{{ contentViewFile?.name }}</span>
+        <span class="knowledge-content-view__type">{{ contentViewFile?.contentType }}</span>
+      </div>
+      <template v-if="isContentViewLoading">
+        <div class="knowledge-content-view__loading">
+          <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+          <span>Đang tải nội dung...</span>
+        </div>
+      </template>
+      <template v-else-if="contentViewError">
+        <p class="message message--error">{{ contentViewError }}</p>
+      </template>
+      <template v-else-if="isImagePreviewable(contentViewFile) && contentViewObjectUrl">
+        <img class="knowledge-content-view__image" :src="contentViewObjectUrl" :alt="contentViewFile?.name ?? 'Image preview'" />
+      </template>
+      <template v-else-if="isPdfPreviewable(contentViewFile) && contentViewObjectUrl">
+        <iframe
+          class="knowledge-content-view__frame"
+          :src="contentViewObjectUrl"
+          :title="contentViewFile?.name ?? 'PDF preview'"
+        />
+      </template>
+      <template v-else-if="contentViewContent">
+        <pre class="knowledge-content-view__pre">{{ contentViewContent }}</pre>
+      </template>
+      <template v-else>
+        <div class="knowledge-content-view__fallback">
+          <FileText :size="28" aria-hidden="true" />
+          <p>Loại file này chưa được hỗ trợ xem trước.</p>
+          <p>Vui lòng tải xuống để xem nội dung.</p>
+        </div>
+      </template>
+      <div class="create-agent__actions">
+        <BaseButton variant="secondary" type="button" @click="closeContentView">Đóng</BaseButton>
+        <BaseButton v-if="contentViewFile" type="button" @click="downloadFile(contentViewFile)">
+          <Download :size="16" aria-hidden="true" />
+          Tải xuống
+        </BaseButton>
+      </div>
+    </div>
+  </BaseModal>
 </template>
 
 <style scoped>
 .knowledge-header {
   align-items: flex-start;
   display: flex;
-  justify-content: space-between;
   gap: 16px;
 }
 
-.knowledge-header__actions,
 .knowledge-actions,
 .knowledge-toolbar,
+.knowledge-toolbar__actions,
 .knowledge-name {
   display: flex;
   align-items: center;
 }
 
-.knowledge-header__actions {
+.knowledge-toolbar__actions {
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.knowledge-header__hint {
+  margin: 0;
+  color: #667085;
+  font-size: 12px;
 }
 
 .knowledge-upload {
@@ -529,11 +956,17 @@ function formatDate(value: string) {
 }
 
 .knowledge-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
   min-width: 0;
 }
 
-.knowledge-root,
+.knowledge-toolbar .knowledge-search {
+  width: 280px;
+}
+
 .knowledge-breadcrumb button,
 .tree-node,
 .knowledge-actions button {
@@ -544,35 +977,31 @@ function formatDate(value: string) {
   font: inherit;
 }
 
-.knowledge-root {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: var(--radius-md);
-  padding: 9px 10px;
-}
-
-.knowledge-root--active,
-.knowledge-root:hover {
-  background: var(--color-primary-soft);
-  color: #1d4ed8;
-}
-
 .knowledge-breadcrumb {
   display: flex;
-  flex: 1;
-  gap: 4px;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
   min-width: 0;
   overflow: hidden;
 }
 
 .knowledge-breadcrumb button {
-  border-radius: var(--radius-sm);
-  padding: 8px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: #30405d;
+  padding: 2px 4px;
 }
 
 .knowledge-breadcrumb button:hover {
-  background: #f2f5fb;
+  color: #1d4ed8;
+}
+
+.knowledge-breadcrumb__sep {
+  color: #9ca3af;
+  margin: 0 4px;
 }
 
 .knowledge-search {
@@ -586,6 +1015,14 @@ function formatDate(value: string) {
   padding: 0 10px;
   background: #fff;
   color: #667085;
+}
+
+.knowledge-select-wrap {
+  display: grid;
+  gap: 6px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .knowledge-search input {
@@ -603,6 +1040,27 @@ function formatDate(value: string) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  position: relative;
+}
+
+.knowledge-dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(219, 234, 254, 0.85);
+  border: 2px dashed #60a5fa;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+
+.knowledge-dropzone p {
+  font-size: 0.875rem;
+  color: #1e40af;
 }
 
 .knowledge-tree {
@@ -612,6 +1070,35 @@ function formatDate(value: string) {
   padding: 14px;
   border-right: 1px solid var(--color-border);
   background: #fafbfe;
+}
+
+.knowledge-tree__nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.knowledge-tree__nav-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: #30405d;
+  cursor: pointer;
+  font: inherit;
+}
+
+.knowledge-tree__nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.knowledge-tree__nav-btn:not(:disabled):hover {
+  background: #eef3ff;
+  color: #1d4ed8;
 }
 
 .knowledge-section-title {
@@ -630,10 +1117,6 @@ function formatDate(value: string) {
   border-radius: var(--radius-md);
   padding: 8px;
   text-align: left;
-}
-
-.tree-node--child {
-  margin-left: 14px;
 }
 
 .tree-node span {
@@ -719,6 +1202,71 @@ function formatDate(value: string) {
   background: #eef3ff;
 }
 
+.knowledge-overflow-wrap {
+  position: relative;
+}
+
+.knowledge-overflow-trigger {
+  display: inline-grid;
+  min-width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.knowledge-overflow-trigger:hover {
+  background: #eef3ff;
+}
+
+.knowledge-overflow-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 200;
+  min-width: 160px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.knowledge-overflow-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: #344054;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.knowledge-overflow-menu button:hover:not(:disabled) {
+  background: #f2f4f7;
+}
+
+.knowledge-overflow-menu button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.knowledge-overflow-menu--danger {
+  color: #dc2626 !important;
+}
+
+.knowledge-overflow-menu--danger:hover {
+  background: #fef2f2 !important;
+}
+
 .knowledge-empty {
   display: grid;
   gap: 8px;
@@ -736,6 +1284,84 @@ function formatDate(value: string) {
   gap: 14px;
 }
 
+.knowledge-content-view {
+  gap: 12px;
+}
+
+.knowledge-content-view__header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.knowledge-content-view__name {
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-content-view__type {
+  color: #667085;
+  font-size: 13px;
+}
+
+.knowledge-content-view__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  padding: 32px;
+  color: #667085;
+}
+
+.knowledge-content-view__pre {
+  max-height: 400px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  background: #f7f9fd;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.knowledge-content-view__image,
+.knowledge-content-view__frame {
+  width: 100%;
+  max-height: 70vh;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #f7f9fd;
+}
+
+.knowledge-content-view__image {
+  display: block;
+  object-fit: contain;
+}
+
+.knowledge-content-view__frame {
+  min-height: 70vh;
+}
+
+.knowledge-content-view__fallback {
+  display: grid;
+  gap: 8px;
+  place-items: center;
+  padding: 32px;
+  color: #667085;
+  text-align: center;
+}
+
+.knowledge-content-view__fallback p {
+  margin: 0;
+}
+
 .knowledge-select {
   width: 100%;
   height: 40px;
@@ -744,6 +1370,51 @@ function formatDate(value: string) {
   padding: 0 10px;
   background: #fff;
   font: inherit;
+}
+
+.knowledge-context-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 160px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.knowledge-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: #344054;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.knowledge-context-menu button:hover:not(:disabled) {
+  background: #f2f4f7;
+}
+
+.knowledge-context-menu button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.knowledge-context-menu--danger {
+  color: #dc2626 !important;
+}
+
+.knowledge-context-menu--danger:hover:not(:disabled) {
+  background: #fef2f2 !important;
 }
 
 @media (max-width: 900px) {

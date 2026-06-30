@@ -38,8 +38,7 @@ public sealed class KnowledgeFileService(
         ".pptx",
         ".txt",
         ".png",
-        ".jpg",
-        ".jpeg"
+        ".jpg"
     };
 
 #endregion
@@ -78,7 +77,9 @@ public sealed class KnowledgeFileService(
         var extension = Path.GetExtension(originalName).ToLowerInvariant();
         if (!SupportedExtensions.Contains(extension))
         {
-            return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.UnsupportedFileType, "File type is not supported.");
+            return ServiceResult<KnowledgeFileItem>.Failure(
+                KnowledgeErrorCodes.UnsupportedFileType,
+                "File type is not supported. Allowed types: PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG.");
         }
 
         var name = KnowledgeServiceHelper.NormalizeDisplayName(Path.GetFileNameWithoutExtension(originalName));
@@ -196,6 +197,7 @@ public sealed class KnowledgeFileService(
         Guid tenantId,
         Guid agentId,
         Guid fileId,
+        Guid userId,
         CancellationToken cancellationToken)
     {
         var access = await KnowledgeServiceHelper.EnsureReadableAgentAsync(agentRepository, tenantId, agentId, cancellationToken);
@@ -208,6 +210,12 @@ public sealed class KnowledgeFileService(
         if (file?.StorageObject is null)
         {
             return ServiceResult<KnowledgeDownloadResult>.Failure(KnowledgeErrorCodes.FileNotFound, "File was not found.");
+        }
+
+        var ownerAccess = EnsureFileOwnerAccess(file, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgeDownloadResult>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
         }
 
         try
@@ -240,6 +248,7 @@ public sealed class KnowledgeFileService(
         Guid tenantId,
         Guid agentId,
         Guid fileId,
+        Guid userId,
         CancellationToken cancellationToken)
     {
         var access = await KnowledgeServiceHelper.EnsureReadableAgentAsync(agentRepository, tenantId, agentId, cancellationToken);
@@ -252,6 +261,12 @@ public sealed class KnowledgeFileService(
         if (file?.StorageObject is null)
         {
             return ServiceResult<KnowledgeFileDetail>.Failure(KnowledgeErrorCodes.FileNotFound, "File was not found.");
+        }
+
+        var ownerAccess = EnsureFileOwnerAccess(file, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgeFileDetail>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
         }
 
         return ServiceResult<KnowledgeFileDetail>.Success(KnowledgeServiceHelper.MapFileDetail(file));
@@ -279,6 +294,12 @@ public sealed class KnowledgeFileService(
         if (file is null)
         {
             return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.FileNotFound, "File was not found.");
+        }
+
+        var ownerAccess = EnsureFileOwnerAccess(file, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgeFileItem>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
         }
 
         var name = KnowledgeServiceHelper.NormalizeDisplayName(command.Name);
@@ -332,6 +353,12 @@ public sealed class KnowledgeFileService(
             return ServiceResult<KnowledgeFileItem>.Failure(KnowledgeErrorCodes.FileNotFound, "File was not found.");
         }
 
+        var ownerAccess = EnsureFileOwnerAccess(file, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgeFileItem>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
+        }
+
         if (command.TargetFolderId is not null &&
             await knowledgeRepository.GetFolderAsync(agentId, command.TargetFolderId.Value, trackChanges: false, cancellationToken) is null)
         {
@@ -383,6 +410,12 @@ public sealed class KnowledgeFileService(
         if (file?.StorageObject is null)
         {
             return ServiceResult<bool>.Failure(KnowledgeErrorCodes.FileNotFound, "File was not found.");
+        }
+
+        var ownerAccess = EnsureFileOwnerAccess(file, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<bool>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
         }
 
         var now = DateTime.UtcNow;
@@ -440,6 +473,13 @@ public sealed class KnowledgeFileService(
             targetType,
             targetId.ToString(),
             cancellationToken);
+    }
+
+    private static (string Code, string Message)? EnsureFileOwnerAccess(AgentKnowledgeFile file, Guid userId)
+    {
+        return file.CreatedByUserId == userId
+            ? null
+            : (KnowledgeErrorCodes.FileOwnerRequired, "Only the uploader can view content, download, rename, move, or delete this file.");
     }
 
 #endregion

@@ -1,4 +1,4 @@
-import { apiClient, apiRequest } from './http';
+import { apiRequest } from './http';
 
 export interface KnowledgeAgentContext {
   agentId: string;
@@ -41,11 +41,6 @@ export interface KnowledgeFileItem {
   createdByUserName: string;
   createdAt: string;
   modifiedAt?: string | null;
-}
-
-export interface KnowledgeFileDetail extends KnowledgeFileItem {
-  storageBucket: string;
-  storageObjectKey: string;
 }
 
 export interface KnowledgeExplorerResponse {
@@ -219,13 +214,13 @@ export function deleteKnowledgeFile(context: KnowledgeAgentContext, fileId: stri
 // Tải file về dưới dạng blob và trigger download qua temporary link element.
 // Không dùng window.open vì browser có thể block popup.
 export async function downloadKnowledgeFile(context: KnowledgeAgentContext, file: KnowledgeFileItem): Promise<void> {
-  const response = await apiClient.request<Blob>({
+  const fileBlob = await apiRequest<Blob>({
     url: `${basePath(context)}/files/${file.id}/download`,
     method: 'GET',
     responseType: 'blob',
     requiresAuth: true
   });
-  const url = URL.createObjectURL(response.data);
+  const url = URL.createObjectURL(fileBlob);
   const link = document.createElement('a');
   link.href = url;
   link.download = file.name;

@@ -181,7 +181,13 @@ public sealed class InternalAgentKnowledgeController(
         Guid fileId,
         CancellationToken cancellationToken)
     {
-        var result = await fileService.GetFileDetailAsync(Guid.Empty, agentId, fileId, cancellationToken);
+        var userId = CurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
+        }
+
+        var result = await fileService.GetFileDetailAsync(Guid.Empty, agentId, fileId, userId.Value, cancellationToken);
         return ToActionResult(result, value => Ok(value));
     }
 
@@ -192,7 +198,13 @@ public sealed class InternalAgentKnowledgeController(
         Guid fileId,
         CancellationToken cancellationToken)
     {
-        var result = await fileService.DownloadFileAsync(Guid.Empty, agentId, fileId, cancellationToken);
+        var userId = CurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
+        }
+
+        var result = await fileService.DownloadFileAsync(Guid.Empty, agentId, fileId, userId.Value, cancellationToken);
         if (!result.Succeeded || result.Value is null)
         {
             return ToErrorResult(result.ErrorCode, result.ErrorMessage);
@@ -297,6 +309,7 @@ public sealed class InternalAgentKnowledgeController(
         return code switch
         {
             KnowledgeErrorCodes.AgentNotFound or KnowledgeErrorCodes.FolderNotFound or KnowledgeErrorCodes.FileNotFound => NotFound(response),
+            KnowledgeErrorCodes.FileOwnerRequired or KnowledgeErrorCodes.FolderOwnerRequired => StatusCode(StatusCodes.Status403Forbidden, response),
             KnowledgeErrorCodes.StorageUnavailable or KnowledgeErrorCodes.StorageUnreachable or KnowledgeErrorCodes.StorageTimedOut or KnowledgeErrorCodes.StorageRejected
                 => StatusCode(StatusCodes.Status503ServiceUnavailable, response),
             _ => BadRequest(response)

@@ -52,7 +52,6 @@ export type {
   KnowledgeAgentContext,
   KnowledgeBreadcrumbItem,
   KnowledgeExplorerResponse,
-  KnowledgeFileDetail,
   KnowledgeFileItem,
   KnowledgeFolderItem,
   KnowledgeFolderTreeItem,
