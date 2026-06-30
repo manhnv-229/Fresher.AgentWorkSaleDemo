@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 
 using Demo.Api.Authorization;
+using Demo.Api.Common;
 using Demo.Api.Filters;
 using Demo.Domain.Interfaces.Service;
 using Demo.Infrastructure;
@@ -214,6 +215,7 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseCors("LocalFrontend");
 if (!app.Environment.IsDevelopment())
 {
