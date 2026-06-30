@@ -19,6 +19,7 @@ export interface AuthState {
   accessTokenExpiresAt: string;
   refreshTokenExpiresAt: string;
   receivedAt: string;
+  permissions: string[];
 }
 
 export interface AdminUserSummary {

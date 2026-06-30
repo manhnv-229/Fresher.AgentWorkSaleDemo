@@ -42,8 +42,10 @@
 
 .field {
   position: relative;
-  display: block;
+  display: grid;
+  gap: 6px;
   width: 100%;
+  min-width: 0;
 }
 
 .field input,
@@ -62,6 +64,11 @@
 .field input {
   height: 40px;
   padding: 0 14px;
+}
+
+.field--invalid input {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
 }
 
 .agent-textarea {
@@ -88,7 +95,7 @@
 
 .field__action {
   position: absolute;
-  top: 50%;
+  top: 20px;
   right: 8px;
   display: inline-grid;
   width: 28px;
@@ -99,6 +106,16 @@
   background: transparent;
   color: #344054;
   transform: translateY(-50%);
+}
+
+.field__feedback {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.field__feedback--error {
+  color: var(--color-danger);
 }
 
 .field__action:hover:not(:disabled),
@@ -413,6 +430,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding: 24px 28px;
 }
 
@@ -460,6 +478,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .agent-header__edit-button {
@@ -1080,11 +1099,20 @@
     padding: 16px;
   }
 
+  .login-panel {
+    width: 100%;
+  }
+
   .filter-bar,
   .content-header,
   .agent-card__top,
-  .create-agent__actions {
+  .create-agent__actions,
+  .agent-header,
+  .agent-header__actions,
+  .toolbar,
+  .audit-log-toolbar {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .table-actions {
@@ -1097,6 +1125,22 @@
 
   .workspace__page {
     padding: 16px;
+  }
+
+  .workspace-header,
+  .agent-header {
+    padding: 12px 16px;
+  }
+
+  .button--primary,
+  .content-header .button--primary,
+  .create-agent__actions .button--primary {
+    width: 100%;
+  }
+
+  .button--secondary {
+    width: 100%;
+    justify-content: center;
   }
 
   .modal {

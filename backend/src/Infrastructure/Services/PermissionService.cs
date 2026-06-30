@@ -61,4 +61,56 @@ public sealed class PermissionService(DemoDbContext dbContext) : IPermissionServ
                     rolePermission.Permission.Code == permissionCode),
                 cancellationToken);
     }
+
+    public async Task<IReadOnlyCollection<string>> GetGrantedPermissionCodesAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var globalPermissions = await dbContext.UserRoles
+            .AsNoTracking()
+            .Where(userRole =>
+                userRole.UserId == userId &&
+                userRole.TenantId == null &&
+                userRole.Role != null &&
+                userRole.Role.TenantId == null)
+            .SelectMany(userRole => userRole.Role!.RolePermissions)
+            .Where(rolePermission => rolePermission.Permission != null)
+            .Select(rolePermission => rolePermission.Permission!.Code)
+            .ToListAsync(cancellationToken);
+
+        var activeTenantIds = await dbContext.UserTenants
+            .AsNoTracking()
+            .Where(userTenant =>
+                userTenant.UserId == userId &&
+                userTenant.Status == MembershipStatus.Active)
+            .Select(userTenant => userTenant.TenantId)
+            .ToListAsync(cancellationToken);
+
+        if (activeTenantIds.Count == 0)
+        {
+            return globalPermissions
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(permissionCode => permissionCode, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        var tenantPermissions = await dbContext.UserRoles
+            .AsNoTracking()
+            .Where(userRole =>
+                userRole.UserId == userId &&
+                userRole.TenantId.HasValue &&
+                activeTenantIds.Contains(userRole.TenantId.Value) &&
+                userRole.Role != null &&
+                userRole.Role.TenantId == userRole.TenantId)
+            .SelectMany(userRole => userRole.Role!.RolePermissions)
+            .Where(rolePermission => rolePermission.Permission != null)
+            .Select(rolePermission => rolePermission.Permission!.Code)
+            .ToListAsync(cancellationToken);
+
+        return globalPermissions
+            .Concat(tenantPermissions)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(permissionCode => permissionCode, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
 }

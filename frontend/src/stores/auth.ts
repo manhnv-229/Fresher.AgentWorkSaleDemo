@@ -19,3 +19,11 @@ export function getAccessToken(): string | null {
 export function getAuthState(): AuthState | null {
   return useAuthStore().getAuthState();
 }
+
+export function getPermissions(): string[] {
+  return useAuthStore().getPermissions();
+}
+
+export function hasPermission(permissionCode: string): boolean {
+  return useAuthStore().hasPermission(permissionCode);
+}

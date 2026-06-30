@@ -16,6 +16,7 @@ public sealed class AuthService(
     IAuditLogService auditLogService,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService,
+    IPermissionService permissionService,
     IRefreshTokenHasher refreshTokenHasher,
     IAuthOptions authOptions,
     IUnitOfWork unitOfWork) : IAuthService
@@ -152,7 +153,7 @@ public sealed class AuthService(
         refreshToken.ReasonRevoked = "Rotated";
         refreshToken.ReplacedByTokenHash = replacement.TokenHash;
 
-        var jwt = jwtTokenService.CreateAccessToken(refreshToken.User, refreshToken.SessionId);
+        var jwt = await CreateAccessTokenAsync(refreshToken.User, refreshToken.SessionId, cancellationToken);
         var newRefreshToken = new RefreshToken
         {
             Id = Guid.NewGuid(),
@@ -243,7 +244,7 @@ public sealed class AuthService(
     }
 
     /// <summary>
-    /// Tạo bản ghi phiên và refresh token mới sau khi đăng nhập thành công.
+    /// Tạo bản ghi phiên, refresh token và access token chứa permission claims sau khi đăng nhập thành công.
     /// </summary>
     private async Task<AuthTokenResult> CreateSessionAsync(User user, string? ipAddress, CancellationToken cancellationToken)
     {
@@ -256,7 +257,7 @@ public sealed class AuthService(
             CreatedByIp = ipAddress
         };
 
-        var jwt = jwtTokenService.CreateAccessToken(user, session.Id);
+        var jwt = await CreateAccessTokenAsync(user, session.Id, cancellationToken);
         var refreshToken = refreshTokenHasher.GenerateToken();
         var refreshTokenEntity = new RefreshToken
         {
@@ -274,6 +275,15 @@ public sealed class AuthService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AuthTokenResult(jwt.AccessToken, refreshToken.RawToken, jwt.ExpiresAt, refreshTokenEntity.ExpiresAt);
+    }
+
+    /// <summary>
+    /// Tạo access token với tập quyền hiện hành để frontend route guard và backend authorization dùng cùng một tập quyền.
+    /// </summary>
+    private async Task<JwtTokenResult> CreateAccessTokenAsync(User user, Guid sessionId, CancellationToken cancellationToken)
+    {
+        var permissionCodes = await permissionService.GetGrantedPermissionCodesAsync(user.Id, cancellationToken);
+        return jwtTokenService.CreateAccessToken(user, sessionId, permissionCodes);
     }
 
     #endregion
