@@ -10,6 +10,7 @@ import SettingsSidebar from './SettingsSidebar.vue';
 import { useAuth } from '../composables/useAuth';
 import { useAgentDetail } from '../composables/useAgentDetail';
 import { useAgentDetailEditor } from '../composables/useAgentDetailEditor';
+import { invalidateAgentListCache } from '../composables/useAgentList';
 import { useTenantSelection } from '../composables/useTenantSelection';
 import { ApiError } from '../api/http';
 
@@ -79,13 +80,7 @@ watch(isAuthenticated, async (authenticated) => {
 watch(isAgentRoute, async (isAgent) => {
   isAgentMenuOpen.value = false;
   if (isAgent) {
-    clearAgent();
-    const id = route.params.agentId as string;
-    if (agentScope.value === 'tenant' && agentTenantId.value) {
-      await loadTenant(agentTenantId.value, id);
-    } else {
-      await loadInternal(id);
-    }
+    await loadHeaderAgent();
   } else {
     clearAgent();
   }
@@ -98,6 +93,18 @@ watch(() => route.fullPath, () => {
 async function handleLogout() {
   await logout();
   router.push({ name: 'login' });
+}
+
+async function loadHeaderAgent() {
+  clearAgent();
+  const id = route.params.agentId as string | undefined;
+  if (!id) return;
+
+  if (agentScope.value === 'tenant' && agentTenantId.value) {
+    await loadTenant(agentTenantId.value, id);
+  } else {
+    await loadInternal(id);
+  }
 }
 
 function goBackFromAgent() {
@@ -118,6 +125,29 @@ function toggleAgentMenu() {
 async function handleAgentStatusAction() {
   isAgentMenuOpen.value = false;
   await toggleActivation();
+  invalidateCurrentAgentListCache();
+  await loadHeaderAgent();
+}
+
+async function handleSaveDraft() {
+  await saveDraft();
+  invalidateCurrentAgentListCache();
+  await loadHeaderAgent();
+}
+
+async function handleSaveAndPublish() {
+  await saveAndPublish();
+  invalidateCurrentAgentListCache();
+  await loadHeaderAgent();
+}
+
+function invalidateCurrentAgentListCache() {
+  if (agentScope.value === 'tenant') {
+    invalidateAgentListCache('tenant', agentTenantId.value);
+    return;
+  }
+
+  invalidateAgentListCache('internal');
 }
 
 function handlePointerDown(event: PointerEvent) {
@@ -186,8 +216,8 @@ function handlePointerDown(event: PointerEvent) {
       :is-editing="isEditing"
       :is-saving="isSaving"
       @cancel-edit="cancelEdit"
-      @save-draft="saveDraft"
-      @save-and-publish="saveAndPublish"
+      @save-draft="handleSaveDraft"
+      @save-and-publish="handleSaveAndPublish"
     />
   </section>
 </template>

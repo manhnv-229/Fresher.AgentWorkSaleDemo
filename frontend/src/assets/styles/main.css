@@ -512,8 +512,10 @@
 }
 
 .agent-header__edit-button {
+  width: auto;
   height: 36px;
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 12px;
   font-size: 13px;
   border-radius: 8px;
   white-space: nowrap;

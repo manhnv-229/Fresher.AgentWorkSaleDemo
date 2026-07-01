@@ -31,6 +31,19 @@ interface AgentListControllerOptions {
 
 const agentListCache = new Map<string, AgentListCacheEntry>();
 
+export function invalidateAgentListCache(scope: AgentListScope, tenantId = '') {
+  for (const key of agentListCache.keys()) {
+    try {
+      const parsed = JSON.parse(key) as { scope?: AgentListScope; tenantId?: string };
+      if (parsed.scope === scope && (scope === 'internal' || parsed.tenantId === tenantId)) {
+        agentListCache.delete(key);
+      }
+    } catch {
+      agentListCache.delete(key);
+    }
+  }
+}
+
 function createEmptyResult(pageSize: number): PagedResult<AgentSummary> {
   return {
     items: [],

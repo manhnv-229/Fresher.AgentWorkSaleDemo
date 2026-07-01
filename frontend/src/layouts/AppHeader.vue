@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MoreHorizontal } from '@lucide/vue';
+import { MoreHorizontal, Pencil } from '@lucide/vue';
 import BaseButton from '../components/BaseButton.vue';
 import type { AgentDetail } from '../api';
 
@@ -45,11 +45,12 @@ const emit = defineEmits<{
       <BaseButton
         v-if="isAgentDetailRoute && !isEditing"
         class="agent-header__edit-button"
-        variant="secondary"
+        variant="primary"
         type="button"
         :disabled="isLoadingAgent"
         @click="emit('beginEdit')"
       >
+        <Pencil :size="16" aria-hidden="true" />
         Sửa
       </BaseButton>
       <div v-if="isAgentDetailRoute" class="agent-header__menu">
