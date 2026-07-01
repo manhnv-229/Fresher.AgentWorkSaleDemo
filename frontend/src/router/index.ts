@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { refreshAccessToken } from '../api/auth';
 import { ApiError } from '../api/http';
-import WorkspaceShell from '../layouts/WorkspaceShell.vue';
+import MainLayout from '../layouts/MainLayout.vue';
 import { canAccessPermissions } from './guards';
 import { useAuthStore } from '../stores/useAuthStore';
 import LoginPage from '../views/LoginPage.vue';
@@ -33,7 +33,7 @@ export const router = createRouter({
     },
     {
       path: '/',
-      component: WorkspaceShell,
+      component: MainLayout,
       children: [
         {
           path: '',

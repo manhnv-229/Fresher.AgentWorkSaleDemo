@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { LoaderCircle, MoreVertical, Plus } from '@lucide/vue';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
-import BaseModal from '../components/BaseModal.vue';
+import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
+import ContentPanel from '../components/ContentPanel.vue';
+import ListToolbar from '../components/ListToolbar.vue';
+import ModalActionShell from '../components/ModalActionShell.vue';
 import { createTenantAgent, deleteTenantAgent, type AgentSummary, type CreateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentList, useTenantAgents } from '../composables/useAgentList';
@@ -15,7 +18,7 @@ const props = defineProps<{ tenantId: string }>();
 const router = useRouter();
 const { tenants, loadTenants, selectTenant } = useTenantSelection();
 const filters = useAgentList();
-const { agents, isLoading, error, load } = useTenantAgents(filters);
+const { agents, isLoading, error, loadMore, refresh } = useTenantAgents(filters, () => props.tenantId);
 const cardMenuOpenId = ref<string | null>(null);
 const isDeleteModalOpen = ref(false);
 const agentToDelete = ref<AgentSummary | null>(null);
@@ -27,6 +30,7 @@ const createDescription = ref('');
 const createIcon = ref('mint');
 const createError = ref('');
 const isSaving = ref(false);
+const loadMoreTrigger = ref<HTMLElement | null>(null);
 
 const selectedTenant = computed(() => tenants.value.find(t => t.id === props.tenantId) ?? null);
 
@@ -43,24 +47,30 @@ onMounted(async () => {
     await loadTenants();
   }
   selectTenant(props.tenantId);
-  void load(props.tenantId);
 });
 
 watch(() => props.tenantId, (id) => {
   selectTenant(id);
-  filters.currentPage.value = 1;
-  void load(id);
 });
 
-watch([filters.searchText, filters.statusFilter], () => {
-  filters.currentPage.value = 1;
-  void load(props.tenantId);
-});
+watch(
+  loadMoreTrigger,
+  (element, _, onCleanup) => {
+    if (!element) return;
 
-function goToPage(page: number) {
-  filters.currentPage.value = page;
-  void load(props.tenantId);
-}
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        void loadMore();
+      }
+    }, {
+      rootMargin: '240px 0px'
+    });
+
+    observer.observe(element);
+    onCleanup(() => observer.disconnect());
+  },
+  { flush: 'post' }
+);
 
 function avatarStyle(icon: string | null | undefined) {
   const option = avatarOptions.find(o => o.id === icon) ?? avatarOptions[0];
@@ -134,7 +144,7 @@ async function submitCreate() {
   try {
     await createTenantAgent(props.tenantId, payload);
     closeCreateModal();
-    await load(props.tenantId);
+    await refresh();
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
@@ -158,7 +168,7 @@ async function confirmDelete() {
   try {
     await deleteTenantAgent(props.tenantId, agentToDelete.value.id);
     closeDeleteModal();
-    await load(props.tenantId);
+    await refresh();
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
@@ -168,10 +178,14 @@ async function confirmDelete() {
     isDeleting.value = false;
   }
 }
+
+onBeforeUnmount(() => {
+  loadMoreTrigger.value = null;
+});
 </script>
 
 <template>
-  <div class="filter-bar">
+  <ListToolbar class="filter-bar">
     <BaseInput v-model="filters.searchText.value" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
     <label class="filter-select">
       <span class="sr-only">Lọc theo trạng thái</span>
@@ -187,9 +201,9 @@ async function confirmDelete() {
         Thêm mới
       </BaseButton>
     </div>
-  </div>
+  </ListToolbar>
 
-  <div class="content-panel">
+  <ContentPanel with-pagination>
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
       <LoaderCircle :size="18" class="spin" aria-hidden="true" />
@@ -244,31 +258,29 @@ async function confirmDelete() {
         </div>
       </article>
     </div>
-    <div v-if="agents.totalPages > 1" class="pagination">
-      <BaseButton variant="secondary" type="button" :disabled="filters.currentPage.value <= 1" @click="goToPage(filters.currentPage.value - 1)">
-        Trước
-      </BaseButton>
-      <span class="pagination-info">Trang {{ agents.page }} / {{ agents.totalPages }}</span>
-      <BaseButton variant="secondary" type="button" :disabled="filters.currentPage.value >= agents.totalPages" @click="goToPage(filters.currentPage.value + 1)">
-        Sau
-      </BaseButton>
-    </div>
-  </div>
+    <div ref="loadMoreTrigger" class="agent-list-sentinel" aria-hidden="true"></div>
+  </ContentPanel>
 
-  <BaseModal :open="isDeleteModalOpen" title="Xác nhận xóa" @close="closeDeleteModal">
-    <div class="delete-confirm">
-      <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
-      <p>Hành động này không thể hoàn tác.</p>
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isDeleting" @click="closeDeleteModal">Hủy</BaseButton>
-        <BaseButton variant="danger" type="button" :disabled="isDeleting" @click="confirmDelete">
-          {{ isDeleting ? 'Đang xóa...' : 'Xác nhận xóa' }}
-        </BaseButton>
-      </div>
-    </div>
-  </BaseModal>
+  <DeleteConfirmModal
+    :open="isDeleteModalOpen"
+    :busy="isDeleting"
+    confirm-label="Xác nhận xóa"
+    @close="closeDeleteModal"
+    @confirm="confirmDelete"
+  >
+    <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
+    <p>Hành động này không thể hoàn tác.</p>
+  </DeleteConfirmModal>
 
-  <BaseModal :open="isCreateModalOpen" :title="`Tạo agent cho ${selectedTenant?.name || 'đơn vị'}`" @close="closeCreateModal">
+  <ModalActionShell
+    :open="isCreateModalOpen"
+    :title="`Tạo agent cho ${selectedTenant?.name || 'đơn vị'}`"
+    :busy="isSaving"
+    confirm-label="Lưu"
+    busy-label="Đang lưu..."
+    @close="closeCreateModal"
+    @confirm="submitCreate"
+  >
     <div class="create-agent">
       <div class="create-agent__group">
         <p class="create-agent__label">Hình đại diện</p>
@@ -299,12 +311,6 @@ async function confirmDelete() {
         <textarea id="tenant-create-desc" v-model="createDescription" class="agent-textarea" rows="4" placeholder="Mô tả ngắn về agent" />
       </div>
       <p v-if="createError" class="message message--error">{{ createError }}</p>
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isSaving" @click="closeCreateModal">Hủy</BaseButton>
-        <BaseButton type="button" :disabled="isSaving" @click="submitCreate">
-          {{ isSaving ? 'Đang lưu...' : 'Lưu' }}
-        </BaseButton>
-      </div>
     </div>
-  </BaseModal>
+  </ModalActionShell>
 </template>

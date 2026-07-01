@@ -4,14 +4,17 @@ using Dapper;
 
 using Demo.Application.DTOs;
 using Demo.Application.Interfaces.Repository;
+using Demo.Domain.Interfaces.Repository;
 
 namespace Demo.Infrastructure.Queries;
 
 public sealed class UserQueryRepository(IDbConnectionFactory connectionFactory) : IUserQueryRepository
 {
-    public async Task<IReadOnlyList<AdminUserSummaryRow>> GetFilteredAsync(
+    public async Task<PagedResult<AdminUserSummaryRow>> GetFilteredAsync(
         string? search,
         string? status,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken)
     {
         var sql = new StringBuilder("""
@@ -36,12 +39,42 @@ public sealed class UserQueryRepository(IDbConnectionFactory connectionFactory) 
             parameters.Add("Status", status.Trim());
         }
 
-        sql.Append(" ORDER BY email");
+        sql.Append("""
+             ORDER BY email
+             LIMIT @PageSize OFFSET @Offset;
+
+             SELECT COUNT(*)
+             FROM users
+             WHERE 1 = 1
+            """);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            sql.Append("""
+                 AND LOWER(CONCAT_WS(' ', full_name, employee_code, email, project, job_position)) LIKE @Search
+                """);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            sql.Append(" AND status = @Status");
+        }
+
+        parameters.Add("PageSize", pageSize);
+        parameters.Add("Offset", (page - 1) * pageSize);
 
         await using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
-        var rows = await connection.QueryAsync<AdminUserSummaryRow>(
+        using var grid = await connection.QueryMultipleAsync(
             new CommandDefinition(sql.ToString(), parameters, cancellationToken: cancellationToken));
 
-        return rows.AsList();
+        var rows = (await grid.ReadAsync<AdminUserSummaryRow>()).AsList();
+        var totalCount = await grid.ReadSingleAsync<int>();
+
+        return new PagedResult<AdminUserSummaryRow>(
+            rows,
+            page,
+            pageSize,
+            totalCount,
+            (int)Math.Ceiling((double)totalCount / pageSize));
     }
 }

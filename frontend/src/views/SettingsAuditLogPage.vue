@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { Filter, LoaderCircle, RefreshCw, X } from '@lucide/vue';
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
 import BaseTable from '../components/BaseTable.vue';
+import ContentPanel from '../components/ContentPanel.vue';
+import ListToolbar from '../components/ListToolbar.vue';
+import PaginationFooter from '../components/PaginationFooter.vue';
 import { getAuditLogs, type AuditLogEntry, type AuditLogFilters } from '../api';
+import type { PagedResult } from '../api/agents';
 import { ApiError } from '../api/http';
 import { formatDate } from '../utils/formatDate';
+import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
 
 const router = useRouter();
-const entries = ref<AuditLogEntry[]>([]);
+const entries = ref<PagedResult<AuditLogEntry>>({ items: [], page: 1, pageSize: PAGE_SIZE_OPTIONS[0], totalCount: 0, totalPages: 0 });
 const isLoading = ref(false);
 const error = ref('');
 
@@ -51,6 +56,8 @@ const AVAILABLE_TARGET_TYPES = [
 const selectedTimePreset = ref('');
 const selectedActions = ref<string[]>([]);
 const selectedTargetTypes = ref<string[]>([]);
+const currentPage = ref(1);
+const pageSize = ref<number>(PAGE_SIZE_OPTIONS[0]);
 
 const hasActiveMenuFilters = computed(() =>
   selectedTimePreset.value !== '' || selectedActions.value.length > 0 || selectedTargetTypes.value.length > 0
@@ -93,7 +100,18 @@ async function loadEntries(filters?: AuditLogFilters) {
   isLoading.value = true;
   error.value = '';
   try {
-    entries.value = await getAuditLogs(filters);
+    const result = await getAuditLogs({
+      ...filters,
+      page: currentPage.value,
+      pageSize: pageSize.value
+    });
+    if (result.totalPages > 0 && currentPage.value > result.totalPages) {
+      currentPage.value = result.totalPages;
+      await loadEntries(filters);
+      return;
+    }
+
+    entries.value = result;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
@@ -106,11 +124,13 @@ async function loadEntries(filters?: AuditLogFilters) {
 }
 
 function applySearch() {
+  currentPage.value = 1;
   const filters = buildFilters();
   void loadEntries(filters);
 }
 
 function applyMenuFilters() {
+  currentPage.value = 1;
   isMenuOpen.value = false;
   isActionComboOpen.value = false;
   isTargetComboOpen.value = false;
@@ -119,6 +139,7 @@ function applyMenuFilters() {
 }
 
 function resetMenuFilters() {
+  currentPage.value = 1;
   selectedTimePreset.value = '';
   selectedActions.value = [];
   selectedTargetTypes.value = [];
@@ -127,6 +148,20 @@ function resetMenuFilters() {
   isTargetComboOpen.value = false;
   const filters = buildFilters();
   void loadEntries(filters);
+}
+
+watch(pageSize, () => {
+  currentPage.value = 1;
+  void loadEntries(buildFilters());
+});
+
+function goToPage(page: number) {
+  currentPage.value = Math.max(1, page);
+  void loadEntries(buildFilters());
+}
+
+function updatePageSize(nextPageSize: number) {
+  pageSize.value = nextPageSize;
 }
 
 function buildFilters(): AuditLogFilters | undefined {
@@ -184,8 +219,8 @@ function toggleMenu() {
 
 <template>
   <div class="settings-content-card">
-    <div class="content-panel">
-      <div class="audit-log-toolbar">
+    <ContentPanel with-pagination>
+      <ListToolbar class="audit-log-toolbar">
         <BaseInput
           v-model="searchText"
           placeholder="Tìm kiếm nhật ký..."
@@ -298,14 +333,14 @@ function toggleMenu() {
             <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
           </BaseButton>
         </div>
-      </div>
+      </ListToolbar>
 
       <p v-if="error" class="message message--error">{{ error }}</p>
-      <div v-else-if="isLoading && entries.length === 0" class="loading-row">
+      <div v-else-if="isLoading && entries.items.length === 0" class="loading-row">
         <LoaderCircle :size="18" class="spin" aria-hidden="true" />
         <span>Đang tải nhật ký hoạt động...</span>
       </div>
-      <div v-else-if="entries.length === 0" class="empty-card empty-card--tight">
+      <div v-else-if="entries.items.length === 0" class="empty-card empty-card--tight">
         <h3>Không tìm thấy kết quả</h3>
         <p>{{ hasActiveMenuFilters || searchText ? 'Không có nhật ký nào phù hợp với bộ lọc.' : 'Chưa có nhật ký hoạt động.' }}</p>
       </div>
@@ -320,7 +355,7 @@ function toggleMenu() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in entries" :key="entry.id">
+          <tr v-for="entry in entries.items" :key="entry.id">
             <td>{{ formatDate(entry.createdAt) }}</td>
             <td>{{ entry.userName }}</td>
             <td><span class="status-chip">{{ entry.action }}</span></td>
@@ -329,16 +364,25 @@ function toggleMenu() {
           </tr>
         </tbody>
       </BaseTable>
-    </div>
+      <PaginationFooter
+        :total-count="entries.totalCount"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        :page-size-options="PAGE_SIZE_OPTIONS"
+        count-label="Tổng số"
+        @update:currentPage="goToPage"
+        @update:pageSize="updatePageSize"
+      />
+    </ContentPanel>
   </div>
 </template>
 
 <style scoped>
 .audit-log-toolbar {
   display: flex;
-  gap: 0.5rem;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 16px;
 }
 
 .audit-log-toolbar .field {
@@ -360,12 +404,14 @@ function toggleMenu() {
   width: 40px;
   height: 40px;
   border: 1px solid var(--color-border, #d0d5dd);
-  border-radius: var(--radius-md, 6px);
+  border-radius: 6px;
   background: var(--color-surface, #fff);
   color: #344054;
   cursor: pointer;
   position: relative;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
 }
 
 .filter-button:hover {

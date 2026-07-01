@@ -5,16 +5,23 @@ import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
 import BaseTable from '../components/BaseTable.vue';
+import ContentPanel from '../components/ContentPanel.vue';
+import ListToolbar from '../components/ListToolbar.vue';
+import PaginationFooter from '../components/PaginationFooter.vue';
 import { getUsers, lockUser, unlockUser, updateJobPosition, type AdminUserSummary } from '../api';
+import type { PagedResult } from '../api/agents';
 import type { MemberListFilters } from '../api/users';
 import { ApiError } from '../api/http';
+import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
 import { MEMBER_STATUSES, withAllOption, getMemberStatusLabel } from '../utils/statuses';
 
 const router = useRouter();
-const users = ref<AdminUserSummary[]>([]);
+const users = ref<PagedResult<AdminUserSummary>>({ items: [], page: 1, pageSize: PAGE_SIZE_OPTIONS[0], totalCount: 0, totalPages: 0 });
 const isLoading = ref(false);
 const error = ref('');
 const activeActionId = ref('');
+const currentPage = ref(1);
+const pageSize = ref<number>(PAGE_SIZE_OPTIONS[0]);
 
 const searchText = ref('');
 const selectedStatus = ref('');
@@ -41,6 +48,12 @@ onMounted(() => {
 });
 
 watch([searchText, selectedStatus], () => {
+  currentPage.value = 1;
+  void loadUsers();
+});
+
+watch(pageSize, () => {
+  currentPage.value = 1;
   void loadUsers();
 });
 
@@ -48,10 +61,20 @@ async function loadUsers() {
   isLoading.value = true;
   error.value = '';
   try {
-    const filters: MemberListFilters = {};
+    const filters: MemberListFilters = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    };
     if (searchText.value.trim()) filters.search = searchText.value.trim();
     if (selectedStatus.value) filters.status = selectedStatus.value;
-    users.value = await getUsers(Object.keys(filters).length > 0 ? filters : undefined);
+    const result = await getUsers(filters);
+    if (result.totalPages > 0 && currentPage.value > result.totalPages) {
+      currentPage.value = result.totalPages;
+      await loadUsers();
+      return;
+    }
+
+    users.value = result;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
@@ -61,6 +84,15 @@ async function loadUsers() {
   } finally {
     isLoading.value = false;
   }
+}
+
+function goToPage(page: number) {
+  currentPage.value = Math.max(1, page);
+  void loadUsers();
+}
+
+function updatePageSize(nextPageSize: number) {
+  pageSize.value = nextPageSize;
 }
 
 function statusTone(status: string) {
@@ -89,7 +121,10 @@ async function handleToggleLock() {
     const updated = selectedUser.value.status === 'Locked'
       ? await unlockUser(selectedUser.value.id)
       : await lockUser(selectedUser.value.id);
-    users.value = users.value.map(u => u.id === updated.id ? updated : u);
+    users.value = {
+      ...users.value,
+      items: users.value.items.map(u => u.id === updated.id ? updated : u)
+    };
     selectedUser.value = updated;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
@@ -108,7 +143,10 @@ async function handleSaveJobPosition() {
   popupError.value = '';
   try {
     const updated = await updateJobPosition(selectedUser.value.id, editingJobPosition.value || null);
-    users.value = users.value.map(u => u.id === updated.id ? updated : u);
+    users.value = {
+      ...users.value,
+      items: users.value.items.map(u => u.id === updated.id ? updated : u)
+    };
     selectedUser.value = updated;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
@@ -124,8 +162,8 @@ async function handleSaveJobPosition() {
 
 <template>
   <div class="settings-content-card">
-    <div class="content-panel user-panel">
-      <div class="toolbar">
+    <ContentPanel class="user-panel" with-pagination>
+      <ListToolbar class="toolbar">
         <BaseInput
           v-model="searchText"
           placeholder="Tìm kiếm nhân viên..."
@@ -142,14 +180,14 @@ async function handleSaveJobPosition() {
             <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
           </BaseButton>
         </div>
-      </div>
+      </ListToolbar>
 
       <p v-if="error" class="message message--error">{{ error }}</p>
-      <div v-else-if="isLoading && users.length === 0" class="loading-row">
+      <div v-else-if="isLoading && users.items.length === 0" class="loading-row">
         <LoaderCircle :size="18" class="spin" aria-hidden="true" />
         <span>Đang tải danh sách tài khoản...</span>
       </div>
-      <div v-else-if="users.length === 0" class="empty-card empty-card--tight">
+      <div v-else-if="users.items.length === 0" class="empty-card empty-card--tight">
         <h3>Không tìm thấy kết quả</h3>
         <p>{{ searchText || selectedStatus ? 'Không có nhân viên nào phù hợp với bộ lọc.' : 'Chưa có tài khoản.' }}</p>
       </div>
@@ -164,7 +202,7 @@ async function handleSaveJobPosition() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in users" :key="user.id" class="clickable-row" @click="openPopup(user)">
+          <tr v-for="user in users.items" :key="user.id" class="clickable-row" @click="openPopup(user)">
             <td>
               <div class="user-cell">
                 <strong>{{ user.fullName || '—' }}</strong>
@@ -178,7 +216,16 @@ async function handleSaveJobPosition() {
           </tr>
         </tbody>
       </BaseTable>
-    </div>
+      <PaginationFooter
+        :total-count="users.totalCount"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        :page-size-options="PAGE_SIZE_OPTIONS"
+        count-label="Tổng số"
+        @update:currentPage="goToPage"
+        @update:pageSize="updatePageSize"
+      />
+    </ContentPanel>
   </div>
 
   <Teleport to="body">
@@ -258,9 +305,9 @@ async function handleSaveJobPosition() {
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 0.75rem;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 16px;
 }
 
 .toolbar__search {
@@ -400,10 +447,6 @@ async function handleSaveJobPosition() {
 
 .popup__section-header h4 {
   margin: 0;
-}
-
-.popup__section .base-button {
-  margin-top: 1rem;
 }
 
 .popup-select {

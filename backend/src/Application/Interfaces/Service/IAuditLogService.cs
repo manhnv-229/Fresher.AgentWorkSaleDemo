@@ -1,11 +1,12 @@
 using Demo.Application.Common;
 using Demo.Application.DTOs;
+using Demo.Domain.Interfaces.Repository;
 
 namespace Demo.Domain.Interfaces.Service;
 
 public interface IAuditLogService
 {
-    Task<ServiceResult<IReadOnlyList<AuditLogEntryResponse>>> GetAuditLogsAsync(AuditLogFilterRequest? filter, CancellationToken cancellationToken);
+    Task<ServiceResult<PagedResult<AuditLogEntryResponse>>> GetAuditLogsAsync(AuditLogFilterRequest? filter, CancellationToken cancellationToken);
 
     Task RecordAsync(
         string action,

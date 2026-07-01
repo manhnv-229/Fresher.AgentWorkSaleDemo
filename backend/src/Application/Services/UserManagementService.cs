@@ -26,11 +26,18 @@ public sealed class UserManagementService(
     /// <summary>
     /// Lấy danh sách người dùng theo bộ lọc quản trị.
     /// </summary>
-    public async Task<ServiceResult<IReadOnlyList<AdminUserSummary>>> GetUsersAsync(MemberListFilters? filters, CancellationToken cancellationToken)
+    public async Task<ServiceResult<PagedResult<AdminUserSummary>>> GetUsersAsync(MemberListFilters? filters, CancellationToken cancellationToken)
     {
-        var users = await userQueryRepository.GetFilteredAsync(filters?.Search, filters?.Status, cancellationToken);
-        return ServiceResult<IReadOnlyList<AdminUserSummary>>.Success(
-            users.Select(user => mapper.Map<AdminUserSummary>(user)).ToList());
+        var page = Math.Max(1, filters?.Page ?? 1);
+        var pageSize = Math.Max(1, filters?.PageSize ?? 9);
+        var users = await userQueryRepository.GetFilteredAsync(filters?.Search, filters?.Status, page, pageSize, cancellationToken);
+        return ServiceResult<PagedResult<AdminUserSummary>>.Success(
+            new PagedResult<AdminUserSummary>(
+                users.Items.Select(user => mapper.Map<AdminUserSummary>(user)).ToList(),
+                users.Page,
+                users.PageSize,
+                users.TotalCount,
+                users.TotalPages));
     }
 
     /// <summary>

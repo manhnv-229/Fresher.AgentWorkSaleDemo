@@ -3,6 +3,7 @@ import { Eye, EyeOff } from '@lucide/vue';
 import { ref } from 'vue';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
+import ContentPanel from '../components/ContentPanel.vue';
 import { useFormValidation } from '../composables/useFormValidation';
 import { useAuth } from '../composables/useAuth';
 import { hasMinLength, isRequired } from '../utils/validators';
@@ -77,7 +78,7 @@ async function submit() {
 
 <template>
   <div class="settings-content-card">
-    <div class="content-panel settings-form-panel">
+    <ContentPanel class="settings-form-panel">
       <p v-if="notice" class="message">{{ notice }}</p>
       <form class="create-agent" @submit.prevent="submit">
         <div class="create-agent__group">
@@ -121,13 +122,13 @@ async function submit() {
           </BaseInput>
         </div>
         <p v-if="error" class="message message--error">{{ error }}</p>
-        <div class="create-agent__actions">
+        <div class="action-bar">
           <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">Xóa</BaseButton>
           <BaseButton type="submit" :disabled="isLoading">
             {{ isLoading ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
           </BaseButton>
         </div>
       </form>
-    </div>
+    </ContentPanel>
   </div>
 </template>

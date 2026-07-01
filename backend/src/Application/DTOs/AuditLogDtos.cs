@@ -4,7 +4,9 @@ public sealed record AuditLogFilterRequest(
     string? Search,
     string? TimePreset,
     IReadOnlyList<string>? Actions,
-    IReadOnlyList<string>? TargetTypes);
+    IReadOnlyList<string>? TargetTypes,
+    int Page,
+    int PageSize);
 
 public sealed record AuditLogEntryResponse(
     Guid Id,

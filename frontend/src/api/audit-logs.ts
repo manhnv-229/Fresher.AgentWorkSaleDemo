@@ -1,4 +1,5 @@
 import { apiRequest } from './http';
+import type { PagedResult } from './agents';
 
 export interface AuditLogEntry {
   id: string;
@@ -14,9 +15,11 @@ export interface AuditLogFilters {
   timePreset?: string;
   actions?: string[];
   targetTypes?: string[];
+  page?: number;
+  pageSize?: number;
 }
 
-export async function getAuditLogs(filters?: AuditLogFilters): Promise<AuditLogEntry[]> {
+export async function getAuditLogs(filters?: AuditLogFilters): Promise<PagedResult<AuditLogEntry>> {
   const params = new URLSearchParams();
   if (filters?.search) params.set('search', filters.search);
   if (filters?.timePreset) params.set('timePreset', filters.timePreset);
@@ -30,8 +33,10 @@ export async function getAuditLogs(filters?: AuditLogFilters): Promise<AuditLogE
       params.append('targetTypes', targetType);
     }
   }
+  if (filters?.page) params.set('page', String(filters.page));
+  if (filters?.pageSize) params.set('pageSize', String(filters.pageSize));
 
   const query = params.toString();
   const url = `/api/admin/audit-logs${query ? `?${query}` : ''}`;
-  return apiRequest<AuditLogEntry[]>({ url, requiresAuth: true });
+  return apiRequest<PagedResult<AuditLogEntry>>({ url, requiresAuth: true });
 }

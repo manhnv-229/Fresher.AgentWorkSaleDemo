@@ -4,6 +4,7 @@ using Demo.Application.DTOs;
 using Demo.Application.Errors;
 using Demo.Domain.Authorization;
 using Demo.Domain.Interfaces.Service;
+using Demo.Domain.Interfaces.Repository;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,18 +16,22 @@ public sealed class AuditLogsController(IAuditLogService auditLogService) : Cont
 {
     [HttpGet]
     [HasPermission(PermissionCodes.AuditLogView)]
-    public async Task<ActionResult<IReadOnlyList<AuditLogEntryResponse>>> GetAuditLogs(
+    public async Task<ActionResult<PagedResult<AuditLogEntryResponse>>> GetAuditLogs(
         [FromQuery] string? search,
         [FromQuery] string? timePreset,
         [FromQuery] string[]? actions,
         [FromQuery] string[]? targetTypes,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
         var filter = new AuditLogFilterRequest(
             search,
             timePreset,
             actions?.ToList(),
-            targetTypes?.ToList());
+            targetTypes?.ToList(),
+            Math.Max(1, page ?? 1),
+            Math.Max(1, pageSize ?? 9));
 
         var result = await auditLogService.GetAuditLogsAsync(filter, cancellationToken);
         if (result.Succeeded && result.Value is not null)

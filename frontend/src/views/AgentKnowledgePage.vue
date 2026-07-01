@@ -41,7 +41,10 @@ import {
 import { ApiError } from '../api/http';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
-import BaseModal from '../components/BaseModal.vue';
+import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
+import ContentPanel from '../components/ContentPanel.vue';
+import ListToolbar from '../components/ListToolbar.vue';
+import ModalActionShell from '../components/ModalActionShell.vue';
 import KnowledgeTreeNode from '../components/knowledge/KnowledgeTreeNode.vue';
 
 const props = defineProps<{ agentId: string }>();
@@ -639,7 +642,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
     </div>
   </header>
 
-  <div class="content-panel knowledge-panel">
+  <ContentPanel class="knowledge-panel">
     <div v-if="isLoading" class="loading-row">
       <LoaderCircle :size="18" class="spin" aria-hidden="true" />
       <span>Đang tải tri thức agent...</span>
@@ -648,7 +651,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
       <p v-if="error" class="message message--error">{{ error }}</p>
       <p v-if="message" class="message message--success">{{ message }}</p>
 
-      <div class="knowledge-toolbar">
+      <ListToolbar class="knowledge-toolbar">
         <label class="knowledge-search">
           <Search :size="16" aria-hidden="true" />
           <input v-model="searchText" type="search" placeholder="Tìm kiếm tài liệu hoặc thư mục" />
@@ -670,7 +673,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
             @change="onFileSelected"
           />
         </div>
-      </div>
+      </ListToolbar>
       <div class="knowledge-breadcrumb" v-if="breadcrumb.length">
         <template v-for="(crumb, idx) in breadcrumb" :key="crumb.id">
           <span v-if="idx > 0" class="knowledge-breadcrumb__sep">&gt;</span>
@@ -785,7 +788,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
         </section>
       </div>
     </template>
-  </div>
+  </ContentPanel>
 
   <Teleport to="body">
     <div
@@ -825,27 +828,43 @@ function ensureItemOwner(item: ActiveItem): boolean {
     </div>
   </Teleport>
 
-  <BaseModal :open="isCreateFolderOpen" title="Tạo thư mục" @close="isCreateFolderOpen = false">
+  <ModalActionShell
+    :open="isCreateFolderOpen"
+    title="Tạo thư mục"
+    :busy="isBusy"
+    confirm-label="Tạo"
+    busy-label="Đang xử lý..."
+    @close="isCreateFolderOpen = false"
+    @confirm="submitCreateFolder"
+  >
     <div class="knowledge-modal">
       <BaseInput v-model="folderName" placeholder="Tên thư mục" />
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isBusy" @click="isCreateFolderOpen = false">Hủy</BaseButton>
-        <BaseButton type="button" :disabled="isBusy" @click="submitCreateFolder">Tạo</BaseButton>
-      </div>
     </div>
-  </BaseModal>
+  </ModalActionShell>
 
-  <BaseModal :open="isRenameOpen" title="Đổi tên" @close="isRenameOpen = false">
+  <ModalActionShell
+    :open="isRenameOpen"
+    title="Đổi tên"
+    :busy="isBusy"
+    confirm-label="Lưu"
+    busy-label="Đang xử lý..."
+    @close="isRenameOpen = false"
+    @confirm="submitRename"
+  >
     <div class="knowledge-modal">
       <BaseInput v-model="renameValue" placeholder="Tên mới" />
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isBusy" @click="isRenameOpen = false">Hủy</BaseButton>
-        <BaseButton type="button" :disabled="isBusy" @click="submitRename">Lưu</BaseButton>
-      </div>
     </div>
-  </BaseModal>
+  </ModalActionShell>
 
-  <BaseModal :open="isMoveOpen" title="Di chuyển" @close="isMoveOpen = false">
+  <ModalActionShell
+    :open="isMoveOpen"
+    title="Di chuyển"
+    :busy="isBusy"
+    confirm-label="Di chuyển"
+    busy-label="Đang xử lý..."
+    @close="isMoveOpen = false"
+    @confirm="submitMove"
+  >
     <div class="knowledge-modal">
       <select v-model="moveTargetFolderId" class="knowledge-select">
         <option :value="null">Gốc</option>
@@ -853,24 +872,29 @@ function ensureItemOwner(item: ActiveItem): boolean {
           {{ folder.name }}
         </option>
       </select>
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isBusy" @click="isMoveOpen = false">Hủy</BaseButton>
-        <BaseButton type="button" :disabled="isBusy" @click="submitMove">Di chuyển</BaseButton>
-      </div>
     </div>
-  </BaseModal>
+  </ModalActionShell>
 
-  <BaseModal :open="isDeleteOpen" title="Xác nhận xóa" @close="isDeleteOpen = false">
-    <div class="knowledge-modal">
-      <p>Bạn có chắc chắn muốn xóa <strong>{{ activeItem?.item.name }}</strong>?</p>
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isBusy" @click="isDeleteOpen = false">Hủy</BaseButton>
-        <BaseButton variant="danger" type="button" :disabled="isBusy" @click="submitDelete">Xóa</BaseButton>
-      </div>
-    </div>
-  </BaseModal>
+  <DeleteConfirmModal
+    :open="isDeleteOpen"
+    :busy="isBusy"
+    confirm-label="Xóa"
+    @close="isDeleteOpen = false"
+    @confirm="submitDelete"
+  >
+    <p>Bạn có chắc chắn muốn xóa <strong>{{ activeItem?.item.name }}</strong>?</p>
+  </DeleteConfirmModal>
 
-  <BaseModal :open="isContentViewOpen" title="Xem nội dung" @close="closeContentView">
+  <ModalActionShell
+    :open="isContentViewOpen"
+    title="Xem nội dung"
+    confirm-label="Tải xuống"
+    cancel-label="Đóng"
+    :busy="false"
+    :confirm-disabled="!contentViewFile"
+    @close="closeContentView"
+    @confirm="contentViewFile ? downloadFile(contentViewFile) : undefined"
+  >
     <div class="knowledge-modal knowledge-content-view">
       <div class="knowledge-content-view__header">
         <span class="knowledge-content-view__name">{{ contentViewFile?.name }}</span>
@@ -905,15 +929,8 @@ function ensureItemOwner(item: ActiveItem): boolean {
           <p>Vui lòng tải xuống để xem nội dung.</p>
         </div>
       </template>
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" @click="closeContentView">Đóng</BaseButton>
-        <BaseButton v-if="contentViewFile" type="button" @click="downloadFile(contentViewFile)">
-          <Download :size="16" aria-hidden="true" />
-          Tải xuống
-        </BaseButton>
-      </div>
     </div>
-  </BaseModal>
+  </ModalActionShell>
 </template>
 
 <style scoped>
