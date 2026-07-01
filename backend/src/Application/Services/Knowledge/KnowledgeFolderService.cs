@@ -7,6 +7,7 @@ using Demo.Domain.Entities;
 using Demo.Domain.Enums;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
+using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services.Knowledge;
 
@@ -19,6 +20,8 @@ public sealed class KnowledgeFolderService(
     IAgentKnowledgeRepository knowledgeRepository,
     IAuthUserRepository authUserRepository,
     IAuditLogService auditLogService,
+    ICacheVersionService cacheVersionService,
+    ILogger<KnowledgeFolderService> logger,
     IUnitOfWork unitOfWork) : IKnowledgeFolderService
 {
 #region Method
@@ -72,6 +75,7 @@ public sealed class KnowledgeFolderService(
 
         knowledgeRepository.AddFolder(folder);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateKnowledgeExplorerCacheAsync(tenantId, agentId, cancellationToken);
         // Resolve tên actor trước khi trả response vì navigation CreatedByUser chưa được nạp trên entity vừa tạo
         var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
         await RecordAuditAsync("knowledge.folder.create", actorName, userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was created.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
@@ -127,6 +131,7 @@ public sealed class KnowledgeFolderService(
         folder.ModifiedByUserId = userId;
         folder.ModifiedAt = DateTime.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateKnowledgeExplorerCacheAsync(tenantId, agentId, cancellationToken);
         var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
         await RecordAuditAsync("knowledge.folder.rename", actorName, userId, tenantId, ipAddress, $"Knowledge folder '{previousName}' was renamed to '{folder.Name}'.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
 
@@ -194,6 +199,7 @@ public sealed class KnowledgeFolderService(
         folder.ModifiedByUserId = userId;
         folder.ModifiedAt = DateTime.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateKnowledgeExplorerCacheAsync(tenantId, agentId, cancellationToken);
         var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
         await RecordAuditAsync("knowledge.folder.move", actorName, userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was moved.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
 
@@ -259,6 +265,7 @@ public sealed class KnowledgeFolderService(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateKnowledgeExplorerCacheAsync(tenantId, agentId, cancellationToken);
         var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
         await RecordAuditAsync("knowledge.folder.delete", actorName, userId, tenantId, ipAddress, $"Knowledge folder '{folder.Name}' was deleted.", "AgentKnowledgeFolder", folder.Id, cancellationToken);
 
@@ -296,6 +303,23 @@ public sealed class KnowledgeFolderService(
         return folder.CreatedByUserId == userId
             ? null
             : (KnowledgeErrorCodes.FolderOwnerRequired, "Only the folder creator can rename, move, or delete this folder.");
+    }
+
+    /// <summary>
+    /// Invalidate explorer cache của agent sau các thao tác thay đổi cây thư mục.
+    /// </summary>
+    private async Task InvalidateKnowledgeExplorerCacheAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cacheVersionService.RefreshVersionAsync(
+                ApplicationCacheKeys.KnowledgeExplorerNamespace(tenantId, agentId),
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể invalidate knowledge-explorer cache cho agent {AgentId}.", agentId);
+        }
     }
 
 #endregion

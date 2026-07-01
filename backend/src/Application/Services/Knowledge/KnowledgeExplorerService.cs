@@ -5,6 +5,8 @@ using Demo.Application.Interfaces.Repository;
 using Demo.Application.Interfaces.Service;
 using Demo.Domain.Entities;
 using Demo.Domain.Interfaces.Repository;
+using Demo.Domain.Interfaces.Service;
+using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services.Knowledge;
 
@@ -13,7 +15,11 @@ namespace Demo.Application.Services.Knowledge;
 /// </summary>
 public sealed class KnowledgeExplorerService(
     IAgentRepository agentRepository,
-    IAgentKnowledgeRepository knowledgeRepository) : IKnowledgeExplorerService
+    IAgentKnowledgeRepository knowledgeRepository,
+    IDistributedCacheService distributedCacheService,
+    ICacheVersionService cacheVersionService,
+    IApplicationCachePolicyProvider cachePolicyProvider,
+    ILogger<KnowledgeExplorerService> logger) : IKnowledgeExplorerService
 {
 #region Method
 
@@ -31,6 +37,15 @@ public sealed class KnowledgeExplorerService(
         if (access is not null)
         {
             return ServiceResult<KnowledgeExplorerResponse>.Failure(access.Value.Code, access.Value.Message);
+        }
+
+        if (await TryBuildExplorerCacheKeyAsync(tenantId, agentId, folderId, cancellationToken) is { } cacheKey)
+        {
+            var cachedResponse = await TryGetCachedValueAsync<KnowledgeExplorerResponse>(cacheKey, cancellationToken);
+            if (cachedResponse is not null)
+            {
+                return ServiceResult<KnowledgeExplorerResponse>.Success(cachedResponse);
+            }
         }
 
         // Tải toàn bộ thư mục活着 của agent để xây dựng cây và breadcrumb
@@ -55,6 +70,11 @@ public sealed class KnowledgeExplorerService(
             KnowledgeServiceHelper.BuildBreadcrumb(folders, selectedFolder),
             childFolders.Select(KnowledgeServiceHelper.MapFolder).ToList(),
             files.Select(KnowledgeServiceHelper.MapFile).ToList());
+
+        if (await TryBuildExplorerCacheKeyAsync(tenantId, agentId, folderId, cancellationToken) is { } explorerCacheKey)
+        {
+            await TrySetCachedValueAsync(explorerCacheKey, response, cancellationToken);
+        }
 
         return ServiceResult<KnowledgeExplorerResponse>.Success(response);
     }
@@ -91,6 +111,59 @@ public sealed class KnowledgeExplorerService(
             cancellationToken);
 
         return ServiceResult<IReadOnlyList<KnowledgeFileItem>>.Success(files.Select(KnowledgeServiceHelper.MapFile).ToList());
+    }
+
+    /// <summary>
+    /// Tạo cache key cho explorer response theo context tenant, agent, và thư mục đang chọn.
+    /// </summary>
+    private async Task<string?> TryBuildExplorerCacheKeyAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid? folderId,
+        CancellationToken cancellationToken)
+    {
+        var namespaceKey = ApplicationCacheKeys.KnowledgeExplorerNamespace(tenantId, agentId);
+        try
+        {
+            var version = await cacheVersionService.GetVersionAsync(namespaceKey, cancellationToken);
+            return ApplicationCacheKeys.KnowledgeExplorer(tenantId, agentId, folderId, version);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể lấy knowledge-explorer cache version cho agent {AgentId}.", agentId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Đọc explorer cache và fallback về repository khi Redis lỗi.
+    /// </summary>
+    private async Task<TValue?> TryGetCachedValueAsync<TValue>(string cacheKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await distributedCacheService.GetAsync<TValue>(cacheKey, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể đọc knowledge-explorer cache.");
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Ghi explorer cache mà không làm gián đoạn luồng đọc khi Redis lỗi.
+    /// </summary>
+    private async Task TrySetCachedValueAsync<TValue>(string cacheKey, TValue value, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await distributedCacheService.SetAsync(cacheKey, value, cachePolicyProvider.KnowledgeExplorerTimeToLive, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể ghi knowledge-explorer cache.");
+        }
     }
 
 #endregion

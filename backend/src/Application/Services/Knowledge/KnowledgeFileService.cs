@@ -9,6 +9,7 @@ using Demo.Domain.Entities;
 using Demo.Domain.Enums;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
+using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services.Knowledge;
 
@@ -23,6 +24,8 @@ public sealed class KnowledgeFileService(
     IKnowledgeStorageService storageService,
     IAuthUserRepository authUserRepository,
     IAuditLogService auditLogService,
+    ICacheVersionService cacheVersionService,
+    ILogger<KnowledgeFileService> logger,
     IUnitOfWork unitOfWork) : IKnowledgeFileService
 {
 #region Declaration
@@ -182,6 +185,7 @@ public sealed class KnowledgeFileService(
 
         knowledgeRepository.AddFile(file);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateKnowledgeExplorerCacheAsync(tenantId, agentId, cancellationToken);
         // Resolve tên actor trước khi trả response vì navigation CreatedByUser chưa được nạp trên entity vừa tạo
         var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
         await RecordAuditAsync("knowledge.file.upload", actorName, userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was uploaded.", "AgentKnowledgeFile", file.Id, cancellationToken);
@@ -323,6 +327,7 @@ public sealed class KnowledgeFileService(
         file.ModifiedByUserId = userId;
         file.ModifiedAt = DateTime.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateKnowledgeExplorerCacheAsync(tenantId, agentId, cancellationToken);
         var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
         await RecordAuditAsync("knowledge.file.rename", actorName, userId, tenantId, ipAddress, $"Knowledge file '{previousName}' was renamed to '{file.Name}'.", "AgentKnowledgeFile", file.Id, cancellationToken);
 
@@ -382,6 +387,7 @@ public sealed class KnowledgeFileService(
         file.ModifiedByUserId = userId;
         file.ModifiedAt = DateTime.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateKnowledgeExplorerCacheAsync(tenantId, agentId, cancellationToken);
         var actorName = await KnowledgeServiceHelper.ResolveActorNameAsync(authUserRepository, userId, cancellationToken);
         await RecordAuditAsync("knowledge.file.move", actorName, userId, tenantId, ipAddress, $"Knowledge file '{file.Name}' was moved.", "AgentKnowledgeFile", file.Id, cancellationToken);
 
@@ -431,6 +437,7 @@ public sealed class KnowledgeFileService(
             file.StorageObject.Status = KnowledgeStorageObjectStatus.Deleted;
         }
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateKnowledgeExplorerCacheAsync(tenantId, agentId, cancellationToken);
 
         if (!hasOtherReferences)
         {
@@ -480,6 +487,23 @@ public sealed class KnowledgeFileService(
         return file.CreatedByUserId == userId
             ? null
             : (KnowledgeErrorCodes.FileOwnerRequired, "Only the uploader can view content, download, rename, move, or delete this file.");
+    }
+
+    /// <summary>
+    /// Invalidate explorer cache của agent sau khi inventory file thay đổi.
+    /// </summary>
+    private async Task InvalidateKnowledgeExplorerCacheAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cacheVersionService.RefreshVersionAsync(
+                ApplicationCacheKeys.KnowledgeExplorerNamespace(tenantId, agentId),
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể invalidate knowledge-explorer cache cho agent {AgentId}.", agentId);
+        }
     }
 
 #endregion

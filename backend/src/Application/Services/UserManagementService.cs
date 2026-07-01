@@ -7,6 +7,7 @@ using Demo.Application.Interfaces.Repository;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services;
 
@@ -15,7 +16,9 @@ public sealed class UserManagementService(
     IAuthUserRepository authUserRepository,
     IUserSessionRepository userSessionRepository,
     IAuditLogService auditLogService,
+    ICacheVersionService cacheVersionService,
     IMapper mapper,
+    ILogger<UserManagementService> logger,
     IUnitOfWork unitOfWork) : IUserManagementService
 {
     #region Method
@@ -95,6 +98,7 @@ public sealed class UserManagementService(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidatePermissionCacheAsync(user.Id, cancellationToken);
 
         var action = targetStatus == AccountStatus.Locked ? "user.lock" : "user.unlock";
         var description = targetStatus == AccountStatus.Locked
@@ -156,6 +160,21 @@ public sealed class UserManagementService(
             cancellationToken);
 
         return ServiceResult<AdminUserSummary>.Success(mapper.Map<AdminUserSummary>(user));
+    }
+
+    /// <summary>
+    /// Invalidate permission cache của người dùng khi trạng thái tài khoản thay đổi.
+    /// </summary>
+    private async Task InvalidatePermissionCacheAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cacheVersionService.RefreshVersionAsync(ApplicationCacheKeys.PermissionNamespace(userId), cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể invalidate permission cache của user {UserId}.", userId);
+        }
     }
 
     #endregion

@@ -7,6 +7,7 @@ using Demo.Domain.Enums;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services;
 
@@ -16,7 +17,11 @@ public sealed class AgentCatalogService(
     ITenantRepository tenantRepository,
     IAuditLogService auditLogService,
     IAuthUserRepository authUserRepository,
+    IDistributedCacheService distributedCacheService,
+    ICacheVersionService cacheVersionService,
+    IApplicationCachePolicyProvider cachePolicyProvider,
     IMapper mapper,
+    ILogger<AgentCatalogService> logger,
     IUnitOfWork unitOfWork) : IAgentCatalogService
 {
     #region Method
@@ -35,6 +40,15 @@ public sealed class AgentCatalogService(
                 "Status filter is invalid.");
         }
 
+        if (await TryBuildAgentListCacheKeyAsync(null, queryFilters, cancellationToken) is { } cacheKey)
+        {
+            var cachedResult = await TryGetCachedValueAsync<PagedResult<AgentListItem>>(cacheKey, "internal agent list", cancellationToken);
+            if (cachedResult is not null)
+            {
+                return ServiceResult<PagedResult<AgentListItem>>.Success(cachedResult);
+            }
+        }
+
         var pagedResult = await agentQueryRepository.GetInternalAgentsPagedAsync(queryFilters, cancellationToken);
         var items = pagedResult.Items.Select(agent => mapper.Map<AgentListItem>(agent)).ToList();
         var result = new PagedResult<AgentListItem>(
@@ -43,6 +57,11 @@ public sealed class AgentCatalogService(
             pagedResult.PageSize,
             pagedResult.TotalCount,
             pagedResult.TotalPages);
+
+        if (await TryBuildAgentListCacheKeyAsync(null, queryFilters, cancellationToken) is { } internalListCacheKey)
+        {
+            await TrySetCachedValueAsync(internalListCacheKey, result, cachePolicyProvider.AgentListTimeToLive, "internal agent list", cancellationToken);
+        }
 
         return ServiceResult<PagedResult<AgentListItem>>.Success(result);
     }
@@ -62,6 +81,15 @@ public sealed class AgentCatalogService(
                 "Status filter is invalid.");
         }
 
+        if (await TryBuildAgentListCacheKeyAsync(tenantId, queryFilters, cancellationToken) is { } cacheKey)
+        {
+            var cachedResult = await TryGetCachedValueAsync<PagedResult<AgentListItem>>(cacheKey, "tenant agent list", cancellationToken);
+            if (cachedResult is not null)
+            {
+                return ServiceResult<PagedResult<AgentListItem>>.Success(cachedResult);
+            }
+        }
+
         var pagedResult = await agentQueryRepository.GetTenantAgentsPagedAsync(tenantId, queryFilters, cancellationToken);
         var items = pagedResult.Items.Select(agent => mapper.Map<AgentListItem>(agent)).ToList();
         var result = new PagedResult<AgentListItem>(
@@ -70,6 +98,11 @@ public sealed class AgentCatalogService(
             pagedResult.PageSize,
             pagedResult.TotalCount,
             pagedResult.TotalPages);
+
+        if (await TryBuildAgentListCacheKeyAsync(tenantId, queryFilters, cancellationToken) is { } tenantListCacheKey)
+        {
+            await TrySetCachedValueAsync(tenantListCacheKey, result, cachePolicyProvider.AgentListTimeToLive, "tenant agent list", cancellationToken);
+        }
 
         return ServiceResult<PagedResult<AgentListItem>>.Success(result);
     }
@@ -81,6 +114,15 @@ public sealed class AgentCatalogService(
         Guid agentId,
         CancellationToken cancellationToken)
     {
+        if (await TryBuildAgentDetailCacheKeyAsync(null, agentId, cancellationToken) is { } cacheKey)
+        {
+            var cachedAgent = await TryGetCachedValueAsync<AgentDetailItem>(cacheKey, "internal agent detail", cancellationToken);
+            if (cachedAgent is not null)
+            {
+                return ServiceResult<AgentDetailItem>.Success(cachedAgent);
+            }
+        }
+
         var agent = await agentQueryRepository.GetInternalAgentDetailByIdAsync(agentId, cancellationToken);
         if (agent is null)
         {
@@ -89,7 +131,13 @@ public sealed class AgentCatalogService(
                 "Agent was not found.");
         }
 
-        return ServiceResult<AgentDetailItem>.Success(mapper.Map<AgentDetailItem>(agent));
+        var result = mapper.Map<AgentDetailItem>(agent);
+        if (await TryBuildAgentDetailCacheKeyAsync(null, agentId, cancellationToken) is { } detailCacheKey)
+        {
+            await TrySetCachedValueAsync(detailCacheKey, result, cachePolicyProvider.AgentDetailTimeToLive, "internal agent detail", cancellationToken);
+        }
+
+        return ServiceResult<AgentDetailItem>.Success(result);
     }
 
     /// <summary>
@@ -100,6 +148,15 @@ public sealed class AgentCatalogService(
         Guid agentId,
         CancellationToken cancellationToken)
     {
+        if (await TryBuildAgentDetailCacheKeyAsync(tenantId, agentId, cancellationToken) is { } cacheKey)
+        {
+            var cachedAgent = await TryGetCachedValueAsync<AgentDetailItem>(cacheKey, "tenant agent detail", cancellationToken);
+            if (cachedAgent is not null)
+            {
+                return ServiceResult<AgentDetailItem>.Success(cachedAgent);
+            }
+        }
+
         var agent = await agentQueryRepository.GetTenantAgentDetailByIdAsync(tenantId, agentId, cancellationToken);
         if (agent is null)
         {
@@ -108,7 +165,13 @@ public sealed class AgentCatalogService(
                 "Agent was not found.");
         }
 
-        return ServiceResult<AgentDetailItem>.Success(mapper.Map<AgentDetailItem>(agent));
+        var result = mapper.Map<AgentDetailItem>(agent);
+        if (await TryBuildAgentDetailCacheKeyAsync(tenantId, agentId, cancellationToken) is { } detailCacheKey)
+        {
+            await TrySetCachedValueAsync(detailCacheKey, result, cachePolicyProvider.AgentDetailTimeToLive, "tenant agent detail", cancellationToken);
+        }
+
+        return ServiceResult<AgentDetailItem>.Success(result);
     }
 
     /// <summary>
@@ -129,6 +192,7 @@ public sealed class AgentCatalogService(
         var agent = CreateAgent(command, tenantId: null, AgentScope.Internal, createdByUserId);
         agentRepository.Add(agent);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateAgentReadCacheAsync(null, agent.Id, cancellationToken);
 
         var userName = await GetUserNameAsync(createdByUserId, cancellationToken);
         await auditLogService.RecordAsync(
@@ -179,6 +243,7 @@ public sealed class AgentCatalogService(
         var agent = CreateAgent(command, tenantId, AgentScope.Tenant, createdByUserId);
         agentRepository.Add(agent);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateAgentReadCacheAsync(tenantId, agent.Id, cancellationToken);
 
         var userName = await GetUserNameAsync(createdByUserId, cancellationToken);
         await auditLogService.RecordAsync(
@@ -222,6 +287,7 @@ public sealed class AgentCatalogService(
         var auditDescription = BuildAgentUpdateDescription("Internal agent", agent, command);
         UpdateAgentFromCommand(agent, command, modifiedByUserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateAgentReadCacheAsync(null, agent.Id, cancellationToken);
 
         var userName = await GetUserNameAsync(modifiedByUserId, cancellationToken);
         await auditLogService.RecordAsync(
@@ -281,6 +347,7 @@ public sealed class AgentCatalogService(
         var auditDescription = BuildAgentUpdateDescription("Tenant agent", agent, command);
         UpdateAgentFromCommand(agent, command, modifiedByUserId);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateAgentReadCacheAsync(tenantId, agent.Id, cancellationToken);
 
         var userName = await GetUserNameAsync(modifiedByUserId, cancellationToken);
         await auditLogService.RecordAsync(
@@ -319,6 +386,7 @@ public sealed class AgentCatalogService(
         agent.ModifiedAt = DateTime.UtcNow;
         agent.ModifiedByUserId = modifiedByUserId;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateAgentReadCacheAsync(null, agent.Id, cancellationToken);
 
         var userName = await GetUserNameAsync(modifiedByUserId, cancellationToken);
         await auditLogService.RecordAsync(
@@ -373,6 +441,7 @@ public sealed class AgentCatalogService(
         agent.ModifiedAt = DateTime.UtcNow;
         agent.ModifiedByUserId = modifiedByUserId;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidateAgentReadCacheAsync(tenantId, agent.Id, cancellationToken);
 
         var userName = await GetUserNameAsync(modifiedByUserId, cancellationToken);
         await auditLogService.RecordAsync(
@@ -516,6 +585,130 @@ public sealed class AgentCatalogService(
     {
         var normalized = search?.Trim();
         return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    /// <summary>
+    /// Chỉ cache các danh sách phổ biến: không search tự do, trang đầu, và page size vừa phải.
+    /// </summary>
+    private async Task<string?> TryBuildAgentListCacheKeyAsync(
+        Guid? tenantId,
+        AgentQueryFilters filters,
+        CancellationToken cancellationToken)
+    {
+        if (filters.Page != 1 || filters.PageSize > 50 || !string.IsNullOrWhiteSpace(filters.Search))
+        {
+            return null;
+        }
+
+        var namespaceKey = ApplicationCacheKeys.AgentListNamespace(tenantId);
+        try
+        {
+            var version = await cacheVersionService.GetVersionAsync(namespaceKey, cancellationToken);
+            return ApplicationCacheKeys.AgentList(
+                tenantId,
+                filters.Status?.ToString().ToLowerInvariant() ?? "all",
+                filters.PageSize,
+                version);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể lấy agent-list cache version.");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Tạo cache key cho chi tiết agent theo scope hiện tại.
+    /// </summary>
+    private async Task<string?> TryBuildAgentDetailCacheKeyAsync(
+        Guid? tenantId,
+        Guid agentId,
+        CancellationToken cancellationToken)
+    {
+        var namespaceKey = ApplicationCacheKeys.AgentDetailNamespace(tenantId, agentId);
+        try
+        {
+            var version = await cacheVersionService.GetVersionAsync(namespaceKey, cancellationToken);
+            return ApplicationCacheKeys.AgentDetail(tenantId, agentId, version);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể lấy agent-detail cache version cho agent {AgentId}.", agentId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Invalidate cache đọc liên quan đến agent sau khi ghi thành công.
+    /// </summary>
+    private async Task InvalidateAgentReadCacheAsync(Guid? tenantId, Guid agentId, CancellationToken cancellationToken)
+    {
+        await TryRefreshCacheVersionAsync(
+            ApplicationCacheKeys.AgentDetailNamespace(tenantId, agentId),
+            "agent detail",
+            cancellationToken);
+
+        await TryRefreshCacheVersionAsync(
+            ApplicationCacheKeys.AgentListNamespace(tenantId),
+            "agent list",
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Đọc cache typed và fallback về luồng cũ khi Redis lỗi.
+    /// </summary>
+    private async Task<TValue?> TryGetCachedValueAsync<TValue>(
+        string cacheKey,
+        string cacheLabel,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await distributedCacheService.GetAsync<TValue>(cacheKey, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể đọc {CacheLabel} cache.", cacheLabel);
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Ghi cache typed mà không làm gián đoạn response khi Redis lỗi.
+    /// </summary>
+    private async Task TrySetCachedValueAsync<TValue>(
+        string cacheKey,
+        TValue value,
+        TimeSpan timeToLive,
+        string cacheLabel,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await distributedCacheService.SetAsync(cacheKey, value, timeToLive, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể ghi {CacheLabel} cache.", cacheLabel);
+        }
+    }
+
+    /// <summary>
+    /// Làm mới version token của namespace cache.
+    /// </summary>
+    private async Task TryRefreshCacheVersionAsync(
+        string namespaceKey,
+        string cacheLabel,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cacheVersionService.RefreshVersionAsync(namespaceKey, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể invalidate {CacheLabel} cache.", cacheLabel);
+        }
     }
 
     /// <summary>
