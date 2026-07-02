@@ -11,7 +11,7 @@ using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using Microsoft.Extensions.Logging;
 
-namespace Demo.Application.Services.Knowledge;
+namespace Demo.Application.Services;
 
 /// <summary>
 /// Xử lý các thao tác ghi đối với file tri thức agent: upload, tải xuống, xem chi tiết, đổi tên, di chuyển, và xóa mềm file.

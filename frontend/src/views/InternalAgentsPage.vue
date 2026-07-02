@@ -171,7 +171,12 @@ onBeforeUnmount(() => {
 
 <template>
   <ListToolbar class="filter-bar">
-    <BaseInput v-model="filters.searchText.value" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
+    <BaseInput
+      v-model="filters.searchText.value"
+      placeholder="Tìm theo tên, mô tả hoặc vai trò"
+      label="Tìm kiếm agent"
+      clearable
+    />
     <label class="filter-select">
       <span class="sr-only">Lọc theo trạng thái</span>
       <select v-model="filters.statusFilter.value" aria-label="Lọc theo trạng thái">

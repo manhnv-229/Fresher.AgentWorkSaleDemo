@@ -226,6 +226,7 @@ function toggleMenu() {
           placeholder="Tìm kiếm nhật ký..."
           class="field"
           :disabled="isLoading"
+          clearable
           @keydown.enter="applySearch"
         />
         <div class="filter-trigger" ref="menuRef">

@@ -35,9 +35,9 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
-    [HttpGet("files/search")]
+    [HttpGet("search")]
     [HasPermission(PermissionCodes.DocumentView)]
-    public async Task<ActionResult<IReadOnlyList<KnowledgeFileItem>>> SearchFiles(
+    public async Task<ActionResult<KnowledgeSearchResponse>> Search(
         Guid agentId,
         [FromQuery] string? name,
         [FromQuery] Guid? folderId,
@@ -46,7 +46,7 @@ public sealed class InternalAgentKnowledgeController(
         [FromQuery] DateTime? createdTo,
         CancellationToken cancellationToken)
     {
-        var result = await explorerService.SearchFilesAsync(
+        var result = await explorerService.SearchAsync(
             Guid.Empty,
             agentId,
             new KnowledgeSearchFilters(name, folderId, createdByUserId, createdFrom, createdTo),

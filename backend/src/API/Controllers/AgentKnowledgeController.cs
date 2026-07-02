@@ -40,11 +40,11 @@ public sealed class AgentKnowledgeController(
     }
 
     /// <summary>
-    /// GET search files: tìm kiếm file theo tên, thư mục, người tạo, hoặc khoảng ngày tạo.
+    /// GET search: tìm kiếm tri thức theo tên, trả cả folder và file theo một contract backend thống nhất.
     /// </summary>
-    [HttpGet("files/search")]
+    [HttpGet("search")]
     [HasPermission(PermissionCodes.DocumentView)]
-    public async Task<ActionResult<IReadOnlyList<KnowledgeFileItem>>> SearchFiles(
+    public async Task<ActionResult<KnowledgeSearchResponse>> Search(
         Guid tenantId,
         Guid agentId,
         [FromQuery] string? name,
@@ -54,7 +54,7 @@ public sealed class AgentKnowledgeController(
         [FromQuery] DateTime? createdTo,
         CancellationToken cancellationToken)
     {
-        var result = await explorerService.SearchFilesAsync(
+        var result = await explorerService.SearchAsync(
             tenantId,
             agentId,
             new KnowledgeSearchFilters(name, folderId, createdByUserId, createdFrom, createdTo),

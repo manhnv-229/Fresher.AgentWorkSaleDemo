@@ -5,7 +5,7 @@ using Demo.Domain.Entities;
 using Demo.Domain.Enums;
 using Demo.Domain.Interfaces.Repository;
 
-namespace Demo.Application.Services.Knowledge;
+namespace Demo.Application.Services;
 
 /// <summary>
 /// Helper chung cho các service tri thức agent: giải quyết tên actor, kiểm tra quyền truy cập, ánh xạ DTO, xây dựng tree/breadcrumb, xác thực normalization, và xác định content type.
@@ -86,6 +86,7 @@ internal static class KnowledgeServiceHelper
         folder.Id,
         folder.ParentFolderId,
         folder.Name,
+        folder.NormalizedName,
         folder.CreatedByUserId,
         createdByUserName,
         folder.CreatedAt,
@@ -98,6 +99,7 @@ internal static class KnowledgeServiceHelper
         folder.Id,
         folder.ParentFolderId,
         folder.Name,
+        folder.NormalizedName,
         folder.CreatedByUserId,
         folder.CreatedByUser?.FullName ?? folder.CreatedByUser?.Email ?? "Unknown",
         folder.CreatedAt,
@@ -183,7 +185,7 @@ internal static class KnowledgeServiceHelper
         return folders
             .Where(folder => folder.ParentFolderId == parentFolderId)
             .OrderBy(folder => folder.Name)
-            .Select(folder => new KnowledgeFolderTreeItem(folder.Id, folder.ParentFolderId, folder.Name, BuildTree(folders, folder.Id)))
+            .Select(folder => new KnowledgeFolderTreeItem(folder.Id, folder.ParentFolderId, folder.Name, folder.NormalizedName, BuildTree(folders, folder.Id)))
             .ToList();
     }
 

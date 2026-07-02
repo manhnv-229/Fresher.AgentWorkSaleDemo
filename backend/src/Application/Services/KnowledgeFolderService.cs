@@ -9,7 +9,7 @@ using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using Microsoft.Extensions.Logging;
 
-namespace Demo.Application.Services.Knowledge;
+namespace Demo.Application.Services;
 
 /// <summary>
 /// Xử lý các thao tác ghi đối với thư mục tri thức agent: tạo, đổi tên, di chuyển, và xóa mềm (soft delete) toàn bộ subtree.

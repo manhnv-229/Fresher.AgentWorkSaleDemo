@@ -12,7 +12,6 @@ import {
   Move,
   MoreHorizontal,
   Pencil,
-  Search,
   Trash2,
   Upload
 } from '@lucide/vue';
@@ -30,13 +29,14 @@ import {
   moveKnowledgeFolder,
   renameKnowledgeFile,
   renameKnowledgeFolder,
-  searchKnowledgeFiles,
+  searchKnowledgeItems,
   uploadKnowledgeFile,
   type KnowledgeAgentContext,
   type KnowledgeExplorerResponse,
   type KnowledgeFileItem,
   type KnowledgeFolderItem,
-  type KnowledgeFolderTreeItem
+  type KnowledgeFolderTreeItem,
+  type KnowledgeSearchResponse
 } from '../api';
 import { ApiError } from '../api/http';
 import BaseButton from '../components/BaseButton.vue';
@@ -46,6 +46,7 @@ import ContentPanel from '../components/ContentPanel.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import ModalActionShell from '../components/ModalActionShell.vue';
 import KnowledgeTreeNode from '../components/knowledge/KnowledgeTreeNode.vue';
+import { getKnowledgeSearchTextSegments, normalizeKnowledgeSearchText } from '../utils/knowledge-search';
 
 const props = defineProps<{ agentId: string }>();
 const route = useRoute();
@@ -53,8 +54,8 @@ const router = useRouter();
 
 // Explorer state: tree, breadcrumb, current folders/files từ API
 const explorer = ref<KnowledgeExplorerResponse | null>(null);
-// Search results: khác với explorer files vì search cross-folder
-const searchResults = ref<KnowledgeFileItem[]>([]);
+// Search results: backend trả cả folder và file trong cùng response
+const searchResults = ref<KnowledgeSearchResponse | null>(null);
 const selectedFolderId = ref<string | null>(null);
 // Search text đồng bộ với watcher để auto-search khi thay đổi
 const searchText = ref('');
@@ -118,20 +119,17 @@ const knowledgeContext = computed<KnowledgeAgentContext>(() => ({
 }));
 const breadcrumb = computed(() => explorer.value?.breadcrumb ?? []);
 const currentFolders = computed(() => explorer.value?.folders ?? []);
-const normalizedSearchText = computed(() => searchText.value.trim().toLowerCase());
-const searchableFolders = computed(() =>
-  flattenFolders(explorer.value?.tree ?? []).filter((folder) => folder.id !== selectedFolderId.value)
-);
+const normalizedSearchText = computed(() => normalizeKnowledgeSearchText(searchText.value));
 const isSearchActive = computed(() => normalizedSearchText.value.length > 0);
 const displayedFolders = computed(() => {
   if (!isSearchActive.value) {
     return currentFolders.value;
   }
 
-  return searchableFolders.value.filter((folder) => folder.name.toLowerCase().includes(normalizedSearchText.value));
+  return (searchResults.value?.folders ?? []).filter((folder) => folder.id !== selectedFolderId.value);
 });
 // Hiển thị: ưu tiên search results nếu có search/filter, không thì dùng explorer files
-const displayedFiles = computed(() => (isSearchActive.value ? searchResults.value : explorer.value?.files ?? []));
+const displayedFiles = computed(() => (isSearchActive.value ? searchResults.value?.files ?? [] : explorer.value?.files ?? []));
 // Flatten tree để dùng trong modal di chuyển (hiển thị tất cả thư mục)
 const allFolders = computed(() => flattenFolders(explorer.value?.tree ?? []));
 const currentFolderParentId = computed<string | null>(() => {
@@ -148,6 +146,10 @@ const supportedUploadTypesLabel = 'PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG';
 function onDocumentClick() {
   openOverflowMenuId.value = null;
   contextMenu.value = null;
+}
+
+function getKnowledgeNameSegments(name: string) {
+  return getKnowledgeSearchTextSegments(name, normalizedSearchText.value);
 }
 
 onMounted(() => {
@@ -245,12 +247,12 @@ async function goForward() {
 async function runSearch() {
   const query = searchText.value.trim();
   if (!query || (scope.value === 'tenant' && !tenantId.value)) {
-    searchResults.value = [];
+    searchResults.value = null;
     return;
   }
 
   try {
-    searchResults.value = await searchKnowledgeFiles(knowledgeContext.value, {
+    searchResults.value = await searchKnowledgeItems(knowledgeContext.value, {
       name: query
     });
   } catch (err) {
@@ -545,16 +547,14 @@ function handleError(err: unknown, fallback: string) {
 }
 
 // Flatten tree structure thành array phẳng cho dropdown di chuyển
-function flattenFolders(nodes: KnowledgeFolderTreeItem[]): KnowledgeFolderItem[] {
+function flattenFolders(nodes: KnowledgeFolderTreeItem[]): KnowledgeFolderTreeItem[] {
   return nodes.flatMap((node) => [
     {
       id: node.id,
       parentFolderId: node.parentFolderId,
       name: node.name,
-      createdByUserId: '',
-      createdByUserName: '',
-      createdAt: '',
-      modifiedAt: null
+      normalizedName: node.normalizedName,
+      children: []
     },
     ...flattenFolders(node.children)
   ]);
@@ -652,10 +652,14 @@ function ensureItemOwner(item: ActiveItem): boolean {
       <p v-if="message" class="message message--success">{{ message }}</p>
 
       <ListToolbar class="knowledge-toolbar">
-        <label class="knowledge-search">
-          <Search :size="16" aria-hidden="true" />
-          <input v-model="searchText" type="search" placeholder="Tìm kiếm tài liệu hoặc thư mục" />
-        </label>
+        <BaseInput
+          v-model="searchText"
+          type="search"
+          placeholder="Tìm kiếm tài liệu hoặc thư mục"
+          class="knowledge-search"
+          label="Tìm kiếm tài liệu hoặc thư mục"
+          clearable
+        />
         <div class="knowledge-toolbar__actions">
           <BaseButton variant="secondary" type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="openCreateFolder">
             <FolderPlus :size="16" aria-hidden="true" />
@@ -714,7 +718,12 @@ function ensureItemOwner(item: ActiveItem): boolean {
           <div v-for="folder in displayedFolders" :key="folder.id" class="knowledge-row knowledge-row--folder" @dblclick="openFolder(folder.id)" @contextmenu="onContextMenu($event, { type: 'folder', item: folder })">
             <span class="knowledge-name">
               <Folder :size="17" aria-hidden="true" />
-              {{ folder.name }}
+              <span class="knowledge-name__text">
+                <template v-for="(segment, segmentIndex) in getKnowledgeNameSegments(folder.name)" :key="folder.id + '-folder-' + segmentIndex">
+                  <mark v-if="segment.highlighted" class="knowledge-search-highlight">{{ segment.text }}</mark>
+                  <span v-else>{{ segment.text }}</span>
+                </template>
+              </span>
             </span>
             <span>{{ formatFolderCreatedBy(folder) }}</span>
             <span>{{ formatFolderCreatedAt(folder) }}</span>
@@ -742,7 +751,12 @@ function ensureItemOwner(item: ActiveItem): boolean {
           <div v-for="file in displayedFiles" :key="file.id" class="knowledge-row" @contextmenu="onContextMenu($event, { type: 'file', item: file })">
             <span class="knowledge-name">
               <FileText :size="17" aria-hidden="true" />
-              {{ file.name }}
+              <span class="knowledge-name__text">
+                <template v-for="(segment, segmentIndex) in getKnowledgeNameSegments(file.name)" :key="file.id + '-file-' + segmentIndex">
+                  <mark v-if="segment.highlighted" class="knowledge-search-highlight">{{ segment.text }}</mark>
+                  <span v-else>{{ segment.text }}</span>
+                </template>
+              </span>
             </span>
             <span>{{ file.createdByUserName }}</span>
             <span>{{ formatDate(file.createdAt) }}</span>
@@ -980,10 +994,6 @@ function ensureItemOwner(item: ActiveItem): boolean {
   min-width: 0;
 }
 
-.knowledge-toolbar .knowledge-search {
-  width: 280px;
-}
-
 .knowledge-breadcrumb button,
 .tree-node,
 .knowledge-actions button {
@@ -1021,19 +1031,6 @@ function ensureItemOwner(item: ActiveItem): boolean {
   margin: 0 4px;
 }
 
-.knowledge-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: min(280px, 100%);
-  height: 38px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 0 10px;
-  background: #fff;
-  color: #667085;
-}
-
 .knowledge-select-wrap {
   display: grid;
   gap: 6px;
@@ -1042,12 +1039,8 @@ function ensureItemOwner(item: ActiveItem): boolean {
   font-weight: 700;
 }
 
-.knowledge-search input {
-  width: 100%;
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  font: inherit;
+.knowledge-toolbar .knowledge-search {
+  width: 300px;
 }
 
 .knowledge-layout {
@@ -1199,6 +1192,20 @@ function ensureItemOwner(item: ActiveItem): boolean {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.knowledge-name__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-search-highlight {
+  background: #fde68a;
+  border-radius: 3px;
+  color: inherit;
+  padding: 0;
 }
 
 .knowledge-actions {

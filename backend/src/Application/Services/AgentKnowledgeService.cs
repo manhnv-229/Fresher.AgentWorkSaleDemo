@@ -108,7 +108,7 @@ public sealed class AgentKnowledgeService(
 
         var files = await knowledgeRepository.SearchFilesAsync(
             agentId,
-            NormalizeName(filters.Name),
+            KnowledgeSearchHelper.Normalize(filters.Name),
             filters.FolderId,
             filters.CreatedByUserId,
             filters.CreatedFrom,
@@ -759,6 +759,7 @@ public sealed class AgentKnowledgeService(
         folder.Id,
         folder.ParentFolderId,
         folder.Name,
+        folder.NormalizedName,
         folder.CreatedByUserId,
         createdByUserName,
         folder.CreatedAt,
@@ -771,6 +772,7 @@ public sealed class AgentKnowledgeService(
         folder.Id,
         folder.ParentFolderId,
         folder.Name,
+        folder.NormalizedName,
         folder.CreatedByUserId,
         folder.CreatedByUser?.FullName ?? folder.CreatedByUser?.Email ?? "Unknown",
         folder.CreatedAt,
@@ -837,7 +839,7 @@ public sealed class AgentKnowledgeService(
         return folders
             .Where(folder => folder.ParentFolderId == parentFolderId)
             .OrderBy(folder => folder.Name)
-            .Select(folder => new KnowledgeFolderTreeItem(folder.Id, folder.ParentFolderId, folder.Name, BuildTree(folders, folder.Id)))
+            .Select(folder => new KnowledgeFolderTreeItem(folder.Id, folder.ParentFolderId, folder.Name, folder.NormalizedName, BuildTree(folders, folder.Id)))
             .ToList();
     }
 

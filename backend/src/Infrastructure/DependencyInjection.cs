@@ -4,7 +4,6 @@ using Demo.Application.Interfaces.Service;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using Demo.Application.Services;
-using Demo.Application.Services.Knowledge;
 using Demo.Application.Mapping;
 using Demo.Infrastructure.Persistence;
 using Demo.Infrastructure.Repositories;

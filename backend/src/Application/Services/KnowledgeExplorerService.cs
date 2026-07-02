@@ -8,7 +8,7 @@ using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using Microsoft.Extensions.Logging;
 
-namespace Demo.Application.Services.Knowledge;
+namespace Demo.Application.Services;
 
 /// <summary>
 /// Xử lý các thao tác truy vấn explorer tri thức agent: tải cây thư mục, breadcrumb, nội dung thư mục hiện tại, và tìm kiếm file.
@@ -80,9 +80,9 @@ public sealed class KnowledgeExplorerService(
     }
 
     /// <summary>
-    /// Tìm kiếm file tri thức theo tên, thư mục, người tạo, hoặc khoảng ngày tạo.
+    /// Tìm kiếm tri thức theo một contract backend thống nhất cho cả thư mục và file.
     /// </summary>
-    public async Task<ServiceResult<IReadOnlyList<KnowledgeFileItem>>> SearchFilesAsync(
+    public async Task<ServiceResult<KnowledgeSearchResponse>> SearchAsync(
         Guid tenantId,
         Guid agentId,
         KnowledgeSearchFilters filters,
@@ -91,26 +91,36 @@ public sealed class KnowledgeExplorerService(
         var access = await KnowledgeServiceHelper.EnsureReadableAgentAsync(agentRepository, tenantId, agentId, cancellationToken);
         if (access is not null)
         {
-            return ServiceResult<IReadOnlyList<KnowledgeFileItem>>.Failure(access.Value.Code, access.Value.Message);
+            return ServiceResult<KnowledgeSearchResponse>.Failure(access.Value.Code, access.Value.Message);
         }
 
-        // Xác thực thư mục tồn tại nếu người dùng chỉ định tìm trong thư mục cụ thể
+        if (string.IsNullOrWhiteSpace(filters.Name))
+        {
+            return ServiceResult<KnowledgeSearchResponse>.Success(new KnowledgeSearchResponse(agentId, [], []));
+        }
+
         if (filters.FolderId is not null &&
             await knowledgeRepository.GetFolderAsync(agentId, filters.FolderId.Value, trackChanges: false, cancellationToken) is null)
         {
-            return ServiceResult<IReadOnlyList<KnowledgeFileItem>>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
+            return ServiceResult<KnowledgeSearchResponse>.Failure(KnowledgeErrorCodes.FolderNotFound, "Folder was not found.");
         }
 
+        var normalizedName = KnowledgeSearchHelper.Normalize(filters.Name);
+        var folders = await knowledgeRepository.SearchFoldersAsync(agentId, normalizedName, cancellationToken);
         var files = await knowledgeRepository.SearchFilesAsync(
             agentId,
-            KnowledgeServiceHelper.NormalizeName(filters.Name),
+            normalizedName,
             filters.FolderId,
             filters.CreatedByUserId,
             filters.CreatedFrom,
             filters.CreatedTo,
             cancellationToken);
 
-        return ServiceResult<IReadOnlyList<KnowledgeFileItem>>.Success(files.Select(KnowledgeServiceHelper.MapFile).ToList());
+        return ServiceResult<KnowledgeSearchResponse>.Success(
+            new KnowledgeSearchResponse(
+                agentId,
+                folders.Select(KnowledgeServiceHelper.MapFolder).ToList(),
+                files.Select(KnowledgeServiceHelper.MapFile).ToList()));
     }
 
     /// <summary>

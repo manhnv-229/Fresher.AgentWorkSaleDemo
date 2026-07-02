@@ -1,4 +1,5 @@
 using Demo.Application.Interfaces.Repository;
+using Demo.Application.Services;
 using Demo.Domain.Entities;
 using Demo.Domain.Enums;
 using Demo.Infrastructure.Persistence;
@@ -84,6 +85,42 @@ public sealed class AgentKnowledgeRepository(DemoDbContext dbContext) : IAgentKn
                 folder.ParentFolderId == ancestorFolderId &&
                 folder.DeletedAt == null)
             .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Tìm kiếm thư mục theo tên. Dùng cho unified knowledge search để trả kết quả folder từ backend.
+    /// </summary>
+    public async Task<IReadOnlyList<AgentKnowledgeFolder>> SearchFoldersAsync(
+        Guid agentId,
+        string? normalizedName,
+        CancellationToken cancellationToken)
+    {
+        var folders = await dbContext.AgentKnowledgeFolders
+            .AsNoTracking()
+            .Include(folder => folder.CreatedByUser)
+            .Where(folder =>
+                folder.AgentId == agentId &&
+                folder.DeletedAt == null)
+            .OrderBy(folder => folder.Name)
+            .ToListAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(normalizedName))
+        {
+            return folders;
+        }
+
+        return folders
+            .Select(folder => new
+            {
+                Folder = folder,
+                Score = KnowledgeSearchHelper.GetMatchScore(normalizedName, folder.NormalizedName)
+            })
+            .Where(item => item.Score > 0)
+            .OrderByDescending(item => item.Score)
+            .ThenByDescending(item => item.Folder.CreatedAt)
+            .ThenBy(item => item.Folder.Name)
+            .Select(item => item.Folder)
+            .ToList();
     }
 
     /// <summary>
@@ -174,11 +211,6 @@ public sealed class AgentKnowledgeRepository(DemoDbContext dbContext) : IAgentKn
                 file.DeletedAt == null &&
                 file.Status == AgentKnowledgeFileStatus.Active);
 
-        if (!string.IsNullOrWhiteSpace(normalizedName))
-        {
-            query = query.Where(file => file.NormalizedName.Contains(normalizedName));
-        }
-
         if (folderId is not null)
         {
             query = query.Where(file => file.FolderId == folderId.Value);
@@ -199,10 +231,28 @@ public sealed class AgentKnowledgeRepository(DemoDbContext dbContext) : IAgentKn
             query = query.Where(file => file.CreatedAt < createdTo.Value);
         }
 
-        return await query
+        var files = await query
             .OrderByDescending(file => file.CreatedAt)
             .ThenBy(file => file.Name)
             .ToListAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(normalizedName))
+        {
+            return files;
+        }
+
+        return files
+            .Select(file => new
+            {
+                File = file,
+                Score = KnowledgeSearchHelper.GetMatchScore(normalizedName, file.NormalizedName)
+            })
+            .Where(item => item.Score > 0)
+            .OrderByDescending(item => item.Score)
+            .ThenByDescending(item => item.File.CreatedAt)
+            .ThenBy(item => item.File.Name)
+            .Select(item => item.File)
+            .ToList();
     }
 
     /// <summary>

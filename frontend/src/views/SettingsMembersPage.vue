@@ -169,6 +169,7 @@ async function handleSaveJobPosition() {
           placeholder="Tìm kiếm nhân viên..."
           class="toolbar__search"
           :disabled="isLoading"
+          clearable
         />
         <select v-model="selectedStatus" class="toolbar__status-filter" :disabled="isLoading">
           <option v-for="option in STATUS_OPTIONS" :key="option.value" :value="option.value">

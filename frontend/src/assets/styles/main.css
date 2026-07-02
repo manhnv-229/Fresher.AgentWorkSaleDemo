@@ -48,6 +48,10 @@
   min-width: 0;
 }
 
+.field__control {
+  position: relative;
+}
+
 .field input,
 .agent-textarea {
   width: 100%;
@@ -93,6 +97,10 @@
   padding-right: 44px;
 }
 
+.field--clearable input {
+  padding-right: 44px;
+}
+
 .field__action {
   position: absolute;
   top: 20px;
@@ -108,6 +116,11 @@
   transform: translateY(-50%);
 }
 
+.field__action--clear {
+  border-radius: 0;
+  background: transparent;
+}
+
 .field__feedback {
   color: var(--color-muted);
   font-size: 12px;
@@ -121,6 +134,12 @@
 .field__action:hover:not(:disabled),
 .field__action:focus-visible {
   background: var(--color-primary-soft);
+  outline: none;
+}
+
+.field__action--clear:hover:not(:disabled),
+.field__action--clear:focus-visible {
+  background: transparent;
   outline: none;
 }
 
@@ -1140,6 +1159,11 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.modal-action-shell {
+  display: grid;
+  gap: 16px;
 }
 
 .spin {

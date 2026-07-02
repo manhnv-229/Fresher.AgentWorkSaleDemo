@@ -7,7 +7,7 @@ public interface IKnowledgeExplorerService
 {
     Task<ServiceResult<KnowledgeExplorerResponse>> GetExplorerAsync(Guid tenantId, Guid agentId, Guid? folderId, CancellationToken cancellationToken);
 
-    Task<ServiceResult<IReadOnlyList<KnowledgeFileItem>>> SearchFilesAsync(
+    Task<ServiceResult<KnowledgeSearchResponse>> SearchAsync(
         Guid tenantId,
         Guid agentId,
         KnowledgeSearchFilters filters,

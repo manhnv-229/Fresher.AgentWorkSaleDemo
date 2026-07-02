@@ -8,10 +8,16 @@ public sealed record KnowledgeExplorerResponse(
     IReadOnlyList<KnowledgeFolderItem> Folders,
     IReadOnlyList<KnowledgeFileItem> Files);
 
+public sealed record KnowledgeSearchResponse(
+    Guid AgentId,
+    IReadOnlyList<KnowledgeFolderItem> Folders,
+    IReadOnlyList<KnowledgeFileItem> Files);
+
 public sealed record KnowledgeFolderTreeItem(
     Guid Id,
     Guid? ParentFolderId,
     string Name,
+    string NormalizedName,
     IReadOnlyList<KnowledgeFolderTreeItem> Children);
 
 public sealed record KnowledgeBreadcrumbItem(Guid Id, string Name);
@@ -20,6 +26,7 @@ public sealed record KnowledgeFolderItem(
     Guid Id,
     Guid? ParentFolderId,
     string Name,
+    string NormalizedName,
     Guid CreatedByUserId,
     string CreatedByUserName,
     DateTime CreatedAt,
