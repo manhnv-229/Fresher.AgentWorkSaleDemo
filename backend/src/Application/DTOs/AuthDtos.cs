@@ -38,7 +38,9 @@ public sealed record UpdateJobPositionRequest(string? JobPosition);
 
 public sealed record MemberListFilters(
     string? Search,
-    string? Status);
+    string? Status,
+    int Page,
+    int PageSize);
 
 public sealed record JwtTokenResult(
     string AccessToken,

@@ -12,7 +12,7 @@ export {
   moveKnowledgeFolder,
   renameKnowledgeFile,
   renameKnowledgeFolder,
-  searchKnowledgeFiles,
+  searchKnowledgeItems,
   uploadKnowledgeFile
 } from './agent-knowledge';
 export {
@@ -55,6 +55,7 @@ export type {
   KnowledgeFileItem,
   KnowledgeFolderItem,
   KnowledgeFolderTreeItem,
+  KnowledgeSearchResponse,
   KnowledgeSearchFilters,
   MoveKnowledgeItemPayload,
   RenameKnowledgeItemPayload

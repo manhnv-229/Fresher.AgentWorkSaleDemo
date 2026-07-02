@@ -1,9 +1,14 @@
+using Demo.Infrastructure.Persistence;
+
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 #nullable disable
 
 namespace Demo.Infrastructure.Migrations;
 
+[DbContext(typeof(DemoDbContext))]
+[Migration("20260624172000_MakeKnowledgeChecksumIndexNonUnique")]
 public partial class MakeKnowledgeChecksumIndexNonUnique : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

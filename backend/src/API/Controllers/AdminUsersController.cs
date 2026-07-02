@@ -6,6 +6,7 @@ using Demo.Application.DTOs;
 using Demo.Application.Errors;
 using Demo.Domain.Authorization;
 using Demo.Domain.Interfaces.Service;
+using Demo.Domain.Interfaces.Repository;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,12 +18,14 @@ public sealed class AdminUsersController(IUserManagementService userManagementSe
 {
     [HttpGet]
     [HasPermission(PermissionCodes.UserView)]
-    public async Task<ActionResult<IReadOnlyList<AdminUserSummary>>> GetUsers(
+    public async Task<ActionResult<PagedResult<AdminUserSummary>>> GetUsers(
         [FromQuery] string? search,
         [FromQuery] string? status,
+        [FromQuery] int? page,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
-        var filters = new MemberListFilters(search, status);
+        var filters = new MemberListFilters(search, status, Math.Max(1, page ?? 1), Math.Max(1, pageSize ?? 9));
         var result = await userManagementService.GetUsersAsync(filters, cancellationToken);
         if (result.Succeeded && result.Value is not null)
         {

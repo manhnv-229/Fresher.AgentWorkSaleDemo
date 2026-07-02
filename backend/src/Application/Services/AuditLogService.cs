@@ -19,11 +19,13 @@ public sealed class AuditLogService(
     /// <summary>
     /// Lấy danh sách audit log theo bộ lọc thời gian và hành động.
     /// </summary>
-    public async Task<ServiceResult<IReadOnlyList<AuditLogEntryResponse>>> GetAuditLogsAsync(
+    public async Task<ServiceResult<PagedResult<AuditLogEntryResponse>>> GetAuditLogsAsync(
         AuditLogFilterRequest? filter,
         CancellationToken cancellationToken)
     {
         ResolveTimePreset(filter?.TimePreset, out var dateFrom, out var dateTo);
+        var page = Math.Max(1, filter?.Page ?? 1);
+        var pageSize = Math.Max(1, filter?.PageSize ?? 9);
 
         var entries = await auditLogQueryRepository.GetFilteredAsync(
             filter?.Search,
@@ -31,9 +33,16 @@ public sealed class AuditLogService(
             dateTo,
             filter?.Actions,
             filter?.TargetTypes,
+            page,
+            pageSize,
             cancellationToken);
-        var response = entries.Select(entry => mapper.Map<AuditLogEntryResponse>(entry)).ToList();
-        return ServiceResult<IReadOnlyList<AuditLogEntryResponse>>.Success(response);
+        var response = new PagedResult<AuditLogEntryResponse>(
+            entries.Items.Select(entry => mapper.Map<AuditLogEntryResponse>(entry)).ToList(),
+            entries.Page,
+            entries.PageSize,
+            entries.TotalCount,
+            entries.TotalPages);
+        return ServiceResult<PagedResult<AuditLogEntryResponse>>.Success(response);
     }
 
     /// <summary>

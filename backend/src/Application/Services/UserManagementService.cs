@@ -7,6 +7,7 @@ using Demo.Application.Interfaces.Repository;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services;
 
@@ -15,7 +16,9 @@ public sealed class UserManagementService(
     IAuthUserRepository authUserRepository,
     IUserSessionRepository userSessionRepository,
     IAuditLogService auditLogService,
+    ICacheVersionService cacheVersionService,
     IMapper mapper,
+    ILogger<UserManagementService> logger,
     IUnitOfWork unitOfWork) : IUserManagementService
 {
     #region Method
@@ -23,11 +26,18 @@ public sealed class UserManagementService(
     /// <summary>
     /// Lấy danh sách người dùng theo bộ lọc quản trị.
     /// </summary>
-    public async Task<ServiceResult<IReadOnlyList<AdminUserSummary>>> GetUsersAsync(MemberListFilters? filters, CancellationToken cancellationToken)
+    public async Task<ServiceResult<PagedResult<AdminUserSummary>>> GetUsersAsync(MemberListFilters? filters, CancellationToken cancellationToken)
     {
-        var users = await userQueryRepository.GetFilteredAsync(filters?.Search, filters?.Status, cancellationToken);
-        return ServiceResult<IReadOnlyList<AdminUserSummary>>.Success(
-            users.Select(user => mapper.Map<AdminUserSummary>(user)).ToList());
+        var page = Math.Max(1, filters?.Page ?? 1);
+        var pageSize = Math.Max(1, filters?.PageSize ?? 9);
+        var users = await userQueryRepository.GetFilteredAsync(filters?.Search, filters?.Status, page, pageSize, cancellationToken);
+        return ServiceResult<PagedResult<AdminUserSummary>>.Success(
+            new PagedResult<AdminUserSummary>(
+                users.Items.Select(user => mapper.Map<AdminUserSummary>(user)).ToList(),
+                users.Page,
+                users.PageSize,
+                users.TotalCount,
+                users.TotalPages));
     }
 
     /// <summary>
@@ -95,6 +105,7 @@ public sealed class UserManagementService(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await InvalidatePermissionCacheAsync(user.Id, cancellationToken);
 
         var action = targetStatus == AccountStatus.Locked ? "user.lock" : "user.unlock";
         var description = targetStatus == AccountStatus.Locked
@@ -156,6 +167,21 @@ public sealed class UserManagementService(
             cancellationToken);
 
         return ServiceResult<AdminUserSummary>.Success(mapper.Map<AdminUserSummary>(user));
+    }
+
+    /// <summary>
+    /// Invalidate permission cache của người dùng khi trạng thái tài khoản thay đổi.
+    /// </summary>
+    private async Task InvalidatePermissionCacheAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await cacheVersionService.RefreshVersionAsync(ApplicationCacheKeys.PermissionNamespace(userId), cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể invalidate permission cache của user {UserId}.", userId);
+        }
     }
 
     #endregion

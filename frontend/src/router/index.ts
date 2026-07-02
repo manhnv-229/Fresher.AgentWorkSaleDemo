@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { refreshAccessToken } from '../api/auth';
 import { ApiError } from '../api/http';
-import WorkspaceShell from '../layouts/WorkspaceShell.vue';
+import MainLayout from '../layouts/MainLayout.vue';
+import { canAccessPermissions } from './guards';
 import { useAuthStore } from '../stores/useAuthStore';
 import LoginPage from '../views/LoginPage.vue';
 import InternalAgentsPage from '../views/InternalAgentsPage.vue';
@@ -11,7 +12,15 @@ import AgentKnowledgePage from '../views/AgentKnowledgePage.vue';
 import SettingsAuditLogPage from '../views/SettingsAuditLogPage.vue';
 import SettingsMembersPage from '../views/SettingsMembersPage.vue';
 import SettingsPasswordPage from '../views/SettingsPasswordPage.vue';
+import ErrorView from '../views/ErrorView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    public?: boolean;
+    requiredPermissions?: string[];
+  }
+}
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -24,7 +33,7 @@ export const router = createRouter({
     },
     {
       path: '/',
-      component: WorkspaceShell,
+      component: MainLayout,
       children: [
         {
           path: '',
@@ -33,25 +42,29 @@ export const router = createRouter({
         {
           path: 'agents/internal',
           name: 'agents-internal',
-          component: InternalAgentsPage
+          component: InternalAgentsPage,
+          meta: { requiredPermissions: ['agent.view'] }
         },
         {
           path: 'agents/tenant/:tenantId',
           name: 'agents-tenant',
           component: TenantAgentsPage,
-          props: true
+          props: true,
+          meta: { requiredPermissions: ['agent.view'] }
         },
         {
           path: 'agents/:agentId',
           name: 'agent-detail',
           component: AgentDetailPage,
-          props: true
+          props: true,
+          meta: { requiredPermissions: ['agent.view'] }
         },
         {
           path: 'agents/:agentId/knowledge',
           name: 'agent-knowledge',
           component: AgentKnowledgePage,
-          props: true
+          props: true,
+          meta: { requiredPermissions: ['document.view'] }
         },
         {
           path: 'settings',
@@ -60,7 +73,8 @@ export const router = createRouter({
         {
           path: 'settings/members',
           name: 'settings-members',
-          component: SettingsMembersPage
+          component: SettingsMembersPage,
+          meta: { requiredPermissions: ['user.view'] }
         },
         {
           path: 'settings/password',
@@ -70,9 +84,16 @@ export const router = createRouter({
         {
           path: 'settings/audit-log',
           name: 'settings-audit-log',
-          component: SettingsAuditLogPage
+          component: SettingsAuditLogPage,
+          meta: { requiredPermissions: ['auditlog.view'] }
         }
       ]
+    },
+    {
+      path: '/forbidden',
+      name: 'forbidden',
+      component: ErrorView,
+      meta: { public: true }
     },
     {
       path: '/:pathMatch(.*)*',
@@ -90,6 +111,13 @@ router.beforeEach(async (to) => {
   }
 
   if (authStore.getAccessToken()) {
+    if (!canAccessPermissions(to.meta.requiredPermissions)) {
+      return {
+        name: 'forbidden',
+        query: { redirect: to.fullPath }
+      };
+    }
+
     return true;
   }
 
@@ -97,6 +125,14 @@ router.beforeEach(async (to) => {
     // Router thử khôi phục phiên bằng refresh token trước khi đẩy người dùng về login.
     const tokens = await refreshAccessToken();
     authStore.setAuthState(tokens);
+
+    if (!canAccessPermissions(to.meta.requiredPermissions)) {
+      return {
+        name: 'forbidden',
+        query: { redirect: to.fullPath }
+      };
+    }
+
     return true;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {

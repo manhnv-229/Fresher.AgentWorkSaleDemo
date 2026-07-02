@@ -4,7 +4,6 @@ using Demo.Application.Interfaces.Service;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 using Demo.Application.Services;
-using Demo.Application.Services.Knowledge;
 using Demo.Application.Mapping;
 using Demo.Infrastructure.Persistence;
 using Demo.Infrastructure.Repositories;
@@ -16,6 +15,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 using System.Net;
 using System.Net.Http.Headers;
 
@@ -46,6 +46,13 @@ public static class DependencyInjection
             options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
         services.AddSingleton<IDbConnectionFactory>(_ => new MySqlDbConnectionFactory(connectionString));
         services.AddAutoMapper(typeof(BackendDataAccessProfile).Assembly);
+        var redisOptions = CreateRedisCacheOptions(configuration);
+        var applicationCacheOptions = CreateApplicationCacheOptions(configuration);
+        services.AddStackExchangeRedisCache(options =>
+        {
+            options.InstanceName = redisOptions.InstanceName;
+            options.ConfigurationOptions = CreateRedisConfiguration(redisOptions);
+        });
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuthService, AuthService>();
@@ -62,6 +69,10 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IRefreshTokenHasher, RefreshTokenHasher>();
+        services.AddSingleton(applicationCacheOptions);
+        services.AddSingleton<IApplicationCachePolicyProvider, ApplicationCachePolicyProvider>();
+        services.AddSingleton<IDistributedCacheService, RedisDistributedCacheService>();
+        services.AddSingleton<ICacheVersionService, CacheVersionService>();
         services.AddScoped<IAuthSessionValidator, AuthSessionValidator>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
@@ -119,6 +130,76 @@ public static class DependencyInjection
         client.DefaultRequestHeaders.ConnectionClose = false;
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
         return client;
+    }
+
+    private static ConfigurationOptions CreateRedisConfiguration(RedisCacheOptions options)
+    {
+        var configuration = new ConfigurationOptions
+        {
+            AbortOnConnectFail = false,
+            ConnectTimeout = Math.Max(1, options.ConnectTimeoutSeconds) * 1000,
+            SyncTimeout = Math.Max(1, options.SyncTimeoutSeconds) * 1000,
+            Ssl = options.UseSsl
+        };
+
+        configuration.EndPoints.Add(options.Host, options.Port);
+
+        if (!string.IsNullOrWhiteSpace(options.Password))
+        {
+            configuration.Password = options.Password;
+        }
+
+        return configuration;
+    }
+
+    private static RedisCacheOptions CreateRedisCacheOptions(IConfiguration configuration)
+    {
+        var redisSection = configuration.GetSection(RedisCacheOptions.SectionName);
+
+        return new RedisCacheOptions
+        {
+            Host = redisSection[nameof(RedisCacheOptions.Host)] ?? "localhost",
+            Port = int.TryParse(redisSection[nameof(RedisCacheOptions.Port)], out var port) ? port : 6379,
+            Password = redisSection[nameof(RedisCacheOptions.Password)],
+            UseSsl = bool.TryParse(redisSection[nameof(RedisCacheOptions.UseSsl)], out var useSsl) && useSsl,
+            ConnectTimeoutSeconds = int.TryParse(redisSection[nameof(RedisCacheOptions.ConnectTimeoutSeconds)], out var connectTimeoutSeconds)
+                ? connectTimeoutSeconds
+                : 5,
+            SyncTimeoutSeconds = int.TryParse(redisSection[nameof(RedisCacheOptions.SyncTimeoutSeconds)], out var syncTimeoutSeconds)
+                ? syncTimeoutSeconds
+                : 5,
+            InstanceName = redisSection[nameof(RedisCacheOptions.InstanceName)] ?? "demo:"
+        };
+    }
+
+    private static ApplicationCacheOptions CreateApplicationCacheOptions(IConfiguration configuration)
+    {
+        var cacheSection = configuration.GetSection(ApplicationCacheOptions.SectionName);
+
+        return new ApplicationCacheOptions
+        {
+            PermissionEntrySeconds = int.TryParse(cacheSection[nameof(ApplicationCacheOptions.PermissionEntrySeconds)], out var permissionEntrySeconds)
+                ? permissionEntrySeconds
+                : 300,
+            AgentDetailSeconds = int.TryParse(cacheSection[nameof(ApplicationCacheOptions.AgentDetailSeconds)], out var agentDetailSeconds)
+                ? agentDetailSeconds
+                : 300,
+            AgentListSeconds = int.TryParse(cacheSection[nameof(ApplicationCacheOptions.AgentListSeconds)], out var agentListSeconds)
+                ? agentListSeconds
+                : 120,
+            TenantListSeconds = int.TryParse(cacheSection[nameof(ApplicationCacheOptions.TenantListSeconds)], out var tenantListSeconds)
+                ? tenantListSeconds
+                : 600,
+            TenantDetailSeconds = int.TryParse(cacheSection[nameof(ApplicationCacheOptions.TenantDetailSeconds)], out var tenantDetailSeconds)
+                ? tenantDetailSeconds
+                : 600,
+            KnowledgeExplorerSeconds = int.TryParse(cacheSection[nameof(ApplicationCacheOptions.KnowledgeExplorerSeconds)], out var knowledgeExplorerSeconds)
+                ? knowledgeExplorerSeconds
+                : 120,
+            NamespaceVersionSeconds = int.TryParse(cacheSection[nameof(ApplicationCacheOptions.NamespaceVersionSeconds)], out var namespaceVersionSeconds)
+                ? namespaceVersionSeconds
+                : 604800
+        };
     }
 
     private static string GetString(string key, string fallback)

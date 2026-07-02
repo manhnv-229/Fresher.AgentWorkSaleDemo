@@ -86,13 +86,15 @@ public sealed class AgentQueryRepository(IDbConnectionFactory connectionFactory)
         var sql = $$"""
             SELECT id, code, name, description, icon, role, scope, status
             FROM agents
-            WHERE {{scopeClause}}{{filterClause}}
+            WHERE {{scopeClause}}
+              AND deleted_at IS NULL{{filterClause}}
             ORDER BY name
             LIMIT @PageSize OFFSET @Offset;
 
             SELECT COUNT(*)
             FROM agents
-            WHERE {{scopeClause}}{{filterClause}};
+            WHERE {{scopeClause}}
+              AND deleted_at IS NULL{{filterClause}};
             """;
 
         parameters.Add("PageSize", filters.PageSize);

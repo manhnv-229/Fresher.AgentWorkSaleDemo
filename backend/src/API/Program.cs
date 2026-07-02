@@ -5,6 +5,7 @@ using System.Text;
 using Demo.Api.Authorization;
 using Demo.Api.Common;
 using Demo.Api.Filters;
+using Demo.Api.Validation;
 using Demo.Domain.Interfaces.Service;
 using Demo.Infrastructure;
 using Demo.Infrastructure.Persistence;
@@ -14,12 +15,15 @@ using Demo.Infrastructure.Services;
 using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
+using System.Reflection;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -37,7 +41,11 @@ builder.Host.UseSerilog((context, services, configuration) =>
         .Enrich.FromLogContext();
 });
 
-builder.Services.AddControllers();
+builder.Services.AddScoped<FluentValidationActionFilter>();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.AddService<FluentValidationActionFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddCors(options =>
 {
@@ -92,6 +100,31 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var requestType = context.ActionDescriptor.Parameters
+            .OfType<ControllerParameterDescriptor>()
+            .Select(parameter => parameter.ParameterInfo.ParameterType)
+            .FirstOrDefault(parameterType =>
+                parameterType != typeof(CancellationToken) &&
+                parameterType != typeof(string) &&
+                parameterType != typeof(Guid) &&
+                parameterType != typeof(Guid?) &&
+                !parameterType.IsPrimitive);
+
+        var errorMessage = context.ModelState.Values
+            .SelectMany(entry => entry.Errors)
+            .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Request is invalid." : error.ErrorMessage)
+            .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message))
+            ?? "Request is invalid.";
+
+        return new BadRequestObjectResult(new ApiErrorResponse(
+            requestType is null ? "validation_error" : ValidationErrorCodeResolver.Resolve(requestType),
+            errorMessage));
+    };
+});
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, _, _) =>
@@ -144,6 +177,9 @@ builder.Services.AddOpenApi(options =>
     });
 });
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddValidatorsFromAssemblies(
+    Assembly.GetExecutingAssembly(),
+    typeof(Demo.Application.Validation.LoginRequestValidator).Assembly);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TenantContextResolver>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
@@ -219,10 +255,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     app.MapOpenApi();
+}
 
-    using var scope = app.Services.CreateScope();
+using (var scope = app.Services.CreateScope())
+{
     var dbContext = scope.ServiceProvider.GetRequiredService<DemoDbContext>();
-
     await dbContext.Database.MigrateAsync();
 
     if (app.Configuration.GetValue<bool>("Database:SeedOnStartup"))

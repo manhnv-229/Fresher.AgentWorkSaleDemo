@@ -35,9 +35,9 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
-    [HttpGet("files/search")]
+    [HttpGet("search")]
     [HasPermission(PermissionCodes.DocumentView)]
-    public async Task<ActionResult<IReadOnlyList<KnowledgeFileItem>>> SearchFiles(
+    public async Task<ActionResult<KnowledgeSearchResponse>> Search(
         Guid agentId,
         [FromQuery] string? name,
         [FromQuery] Guid? folderId,
@@ -46,7 +46,7 @@ public sealed class InternalAgentKnowledgeController(
         [FromQuery] DateTime? createdTo,
         CancellationToken cancellationToken)
     {
-        var result = await explorerService.SearchFilesAsync(
+        var result = await explorerService.SearchAsync(
             Guid.Empty,
             agentId,
             new KnowledgeSearchFilters(name, folderId, createdByUserId, createdFrom, createdTo),
@@ -156,11 +156,6 @@ public sealed class InternalAgentKnowledgeController(
         if (userId is null)
         {
             return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
-        }
-
-        if (request.File.Length == 0)
-        {
-            return BadRequest(new ApiErrorResponse(KnowledgeErrorCodes.EmptyFile, "File is empty."));
         }
 
         await using var stream = request.File.OpenReadStream();

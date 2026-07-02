@@ -7,6 +7,8 @@ using Demo.Domain.Options;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
 
+using Microsoft.Extensions.Logging;
+
 namespace Demo.Application.Services;
 
 public sealed class AuthService(
@@ -16,8 +18,11 @@ public sealed class AuthService(
     IAuditLogService auditLogService,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService,
+    IPermissionService permissionService,
     IRefreshTokenHasher refreshTokenHasher,
     IAuthOptions authOptions,
+    IDistributedCacheService distributedCacheService,
+    ILogger<AuthService> logger,
     IUnitOfWork unitOfWork) : IAuthService
 {
     #region Method
@@ -152,7 +157,7 @@ public sealed class AuthService(
         refreshToken.ReasonRevoked = "Rotated";
         refreshToken.ReplacedByTokenHash = replacement.TokenHash;
 
-        var jwt = jwtTokenService.CreateAccessToken(refreshToken.User, refreshToken.SessionId);
+        var jwt = await CreateAccessTokenAsync(refreshToken.User, refreshToken.SessionId, cancellationToken);
         var newRefreshToken = new RefreshToken
         {
             Id = Guid.NewGuid(),
@@ -200,6 +205,7 @@ public sealed class AuthService(
             refreshToken.Session.RevokedAt = DateTime.UtcNow;
             refreshToken.Session.RevokedByIp = ipAddress;
             refreshToken.Session.ReasonRevoked = "Logout";
+            await InvalidateSessionCacheAsync(refreshToken.Session.UserId, refreshToken.Session.Id, cancellationToken);
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -239,11 +245,12 @@ public sealed class AuthService(
             session.RevokedAt ??= DateTime.UtcNow;
             session.RevokedByIp = ipAddress;
             session.ReasonRevoked = reason;
+            await InvalidateSessionCacheAsync(session.UserId, session.Id, cancellationToken);
         }
     }
 
     /// <summary>
-    /// Tạo bản ghi phiên và refresh token mới sau khi đăng nhập thành công.
+    /// Tạo bản ghi phiên, refresh token và access token chứa permission claims sau khi đăng nhập thành công.
     /// </summary>
     private async Task<AuthTokenResult> CreateSessionAsync(User user, string? ipAddress, CancellationToken cancellationToken)
     {
@@ -256,7 +263,7 @@ public sealed class AuthService(
             CreatedByIp = ipAddress
         };
 
-        var jwt = jwtTokenService.CreateAccessToken(user, session.Id);
+        var jwt = await CreateAccessTokenAsync(user, session.Id, cancellationToken);
         var refreshToken = refreshTokenHasher.GenerateToken();
         var refreshTokenEntity = new RefreshToken
         {
@@ -274,6 +281,46 @@ public sealed class AuthService(
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new AuthTokenResult(jwt.AccessToken, refreshToken.RawToken, jwt.ExpiresAt, refreshTokenEntity.ExpiresAt);
+    }
+
+    /// <summary>
+    /// Xóa cache session để tránh dùng lại trạng thái đã bị thu hồi.
+    /// </summary>
+    private Task InvalidateSessionCacheAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken)
+    {
+        return InvalidateSessionCacheCoreAsync(userId, sessionId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Xóa cache session nhưng không làm gián đoạn luồng xác thực khi Redis gặp sự cố.
+    /// </summary>
+    private async Task InvalidateSessionCacheCoreAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await distributedCacheService.RemoveAsync(BuildAuthSessionCacheKey(userId, sessionId), cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Không thể xóa cache session {SessionId} của user {UserId}.", sessionId, userId);
+        }
+    }
+
+    /// <summary>
+    /// Tạo khóa cache thống nhất cho trạng thái session xác thực.
+    /// </summary>
+    private static string BuildAuthSessionCacheKey(Guid userId, Guid sessionId)
+    {
+        return $"auth-session:{userId:N}:{sessionId:N}";
+    }
+
+    /// <summary>
+    /// Tạo access token với tập quyền hiện hành để frontend route guard và backend authorization dùng cùng một tập quyền.
+    /// </summary>
+    private async Task<JwtTokenResult> CreateAccessTokenAsync(User user, Guid sessionId, CancellationToken cancellationToken)
+    {
+        var permissionCodes = await permissionService.GetGrantedPermissionCodesAsync(user.Id, cancellationToken);
+        return jwtTokenService.CreateAccessToken(user, sessionId, permissionCodes);
     }
 
     #endregion

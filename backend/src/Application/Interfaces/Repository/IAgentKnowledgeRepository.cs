@@ -12,6 +12,11 @@ public interface IAgentKnowledgeRepository
 
     Task<IReadOnlyList<AgentKnowledgeFolder>> GetDescendantFoldersAsync(Guid agentId, Guid ancestorFolderId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<AgentKnowledgeFolder>> SearchFoldersAsync(
+        Guid agentId,
+        string? normalizedName,
+        CancellationToken cancellationToken);
+
     Task<bool> FolderNameExistsAsync(Guid agentId, Guid? parentFolderId, string normalizedName, Guid? excludeFolderId, CancellationToken cancellationToken);
 
     void AddFolder(AgentKnowledgeFolder folder);

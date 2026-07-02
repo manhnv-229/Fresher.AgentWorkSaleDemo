@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { LoaderCircle, MoreVertical, Plus } from '@lucide/vue';
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
-import BaseModal from '../components/BaseModal.vue';
+import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
+import ContentPanel from '../components/ContentPanel.vue';
+import ListToolbar from '../components/ListToolbar.vue';
+import ModalActionShell from '../components/ModalActionShell.vue';
+import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import {
   createInternalAgent,
   deleteInternalAgent,
@@ -14,22 +18,73 @@ import {
 import { ApiError } from '../api/http';
 import { useAgentList, useInternalAgents } from '../composables/useAgentList';
 import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
+import { hasMaxLength, isRequired } from '../utils/validators';
 
 const router = useRouter();
 const filters = useAgentList();
-const { agents, isLoading, error, load } = useInternalAgents(filters);
+const { agents, isLoading, error, loadMore, refresh } = useInternalAgents(filters);
 
 const isCreateModalOpen = ref(false);
 const createName = ref('');
 const createRole = ref('');
 const createDescription = ref('');
 const createIcon = ref('mint');
-const createError = ref('');
 const isSaving = ref(false);
 const cardMenuOpenId = ref<string | null>(null);
 const isDeleteModalOpen = ref(false);
 const agentToDelete = ref<AgentSummary | null>(null);
 const isDeleting = ref(false);
+const loadMoreTrigger = ref<HTMLElement | null>(null);
+const {
+  errors: createErrors,
+  formError: createFormError,
+  validate: validateCreateForm,
+  clearErrors: clearCreateErrors,
+  clearFieldError: clearCreateFieldError,
+  applyApiError: applyCreateApiError
+} = useFormValidation(
+  {
+    get name() {
+      return createName.value;
+    },
+    get role() {
+      return createRole.value;
+    },
+    get description() {
+      return createDescription.value;
+    },
+    get icon() {
+      return createIcon.value;
+    }
+  },
+  [
+    (values) => {
+      const nextErrors: Partial<Record<'name' | 'role' | 'description' | 'icon', string>> = {};
+
+      if (!isRequired(values.name)) {
+        nextErrors.name = 'Vui lòng nhập tên agent.';
+      } else if (!hasMaxLength(values.name, 255)) {
+        nextErrors.name = 'Tên agent không được vượt quá 255 ký tự.';
+      }
+
+      if (!isRequired(values.role)) {
+        nextErrors.role = 'Vui lòng nhập vai trò.';
+      } else if (!hasMaxLength(values.role, 100)) {
+        nextErrors.role = 'Vai trò không được vượt quá 100 ký tự.';
+      }
+
+      if (values.description && !hasMaxLength(values.description, 500)) {
+        nextErrors.description = 'Mô tả không được vượt quá 500 ký tự.';
+      }
+
+      if (values.icon && !hasMaxLength(values.icon, 500)) {
+        nextErrors.icon = 'Icon không được vượt quá 500 ký tự.';
+      }
+
+      return nextErrors;
+    }
+  ]
+);
 
 const avatarOptions = [
   { id: 'mint', label: 'Mint', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
@@ -39,19 +94,24 @@ const avatarOptions = [
   { id: 'violet', label: 'Violet', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
 
-onMounted(() => {
-  void load();
-});
+watch(
+  loadMoreTrigger,
+  (element, _, onCleanup) => {
+    if (!element) return;
 
-watch([filters.searchText, filters.statusFilter], () => {
-  filters.currentPage.value = 1;
-  void load();
-});
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        void loadMore();
+      }
+    }, {
+      rootMargin: '240px 0px'
+    });
 
-function goToPage(page: number) {
-  filters.currentPage.value = page;
-  void load();
-}
+    observer.observe(element);
+    onCleanup(() => observer.disconnect());
+  },
+  { flush: 'post' }
+);
 
 function avatarStyle(icon: string | null | undefined) {
   const option = avatarOptions.find(item => item.id === icon) ?? avatarOptions[0];
@@ -89,7 +149,7 @@ function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete
 }
 
 function openCreateModal() {
-  createError.value = '';
+  clearCreateErrors();
   isCreateModalOpen.value = true;
 }
 
@@ -99,13 +159,12 @@ function closeCreateModal() {
   createRole.value = '';
   createDescription.value = '';
   createIcon.value = 'mint';
-  createError.value = '';
+  clearCreateErrors();
 }
 
 async function submitCreate() {
-  createError.value = '';
-  if (!createName.value.trim() || !createRole.value.trim()) {
-    createError.value = 'Tên và vai trò là bắt buộc.';
+  clearCreateErrors();
+  if (!validateCreateForm()) {
     return;
   }
 
@@ -120,13 +179,15 @@ async function submitCreate() {
   try {
     await createInternalAgent(payload);
     closeCreateModal();
-    await load();
+    await refresh();
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
       return;
     }
-    createError.value = err instanceof ApiError ? err.message : 'Không tạo được agent.';
+    applyCreateApiError(err, {
+      validation_error: FORM_ERROR
+    }, 'Không tạo được agent.');
   } finally {
     isSaving.value = false;
   }
@@ -144,7 +205,7 @@ async function confirmDelete() {
   try {
     await deleteInternalAgent(agentToDelete.value.id);
     closeDeleteModal();
-    await load();
+    await refresh();
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
@@ -154,11 +215,20 @@ async function confirmDelete() {
     isDeleting.value = false;
   }
 }
+
+onBeforeUnmount(() => {
+  loadMoreTrigger.value = null;
+});
 </script>
 
 <template>
-  <div class="filter-bar">
-    <BaseInput v-model="filters.searchText.value" placeholder="Tìm theo tên, mô tả hoặc vai trò" label="Tìm kiếm agent" />
+  <ListToolbar class="filter-bar">
+    <BaseInput
+      v-model="filters.searchText.value"
+      placeholder="Tìm theo tên, mô tả hoặc vai trò"
+      label="Tìm kiếm agent"
+      clearable
+    />
     <label class="filter-select">
       <span class="sr-only">Lọc theo trạng thái</span>
       <select v-model="filters.statusFilter.value" aria-label="Lọc theo trạng thái">
@@ -173,9 +243,9 @@ async function confirmDelete() {
         Thêm mới
       </BaseButton>
     </div>
-  </div>
+  </ListToolbar>
 
-  <div class="content-panel">
+  <ContentPanel with-pagination>
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
       <LoaderCircle :size="18" class="spin" aria-hidden="true" />
@@ -226,18 +296,18 @@ async function confirmDelete() {
         </div>
       </article>
     </div>
-    <div v-if="agents.totalPages > 1" class="pagination">
-      <BaseButton variant="secondary" type="button" :disabled="filters.currentPage.value <= 1" @click="goToPage(filters.currentPage.value - 1)">
-        Trước
-      </BaseButton>
-      <span class="pagination-info">Trang {{ agents.page }} / {{ agents.totalPages }}</span>
-      <BaseButton variant="secondary" type="button" :disabled="filters.currentPage.value >= agents.totalPages" @click="goToPage(filters.currentPage.value + 1)">
-        Sau
-      </BaseButton>
-    </div>
-  </div>
+    <div ref="loadMoreTrigger" class="agent-list-sentinel" aria-hidden="true"></div>
+  </ContentPanel>
 
-  <BaseModal :open="isCreateModalOpen" title="Tạo agent nội bộ" @close="closeCreateModal">
+  <ModalActionShell
+    :open="isCreateModalOpen"
+    title="Tạo agent nội bộ"
+    :busy="isSaving"
+    confirm-label="Lưu"
+    busy-label="Đang lưu..."
+    @close="closeCreateModal"
+    @confirm="submitCreate"
+  >
     <div class="create-agent">
       <div class="create-agent__group">
         <p class="create-agent__label">Hình đại diện</p>
@@ -257,36 +327,50 @@ async function confirmDelete() {
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="create-name">Tên</label>
-        <BaseInput id="create-name" v-model="createName" placeholder="Nhập tên" />
+        <BaseInput
+          id="create-name"
+          v-model="createName"
+          placeholder="Nhập tên"
+          :error="createErrors.name"
+          @input="clearCreateFieldError('name')"
+        />
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="create-role">Vai trò</label>
-        <textarea id="create-role" v-model="createRole" class="agent-textarea" rows="3" placeholder="Nhập mô tả vai trò" />
+        <textarea
+          id="create-role"
+          v-model="createRole"
+          class="agent-textarea"
+          rows="3"
+          placeholder="Nhập mô tả vai trò"
+          @input="clearCreateFieldError('role')"
+        />
+        <p v-if="createErrors.role" class="message message--error">{{ createErrors.role }}</p>
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="create-desc">Mô tả</label>
-        <textarea id="create-desc" v-model="createDescription" class="agent-textarea" rows="4" placeholder="Mô tả ngắn về agent" />
+        <textarea
+          id="create-desc"
+          v-model="createDescription"
+          class="agent-textarea"
+          rows="4"
+          placeholder="Mô tả ngắn về agent"
+          @input="clearCreateFieldError('description')"
+        />
+        <p v-if="createErrors.description" class="message message--error">{{ createErrors.description }}</p>
       </div>
-      <p v-if="createError" class="message message--error">{{ createError }}</p>
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isSaving" @click="closeCreateModal">Hủy</BaseButton>
-        <BaseButton type="button" :disabled="isSaving" @click="submitCreate">
-          {{ isSaving ? 'Đang lưu...' : 'Lưu' }}
-        </BaseButton>
-      </div>
+      <p v-if="createFormError" class="message message--error">{{ createFormError }}</p>
     </div>
-  </BaseModal>
+  </ModalActionShell>
 
-  <BaseModal :open="isDeleteModalOpen" title="Xác nhận xóa" @close="closeDeleteModal">
-    <div class="delete-confirm">
-      <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
-      <p>Hành động này không thể hoàn tác.</p>
-      <div class="create-agent__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isDeleting" @click="closeDeleteModal">Hủy</BaseButton>
-        <BaseButton variant="danger" type="button" :disabled="isDeleting" @click="confirmDelete">
-          {{ isDeleting ? 'Đang xóa...' : 'Xác nhận xóa' }}
-        </BaseButton>
-      </div>
-    </div>
-  </BaseModal>
+  <DeleteConfirmModal
+    :open="isDeleteModalOpen"
+    :busy="isDeleting"
+    confirm-label="Xác nhận xóa"
+    @close="closeDeleteModal"
+    @confirm="confirmDelete"
+  >
+    <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
+    <p>Hành động này không thể hoàn tác.</p>
+  </DeleteConfirmModal>
 </template>

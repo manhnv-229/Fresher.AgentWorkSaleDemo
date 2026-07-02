@@ -10,6 +10,7 @@ export interface KnowledgeFolderTreeItem {
   id: string;
   parentFolderId?: string | null;
   name: string;
+  normalizedName: string;
   children: KnowledgeFolderTreeItem[];
 }
 
@@ -22,6 +23,7 @@ export interface KnowledgeFolderItem {
   id: string;
   parentFolderId?: string | null;
   name: string;
+  normalizedName: string;
   createdByUserId: string;
   createdByUserName: string;
   createdAt: string;
@@ -48,6 +50,12 @@ export interface KnowledgeExplorerResponse {
   selectedFolderId?: string | null;
   tree: KnowledgeFolderTreeItem[];
   breadcrumb: KnowledgeBreadcrumbItem[];
+  folders: KnowledgeFolderItem[];
+  files: KnowledgeFileItem[];
+}
+
+export interface KnowledgeSearchResponse {
+  agentId: string;
   folders: KnowledgeFolderItem[];
   files: KnowledgeFileItem[];
 }
@@ -94,10 +102,10 @@ export function getKnowledgeExplorer(
   });
 }
 
-export function searchKnowledgeFiles(
+export function searchKnowledgeItems(
   context: KnowledgeAgentContext,
   filters: KnowledgeSearchFilters
-): Promise<KnowledgeFileItem[]> {
+): Promise<KnowledgeSearchResponse> {
   const params = new URLSearchParams();
   if (filters.name?.trim()) params.set('name', filters.name.trim());
   if (filters.folderId) params.set('folderId', filters.folderId);
@@ -106,8 +114,8 @@ export function searchKnowledgeFiles(
   if (filters.createdTo) params.set('createdTo', filters.createdTo);
 
   const query = params.toString();
-  return apiRequest<KnowledgeFileItem[]>({
-    url: `${basePath(context)}/files/search${query ? `?${query}` : ''}`,
+  return apiRequest<KnowledgeSearchResponse>({
+    url: `${basePath(context)}/search${query ? `?${query}` : ''}`,
     requiresAuth: true
   });
 }
