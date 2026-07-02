@@ -9,6 +9,7 @@ using Demo.Domain.Entities;
 using Demo.Domain.Enums;
 using Demo.Domain.Interfaces.Repository;
 using Demo.Domain.Interfaces.Service;
+using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services;
 
@@ -23,6 +24,7 @@ public sealed class AgentKnowledgeService(
     IKnowledgeStorageService storageService,
     IAuditLogService auditLogService,
     IAuthUserRepository authUserRepository,
+    ILogger<AgentKnowledgeService> logger,
     IUnitOfWork unitOfWork) : IAgentKnowledgeService
 {
 #region Declaration
@@ -684,9 +686,13 @@ public sealed class AgentKnowledgeService(
             {
                 await storageService.DeleteAsync(file.StorageObject.StorageBucket, file.StorageObject.StorageObjectKey, cancellationToken);
             }
-            catch
+            catch (Exception exception)
             {
-                // Soft-delete metadata remains the source of truth even if physical cleanup is delayed.
+                logger.LogWarning(
+                    exception,
+                    "Không thể xóa storage object {ObjectKey} sau khi soft-delete file {FileId}.",
+                    file.StorageObject.StorageObjectKey,
+                    file.Id);
             }
         }
 
