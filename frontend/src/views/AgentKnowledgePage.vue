@@ -45,8 +45,16 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
 import ContentPanel from '../components/ContentPanel.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import ModalActionShell from '../components/ModalActionShell.vue';
+import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import KnowledgeTreeNode from '../components/knowledge/KnowledgeTreeNode.vue';
 import { getKnowledgeSearchTextSegments, normalizeKnowledgeSearchText } from '../utils/knowledge-search';
+import {
+  hasAllowedFileExtension,
+  hasMaxFileSize,
+  hasMaxLength,
+  hasPositiveFileSize,
+  isRequired
+} from '../utils/validators';
 
 const props = defineProps<{ agentId: string }>();
 const route = useRoute();
@@ -142,6 +150,76 @@ const canGoBack = computed(() => backHistory.value.length > 0);
 const canGoForward = computed(() => forwardHistory.value.length > 0);
 const currentUserId = computed(() => getCurrentUserIdFromAccessToken());
 const supportedUploadTypesLabel = 'PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG';
+const supportedUploadExtensions = ['.pdf', '.docx', '.xlsx', '.pptx', '.txt', '.png', '.jpg'] as const;
+const maxUploadSizeBytes = 50 * 1024 * 1024;
+const {
+  errors: createFolderErrors,
+  formError: createFolderFormError,
+  validate: validateCreateFolder,
+  clearErrors: clearCreateFolderErrors,
+  clearFieldError: clearCreateFolderFieldError,
+  applyApiError: applyCreateFolderApiError
+} = useFormValidation(
+  {
+    get name() {
+      return folderName.value;
+    }
+  },
+  [
+    (values) => {
+      const nextErrors: Partial<Record<'name', string>> = {};
+
+      if (!isRequired(values.name)) {
+        nextErrors.name = 'Tên thư mục là bắt buộc.';
+      } else if (!hasMaxLength(values.name, 255)) {
+        nextErrors.name = 'Tên thư mục không được vượt quá 255 ký tự.';
+      }
+
+      return nextErrors;
+    }
+  ]
+);
+const {
+  errors: renameErrors,
+  formError: renameFormError,
+  validate: validateRenameForm,
+  clearErrors: clearRenameErrors,
+  clearFieldError: clearRenameFieldError,
+  setFormError: setRenameFormError,
+  applyApiError: applyRenameApiError
+} = useFormValidation(
+  {
+    get name() {
+      return renameValue.value;
+    }
+  },
+  [
+    (values) => {
+      const nextErrors: Partial<Record<'name', string>> = {};
+
+      if (!isRequired(values.name)) {
+        nextErrors.name = 'Tên mới là bắt buộc.';
+      } else if (!hasMaxLength(values.name, 255)) {
+        nextErrors.name = 'Tên mới không được vượt quá 255 ký tự.';
+      }
+
+      return nextErrors;
+    }
+  ]
+);
+const {
+  formError: moveFormError,
+  clearErrors: clearMoveErrors,
+  setFormError: setMoveFormError,
+  applyApiError: applyMoveApiError
+} = useFormValidation(
+  {
+    get targetFolderId() {
+      return moveTargetFolderId.value ?? '';
+    }
+  },
+  []
+);
 
 function onDocumentClick() {
   openOverflowMenuId.value = null;
@@ -262,35 +340,58 @@ async function runSearch() {
 
 function openCreateFolder() {
   folderName.value = '';
+  clearCreateFolderErrors();
   isCreateFolderOpen.value = true;
+}
+
+function closeCreateFolder() {
+  isCreateFolderOpen.value = false;
+  folderName.value = '';
+  clearCreateFolderErrors();
 }
 
 // Tạo thư mục: gọi API, đóng modal, hiển thị message, và refresh explorer
 async function submitCreateFolder() {
-  const name = folderName.value.trim();
-  if (!name) {
-    error.value = 'Tên thư mục là bắt buộc.';
+  clearCreateFolderErrors();
+  if (!validateCreateFolder()) {
     return;
   }
 
-  await runBusy(async () => {
-    await createKnowledgeFolder(knowledgeContext.value, {
-      name,
-      parentFolderId: selectedFolderId.value
-    });
-    isCreateFolderOpen.value = false;
-    message.value = 'Đã tạo thư mục.';
-    await loadExplorer();
-  });
+  const name = folderName.value.trim();
+  await runBusy(
+    async () => {
+      await createKnowledgeFolder(knowledgeContext.value, {
+        name,
+        parentFolderId: selectedFolderId.value
+      });
+      closeCreateFolder();
+      message.value = 'Đã tạo thư mục.';
+      await loadExplorer();
+    },
+    (err) => applyCreateFolderApiError(err, {
+      validation_error: FORM_ERROR
+    }, 'Không tạo được thư mục.')
+  );
 }
 
 // Upload file vào thư mục hiện tại: dùng chung cho file picker và drag & drop
 async function uploadFile(file: File) {
-  await runBusy(async () => {
-    await uploadKnowledgeFile(knowledgeContext.value, file, selectedFolderId.value);
-    message.value = 'Đã tải file lên.';
-    await loadExplorer();
-  });
+  const uploadValidationMessage = validateUploadFile(file);
+  if (uploadValidationMessage) {
+    error.value = uploadValidationMessage;
+    message.value = '';
+    return;
+  }
+
+  await runBusy(
+    async () => {
+      await uploadKnowledgeFile(knowledgeContext.value, file, selectedFolderId.value);
+      message.value = 'Đã tải file lên.';
+      await loadExplorer();
+    },
+    undefined,
+    'Không tải file lên được.'
+  );
 }
 
 // Trigger file input click để mở file picker
@@ -336,10 +437,6 @@ function onDrop(event: DragEvent) {
   const files = event.dataTransfer?.files;
   if (!files || files.length === 0) return;
   const file = files[0];
-  if (file.size <= 0) {
-    error.value = 'File trống.';
-    return;
-  }
   void uploadFile(file);
 }
 
@@ -347,7 +444,15 @@ function openRename(item: ActiveItem) {
   if (!ensureItemOwner(item)) return;
   activeItem.value = item;
   renameValue.value = item.item.name;
+  clearRenameErrors();
   isRenameOpen.value = true;
+}
+
+function closeRename() {
+  isRenameOpen.value = false;
+  activeItem.value = null;
+  renameValue.value = '';
+  clearRenameErrors();
 }
 
 const previewableExtensions = new Set(['.txt', '.md', '.json', '.csv', '.xml', '.html', '.css', '.js', '.ts', '.py', '.java', '.c', '.cpp', '.cs', '.rb', '.go', '.rs', '.sh', '.sql', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.log']);
@@ -425,52 +530,84 @@ async function openContentView(file: KnowledgeFileItem) {
 // Đổi tên: gọi API tương ứng (folder/file), đóng modal, và refresh explorer
 async function submitRename() {
   const item = activeItem.value;
-  const name = renameValue.value.trim();
-  if (!item || !name) {
-    error.value = 'Tên mới là bắt buộc.';
+  clearRenameErrors();
+  if (!item) {
+    setRenameFormError('Không xác định được đối tượng cần đổi tên.');
     return;
   }
 
-  await runBusy(async () => {
-    if (item.type === 'folder') {
-      await renameKnowledgeFolder(knowledgeContext.value, item.item.id, { name });
-    } else {
-      await renameKnowledgeFile(knowledgeContext.value, item.item.id, { name });
-    }
+  if (!validateRenameForm()) {
+    return;
+  }
 
-    isRenameOpen.value = false;
-    message.value = 'Đã đổi tên.';
-    await loadExplorer();
-  });
+  const name = renameValue.value.trim();
+  await runBusy(
+    async () => {
+      if (item.type === 'folder') {
+        await renameKnowledgeFolder(knowledgeContext.value, item.item.id, { name });
+      } else {
+        await renameKnowledgeFile(knowledgeContext.value, item.item.id, { name });
+      }
+
+      closeRename();
+      message.value = 'Đã đổi tên.';
+      await loadExplorer();
+    },
+    (err) => applyRenameApiError(err, {
+      validation_error: FORM_ERROR
+    }, 'Không đổi tên được.')
+  );
 }
 
 function openMove(item: ActiveItem) {
   if (!ensureItemOwner(item)) return;
   activeItem.value = item;
   moveTargetFolderId.value = item.type === 'folder' ? item.item.parentFolderId ?? null : item.item.folderId ?? null;
+  clearMoveErrors();
   isMoveOpen.value = true;
+}
+
+function closeMove() {
+  isMoveOpen.value = false;
+  moveTargetFolderId.value = null;
+  activeItem.value = null;
+  clearMoveErrors();
 }
 
 // Di chuyển: gọi API tương ứng (folder/file), đóng modal, và refresh explorer
 async function submitMove() {
   const item = activeItem.value;
-  if (!item) return;
+  clearMoveErrors();
+  if (!item) {
+    setMoveFormError('Không xác định được đối tượng cần di chuyển.');
+    return;
+  }
 
-  await runBusy(async () => {
-    if (item.type === 'folder') {
-      await moveKnowledgeFolder(knowledgeContext.value, item.item.id, {
-        targetFolderId: moveTargetFolderId.value
-      });
-    } else {
-      await moveKnowledgeFile(knowledgeContext.value, item.item.id, {
-        targetFolderId: moveTargetFolderId.value
-      });
-    }
+  if (item.type === 'folder' && moveTargetFolderId.value === item.item.id) {
+    setMoveFormError('Không thể di chuyển thư mục vào chính nó.');
+    return;
+  }
 
-    isMoveOpen.value = false;
-    message.value = 'Đã di chuyển.';
-    await loadExplorer();
-  });
+  await runBusy(
+    async () => {
+      if (item.type === 'folder') {
+        await moveKnowledgeFolder(knowledgeContext.value, item.item.id, {
+          targetFolderId: moveTargetFolderId.value
+        });
+      } else {
+        await moveKnowledgeFile(knowledgeContext.value, item.item.id, {
+          targetFolderId: moveTargetFolderId.value
+        });
+      }
+
+      closeMove();
+      message.value = 'Đã di chuyển.';
+      await loadExplorer();
+    },
+    (err) => applyMoveApiError(err, {
+      validation_error: FORM_ERROR
+    }, 'Không di chuyển được.')
+  );
 }
 
 function openDelete(item: ActiveItem) {
@@ -505,17 +642,42 @@ async function downloadFile(file: KnowledgeFileItem) {
 }
 
 // Wrapper để set isBusy state trong suốt quá trình thực hiện action. Clear error/message trước khi chạy.
-async function runBusy(action: () => Promise<void>) {
+async function runBusy(
+  action: () => Promise<void>,
+  handleValidationError?: (err: unknown) => void,
+  fallback = 'Thao tác không thành công.'
+) {
   error.value = '';
   message.value = '';
   isBusy.value = true;
   try {
     await action();
   } catch (err) {
-    handleError(err, 'Thao tác không thành công.');
+    if (err instanceof ApiError && err.body?.code === 'validation_error' && handleValidationError) {
+      handleValidationError(err);
+      return;
+    }
+
+    handleError(err, fallback);
   } finally {
     isBusy.value = false;
   }
+}
+
+function validateUploadFile(file: File): string {
+  if (!hasPositiveFileSize(file.size)) {
+    return 'File trống.';
+  }
+
+  if (!hasAllowedFileExtension(file.name, supportedUploadExtensions)) {
+    return `Chỉ hỗ trợ file ${supportedUploadTypesLabel}.`;
+  }
+
+  if (!hasMaxFileSize(file.size, maxUploadSizeBytes)) {
+    return 'Dung lượng file không được vượt quá 50 MB.';
+  }
+
+  return '';
 }
 
 // Xử lý lỗi: phân biệt storage errors (unreachable/timed-out/rejected) để hiển thị thông báo chi tiết hơn
@@ -848,11 +1010,17 @@ function ensureItemOwner(item: ActiveItem): boolean {
     :busy="isBusy"
     confirm-label="Tạo"
     busy-label="Đang xử lý..."
-    @close="isCreateFolderOpen = false"
+    @close="closeCreateFolder"
     @confirm="submitCreateFolder"
   >
     <div class="knowledge-modal">
-      <BaseInput v-model="folderName" placeholder="Tên thư mục" />
+      <BaseInput
+        v-model="folderName"
+        placeholder="Tên thư mục"
+        :error="createFolderErrors.name"
+        @input="clearCreateFolderFieldError('name')"
+      />
+      <p v-if="createFolderFormError" class="message message--error">{{ createFolderFormError }}</p>
     </div>
   </ModalActionShell>
 
@@ -862,11 +1030,17 @@ function ensureItemOwner(item: ActiveItem): boolean {
     :busy="isBusy"
     confirm-label="Lưu"
     busy-label="Đang xử lý..."
-    @close="isRenameOpen = false"
+    @close="closeRename"
     @confirm="submitRename"
   >
     <div class="knowledge-modal">
-      <BaseInput v-model="renameValue" placeholder="Tên mới" />
+      <BaseInput
+        v-model="renameValue"
+        placeholder="Tên mới"
+        :error="renameErrors.name"
+        @input="clearRenameFieldError('name')"
+      />
+      <p v-if="renameFormError" class="message message--error">{{ renameFormError }}</p>
     </div>
   </ModalActionShell>
 
@@ -876,7 +1050,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
     :busy="isBusy"
     confirm-label="Di chuyển"
     busy-label="Đang xử lý..."
-    @close="isMoveOpen = false"
+    @close="closeMove"
     @confirm="submitMove"
   >
     <div class="knowledge-modal">
@@ -886,6 +1060,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
           {{ folder.name }}
         </option>
       </select>
+      <p v-if="moveFormError" class="message message--error">{{ moveFormError }}</p>
     </div>
   </ModalActionShell>
 

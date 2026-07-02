@@ -183,12 +183,6 @@ public sealed class AgentCatalogService(
         CreateAgentCommand command,
         CancellationToken cancellationToken)
     {
-        var validation = ValidateCreateCommand(command);
-        if (validation is not null)
-        {
-            return validation;
-        }
-
         var agent = CreateAgent(command, tenantId: null, AgentScope.Internal, createdByUserId);
         agentRepository.Add(agent);
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -219,12 +213,6 @@ public sealed class AgentCatalogService(
         CreateAgentCommand command,
         CancellationToken cancellationToken)
     {
-        var validation = ValidateCreateCommand(command);
-        if (validation is not null)
-        {
-            return validation;
-        }
-
         var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
         if (tenant is null)
         {
@@ -276,12 +264,6 @@ public sealed class AgentCatalogService(
             return ServiceResult<AgentListItem>.Failure(
                 AgentErrorCodes.AgentNotFound,
                 "Agent was not found.");
-        }
-
-        var validation = ValidateUpdateCommand(command);
-        if (validation is not null)
-        {
-            return validation;
         }
 
         var auditDescription = BuildAgentUpdateDescription("Internal agent", agent, command);
@@ -336,12 +318,6 @@ public sealed class AgentCatalogService(
             return ServiceResult<AgentListItem>.Failure(
                 AgentErrorCodes.TenantLocked,
                 "Cannot update agents in a locked tenant.");
-        }
-
-        var validation = ValidateUpdateCommand(command);
-        if (validation is not null)
-        {
-            return validation;
         }
 
         var auditDescription = BuildAgentUpdateDescription("Tenant agent", agent, command);
@@ -527,43 +503,6 @@ public sealed class AgentCatalogService(
         var normalized = new string(name.Trim().ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
         var prefix = string.IsNullOrWhiteSpace(normalized) ? "AGENT" : normalized[..Math.Min(normalized.Length, 10)];
         return $"{prefix}-{id.ToString("N")[..8]}";
-    }
-
-    /// <summary>
-    /// Kiểm tra dữ liệu đầu vào cho luồng tạo agent.
-    /// </summary>
-    private static ServiceResult<AgentListItem>? ValidateCreateCommand(CreateAgentCommand command)
-    {
-        if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Role))
-        {
-            return ServiceResult<AgentListItem>.Failure(
-                AgentErrorCodes.ValidationError,
-                "Name and role are required.");
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Kiểm tra dữ liệu đầu vào cho luồng cập nhật agent.
-    /// </summary>
-    private static ServiceResult<AgentListItem>? ValidateUpdateCommand(UpdateAgentCommand command)
-    {
-        if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Role))
-        {
-            return ServiceResult<AgentListItem>.Failure(
-                AgentErrorCodes.ValidationError,
-                "Name and role are required.");
-        }
-
-        if (!Enum.TryParse<AgentStatus>(command.Status, true, out _))
-        {
-            return ServiceResult<AgentListItem>.Failure(
-                AgentErrorCodes.InvalidStatus,
-                "Status value is invalid.");
-        }
-
-        return null;
     }
 
     /// <summary>

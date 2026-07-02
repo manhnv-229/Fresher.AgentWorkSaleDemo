@@ -158,11 +158,6 @@ public sealed class InternalAgentKnowledgeController(
             return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
         }
 
-        if (request.File.Length == 0)
-        {
-            return BadRequest(new ApiErrorResponse(KnowledgeErrorCodes.EmptyFile, "File is empty."));
-        }
-
         await using var stream = request.File.OpenReadStream();
         var result = await fileService.UploadFileAsync(
             Guid.Empty,

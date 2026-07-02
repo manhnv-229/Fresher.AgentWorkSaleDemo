@@ -2,6 +2,7 @@ namespace Demo.Application.Errors;
 
 public static class AuthErrorCodes
 {
+    public const string ValidationError = "validation_error";
     public const string InvalidCredentials = "invalid_credentials";
     public const string InactiveUser = "inactive_user";
     public const string LockedAccount = "locked_account";

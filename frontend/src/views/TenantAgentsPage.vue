@@ -8,11 +8,13 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
 import ContentPanel from '../components/ContentPanel.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import ModalActionShell from '../components/ModalActionShell.vue';
+import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { createTenantAgent, deleteTenantAgent, type AgentSummary, type CreateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentList, useTenantAgents } from '../composables/useAgentList';
 import { useTenantSelection } from '../composables/useTenantSelection';
 import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
+import { hasMaxLength, isRequired } from '../utils/validators';
 
 const props = defineProps<{ tenantId: string }>();
 const router = useRouter();
@@ -28,9 +30,59 @@ const createName = ref('');
 const createRole = ref('');
 const createDescription = ref('');
 const createIcon = ref('mint');
-const createError = ref('');
 const isSaving = ref(false);
 const loadMoreTrigger = ref<HTMLElement | null>(null);
+const {
+  errors: createErrors,
+  formError: createFormError,
+  validate: validateCreateForm,
+  clearErrors: clearCreateErrors,
+  clearFieldError: clearCreateFieldError,
+  setFormError: setCreateFormError,
+  applyApiError: applyCreateApiError
+} = useFormValidation(
+  {
+    get name() {
+      return createName.value;
+    },
+    get role() {
+      return createRole.value;
+    },
+    get description() {
+      return createDescription.value;
+    },
+    get icon() {
+      return createIcon.value;
+    }
+  },
+  [
+    (values) => {
+      const nextErrors: Partial<Record<'name' | 'role' | 'description' | 'icon', string>> = {};
+
+      if (!isRequired(values.name)) {
+        nextErrors.name = 'Vui lòng nhập tên agent.';
+      } else if (!hasMaxLength(values.name, 255)) {
+        nextErrors.name = 'Tên agent không được vượt quá 255 ký tự.';
+      }
+
+      if (!isRequired(values.role)) {
+        nextErrors.role = 'Vui lòng nhập vai trò.';
+      } else if (!hasMaxLength(values.role, 100)) {
+        nextErrors.role = 'Vai trò không được vượt quá 100 ký tự.';
+      }
+
+      if (values.description && !hasMaxLength(values.description, 500)) {
+        nextErrors.description = 'Mô tả không được vượt quá 500 ký tự.';
+      }
+
+      if (values.icon && !hasMaxLength(values.icon, 500)) {
+        nextErrors.icon = 'Icon không được vượt quá 500 ký tự.';
+      }
+
+      return nextErrors;
+    }
+  ]
+);
 
 const selectedTenant = computed(() => tenants.value.find(t => t.id === props.tenantId) ?? null);
 
@@ -108,7 +160,7 @@ function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete
 }
 
 function openCreateModal() {
-  createError.value = '';
+  clearCreateErrors();
   isCreateModalOpen.value = true;
 }
 
@@ -118,18 +170,17 @@ function closeCreateModal() {
   createRole.value = '';
   createDescription.value = '';
   createIcon.value = 'mint';
-  createError.value = '';
+  clearCreateErrors();
 }
 
 async function submitCreate() {
-  createError.value = '';
+  clearCreateErrors();
   if (!selectedTenant.value) {
-    createError.value = 'Vui lòng chọn đơn vị trước khi tạo agent.';
+    setCreateFormError('Vui lòng chọn đơn vị trước khi tạo agent.');
     return;
   }
 
-  if (!createName.value.trim() || !createRole.value.trim()) {
-    createError.value = 'Tên và vai trò là bắt buộc.';
+  if (!validateCreateForm()) {
     return;
   }
 
@@ -150,7 +201,9 @@ async function submitCreate() {
       router.push({ name: 'login' });
       return;
     }
-    createError.value = err instanceof ApiError ? err.message : 'Không tạo được agent cho đơn vị.';
+    applyCreateApiError(err, {
+      validation_error: FORM_ERROR
+    }, 'Không tạo được agent cho đơn vị.');
   } finally {
     isSaving.value = false;
   }
@@ -305,17 +358,39 @@ onBeforeUnmount(() => {
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="tenant-create-name">Tên</label>
-        <BaseInput id="tenant-create-name" v-model="createName" placeholder="Nhập tên" />
+        <BaseInput
+          id="tenant-create-name"
+          v-model="createName"
+          placeholder="Nhập tên"
+          :error="createErrors.name"
+          @input="clearCreateFieldError('name')"
+        />
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="tenant-create-role">Vai trò</label>
-        <textarea id="tenant-create-role" v-model="createRole" class="agent-textarea" rows="3" placeholder="Nhập mô tả vai trò" />
+        <textarea
+          id="tenant-create-role"
+          v-model="createRole"
+          class="agent-textarea"
+          rows="3"
+          placeholder="Nhập mô tả vai trò"
+          @input="clearCreateFieldError('role')"
+        />
+        <p v-if="createErrors.role" class="message message--error">{{ createErrors.role }}</p>
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="tenant-create-desc">Mô tả</label>
-        <textarea id="tenant-create-desc" v-model="createDescription" class="agent-textarea" rows="4" placeholder="Mô tả ngắn về agent" />
+        <textarea
+          id="tenant-create-desc"
+          v-model="createDescription"
+          class="agent-textarea"
+          rows="4"
+          placeholder="Mô tả ngắn về agent"
+          @input="clearCreateFieldError('description')"
+        />
+        <p v-if="createErrors.description" class="message message--error">{{ createErrors.description }}</p>
       </div>
-      <p v-if="createError" class="message message--error">{{ createError }}</p>
+      <p v-if="createFormError" class="message message--error">{{ createFormError }}</p>
     </div>
   </ModalActionShell>
 </template>

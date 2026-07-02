@@ -7,6 +7,8 @@ import type { AgentDetail, UpdateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentDetail } from '../composables/useAgentDetail';
 import { useAgentDetailEditor } from '../composables/useAgentDetailEditor';
+import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
+import { hasMaxLength, isRequired } from '../utils/validators';
 
 const props = defineProps<{ agentId: string }>();
 const route = useRoute();
@@ -19,8 +21,57 @@ const editRole = ref('');
 const editDescription = ref('');
 const editIcon = ref('mint');
 const persistedAgent = ref<AgentDetail | null>(null);
-const editError = ref('');
 const { isEditing, isSaving } = editor;
+const {
+  errors: editErrors,
+  formError: editFormError,
+  validate: validateEditForm,
+  clearErrors: clearEditErrors,
+  clearFieldError: clearEditFieldError,
+  applyApiError: applyEditApiError
+} = useFormValidation(
+  {
+    get name() {
+      return editName.value;
+    },
+    get role() {
+      return editRole.value;
+    },
+    get description() {
+      return editDescription.value;
+    },
+    get icon() {
+      return editIcon.value;
+    }
+  },
+  [
+    (values) => {
+      const nextErrors: Partial<Record<'name' | 'role' | 'description' | 'icon', string>> = {};
+
+      if (!isRequired(values.name)) {
+        nextErrors.name = 'Vui lòng nhập tên agent.';
+      } else if (!hasMaxLength(values.name, 255)) {
+        nextErrors.name = 'Tên agent không được vượt quá 255 ký tự.';
+      }
+
+      if (!isRequired(values.role)) {
+        nextErrors.role = 'Vui lòng nhập vai trò.';
+      } else if (!hasMaxLength(values.role, 100)) {
+        nextErrors.role = 'Vai trò không được vượt quá 100 ký tự.';
+      }
+
+      if (values.description && !hasMaxLength(values.description, 500)) {
+        nextErrors.description = 'Mô tả không được vượt quá 500 ký tự.';
+      }
+
+      if (values.icon && !hasMaxLength(values.icon, 500)) {
+        nextErrors.icon = 'Icon không được vượt quá 500 ký tự.';
+      }
+
+      return nextErrors;
+    }
+  ]
+);
 
 const scope = computed(() => (route.query.scope as string) || 'internal');
 const tenantId = computed(() => (route.query.tenantId as string) || '');
@@ -58,7 +109,7 @@ watch([() => props.agentId, scope, tenantId], () => {
 
 async function loadAgent() {
   clear();
-  editError.value = '';
+  clearEditErrors();
   isEditing.value = false;
   try {
     if (scope.value === 'tenant') {
@@ -93,7 +144,7 @@ function syncFormFromPersistedAgent() {
   editRole.value = persistedAgent.value.role;
   editDescription.value = persistedAgent.value.description ?? '';
   editIcon.value = persistedAgent.value.icon ?? 'mint';
-  editError.value = '';
+  clearEditErrors();
 }
 
 function beginEdit() {
@@ -123,9 +174,8 @@ async function toggleActivation() {
 
 async function submitSaveWithStatus(status: string) {
   if (!agent.value || !persistedAgent.value) return;
-  editError.value = '';
-  if (!editName.value.trim() || !editRole.value.trim()) {
-    editError.value = 'Tên và vai trò là bắt buộc.';
+  clearEditErrors();
+  if (!validateEditForm()) {
     return;
   }
 
@@ -150,7 +200,9 @@ async function submitSaveWithStatus(status: string) {
       router.push({ name: 'login' });
       return;
     }
-    editError.value = err instanceof ApiError ? err.message : 'Không cập nhật được agent.';
+    applyEditApiError(err, {
+      validation_error: FORM_ERROR
+    }, 'Không cập nhật được agent.');
   } finally {
     isSaving.value = false;
   }
@@ -191,17 +243,42 @@ async function submitSaveWithStatus(status: string) {
         </div>
         <div class="create-agent__group">
           <label class="create-agent__label" for="edit-name">Tên</label>
-          <BaseInput id="edit-name" v-model="editName" placeholder="Nhập tên" :disabled="!isEditing" />
+          <BaseInput
+            id="edit-name"
+            v-model="editName"
+            placeholder="Nhập tên"
+            :disabled="!isEditing"
+            :error="editErrors.name"
+            @input="clearEditFieldError('name')"
+          />
         </div>
         <div class="create-agent__group">
           <label class="create-agent__label" for="edit-role">Vai trò</label>
-          <textarea id="edit-role" v-model="editRole" class="agent-textarea" rows="3" placeholder="Nhập mô tả vai trò" :disabled="!isEditing" />
+          <textarea
+            id="edit-role"
+            v-model="editRole"
+            class="agent-textarea"
+            rows="3"
+            placeholder="Nhập mô tả vai trò"
+            :disabled="!isEditing"
+            @input="clearEditFieldError('role')"
+          />
+          <p v-if="editErrors.role" class="message message--error">{{ editErrors.role }}</p>
         </div>
         <div class="create-agent__group">
           <label class="create-agent__label" for="edit-desc">Mô tả</label>
-          <textarea id="edit-desc" v-model="editDescription" class="agent-textarea" rows="4" placeholder="Mô tả ngắn về agent" :disabled="!isEditing" />
+          <textarea
+            id="edit-desc"
+            v-model="editDescription"
+            class="agent-textarea"
+            rows="4"
+            placeholder="Mô tả ngắn về agent"
+            :disabled="!isEditing"
+            @input="clearEditFieldError('description')"
+          />
+          <p v-if="editErrors.description" class="message message--error">{{ editErrors.description }}</p>
         </div>
-        <p v-if="editError" class="message message--error">{{ editError }}</p>
+        <p v-if="editFormError" class="message message--error">{{ editFormError }}</p>
       </div>
     </template>
   </div>

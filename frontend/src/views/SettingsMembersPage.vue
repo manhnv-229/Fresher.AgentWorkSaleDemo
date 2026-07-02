@@ -8,12 +8,14 @@ import BaseTable from '../components/BaseTable.vue';
 import ContentPanel from '../components/ContentPanel.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import PaginationFooter from '../components/PaginationFooter.vue';
+import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { getUsers, lockUser, unlockUser, updateJobPosition, type AdminUserSummary } from '../api';
 import type { PagedResult } from '../api/agents';
 import type { MemberListFilters } from '../api/users';
 import { ApiError } from '../api/http';
 import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
 import { MEMBER_STATUSES, withAllOption, getMemberStatusLabel } from '../utils/statuses';
+import { hasMaxLength, isOneOf } from '../utils/validators';
 
 const router = useRouter();
 const users = ref<PagedResult<AdminUserSummary>>({ items: [], page: 1, pageSize: PAGE_SIZE_OPTIONS[0], totalCount: 0, totalPages: 0 });
@@ -30,7 +32,35 @@ const selectedUser = ref<AdminUserSummary | null>(null);
 const isPopupOpen = ref(false);
 const editingJobPosition = ref('');
 const isSaving = ref(false);
-const popupError = ref('');
+const {
+  errors: popupErrors,
+  formError: popupError,
+  validate: validatePopupForm,
+  clearErrors: clearPopupErrors,
+  clearFieldError: clearPopupFieldError,
+  setFormError: setPopupFormError,
+  applyApiError: applyPopupApiError
+} = useFormValidation(
+  {
+    get jobPosition() {
+      return editingJobPosition.value;
+    }
+  },
+  [
+    (values) => {
+      const nextErrors: Partial<Record<'jobPosition', string>> = {};
+      const normalizedJobPosition = values.jobPosition.trim();
+
+      if (normalizedJobPosition && !isOneOf(normalizedJobPosition, JOB_POSITIONS)) {
+        nextErrors.jobPosition = 'Chức vụ không hợp lệ.';
+      } else if (normalizedJobPosition && !hasMaxLength(normalizedJobPosition, 255)) {
+        nextErrors.jobPosition = 'Chức vụ không được vượt quá 255 ký tự.';
+      }
+
+      return nextErrors;
+    }
+  ]
+);
 
 const JOB_POSITIONS = [
   'Quản trị hệ thống',
@@ -104,14 +134,14 @@ function statusTone(status: string) {
 function openPopup(user: AdminUserSummary) {
   selectedUser.value = user;
   editingJobPosition.value = user.jobPosition || '';
-  popupError.value = '';
+  clearPopupErrors();
   isPopupOpen.value = true;
 }
 
 function closePopup() {
   selectedUser.value = null;
   isPopupOpen.value = false;
-  popupError.value = '';
+  clearPopupErrors();
 }
 
 async function handleToggleLock() {
@@ -131,7 +161,7 @@ async function handleToggleLock() {
       router.push({ name: 'login' });
       return;
     }
-    popupError.value = err instanceof ApiError ? err.message : 'Không cập nhật được trạng thái.';
+    setPopupFormError(err instanceof ApiError ? err.message : 'Không cập nhật được trạng thái.');
   } finally {
     activeActionId.value = '';
   }
@@ -139,10 +169,15 @@ async function handleToggleLock() {
 
 async function handleSaveJobPosition() {
   if (!selectedUser.value) return;
+  clearPopupErrors();
+  if (!validatePopupForm()) {
+    return;
+  }
+
   isSaving.value = true;
-  popupError.value = '';
   try {
-    const updated = await updateJobPosition(selectedUser.value.id, editingJobPosition.value || null);
+    const normalizedJobPosition = editingJobPosition.value.trim();
+    const updated = await updateJobPosition(selectedUser.value.id, normalizedJobPosition || null);
     users.value = {
       ...users.value,
       items: users.value.items.map(u => u.id === updated.id ? updated : u)
@@ -153,7 +188,9 @@ async function handleSaveJobPosition() {
       router.push({ name: 'login' });
       return;
     }
-    popupError.value = err instanceof ApiError ? err.message : 'Không cập nhật được chức vụ.';
+    applyPopupApiError(err, {
+      validation_error: FORM_ERROR
+    }, 'Không cập nhật được chức vụ.');
   } finally {
     isSaving.value = false;
   }
@@ -265,13 +302,20 @@ async function handleSaveJobPosition() {
           <div class="popup__section">
             <h4>Chức vụ</h4>
             <div class="popup__field popup__field--edit">
-              <select v-model="editingJobPosition" class="popup-select" :disabled="isSaving">
+              <select
+                v-model="editingJobPosition"
+                class="popup-select"
+                :class="{ 'popup-select--error': popupErrors.jobPosition }"
+                :disabled="isSaving"
+                @change="clearPopupFieldError('jobPosition')"
+              >
                 <option value="">-- Chọn chức vụ --</option>
                 <option v-for="position in JOB_POSITIONS" :key="position" :value="position">
                   {{ position }}
                 </option>
               </select>
             </div>
+            <p v-if="popupErrors.jobPosition" class="message message--error">{{ popupErrors.jobPosition }}</p>
             <BaseButton
               variant="primary"
               type="button"
@@ -465,6 +509,10 @@ async function handleSaveJobPosition() {
 
 .popup-select:focus {
   border-color: #2479ff;
+}
+
+.popup-select--error {
+  border-color: #d92d20;
 }
 
 .popup-select:disabled {

@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { Eye, EyeOff } from '@lucide/vue';
 import BaseButton from '../BaseButton.vue';
 import BaseInput from '../BaseInput.vue';
-import { useFormValidation } from '../../composables/useFormValidation';
+import { FORM_ERROR, useFormValidation } from '../../composables/useFormValidation';
 import { useAuth } from '../../composables/useAuth';
 import { isEmail, isRequired } from '../../utils/validators';
 
@@ -11,9 +11,8 @@ const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const isLoading = ref(false);
-const errorMessage = ref('');
 const { login } = useAuth();
-const { errors, validate, clearErrors, clearFieldError, setFieldError } = useFormValidation(
+const { errors, formError, validate, clearErrors, clearFieldError, applyApiError } = useFormValidation(
   {
     get email() {
       return email.value;
@@ -42,7 +41,6 @@ const { errors, validate, clearErrors, clearFieldError, setFieldError } = useFor
 );
 
 async function submitLogin() {
-  errorMessage.value = '';
   clearErrors();
 
   const trimmedEmail = email.value.trim();
@@ -57,9 +55,11 @@ async function submitLogin() {
     // Không giữ mật khẩu trong state local sau khi đăng nhập thành công.
     password.value = '';
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Đăng nhập thất bại.';
-    errorMessage.value = message;
-    setFieldError('password', message);
+    applyApiError(error, {
+      invalid_credentials: 'password',
+      locked_account: 'password',
+      validation_error: FORM_ERROR
+    }, 'Đăng nhập thất bại.');
   } finally {
     isLoading.value = false;
   }
@@ -111,7 +111,7 @@ async function submitLogin() {
         </template>
       </BaseInput>
 
-      <p v-if="errorMessage && !errors.password" class="message message--error" role="alert">{{ errorMessage }}</p>
+      <p v-if="formError" class="message message--error" role="alert">{{ formError }}</p>
 
       <BaseButton type="submit" :disabled="isLoading">
         {{ isLoading ? 'Đang đăng nhập...' : 'Đăng nhập' }}

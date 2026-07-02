@@ -76,13 +76,6 @@ public sealed class TenantCatalogService(
         CreateTenantCommand command,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Code))
-        {
-            return ServiceResult<TenantListItem>.Failure(
-                TenantErrorCodes.ValidationError,
-                "Name and code are required.");
-        }
-
         var exists = await tenantRepository.ExistsByCodeAsync(command.Code.Trim(), null, cancellationToken);
         if (exists)
         {
@@ -112,13 +105,6 @@ public sealed class TenantCatalogService(
         UpdateTenantCommand command,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(command.Name) || string.IsNullOrWhiteSpace(command.Code))
-        {
-            return ServiceResult<TenantDetailItem>.Failure(
-                TenantErrorCodes.ValidationError,
-                "Name and code are required.");
-        }
-
         var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
         if (tenant is null)
         {

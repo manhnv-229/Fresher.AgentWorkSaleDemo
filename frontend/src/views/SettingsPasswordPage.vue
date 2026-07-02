@@ -4,20 +4,19 @@ import { ref } from 'vue';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
 import ContentPanel from '../components/ContentPanel.vue';
-import { useFormValidation } from '../composables/useFormValidation';
+import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { useAuth } from '../composables/useAuth';
-import { hasMinLength, isRequired } from '../utils/validators';
+import { hasMaxLength, hasMinLength, isRequired } from '../utils/validators';
 
 const { changePassword: submitPasswordChange } = useAuth();
 
 const currentPassword = ref('');
 const newPassword = ref('');
-const error = ref('');
 const notice = ref('');
 const isLoading = ref(false);
 const showCurrentPassword = ref(false);
 const showNewPassword = ref(false);
-const { errors, validate, clearErrors, clearFieldError } = useFormValidation(
+const { errors, formError, validate, clearErrors, clearFieldError, applyApiError } = useFormValidation(
   {
     get currentPassword() {
       return currentPassword.value;
@@ -32,12 +31,16 @@ const { errors, validate, clearErrors, clearFieldError } = useFormValidation(
 
       if (!isRequired(values.currentPassword)) {
         nextErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại.';
+      } else if (!hasMaxLength(values.currentPassword, 255)) {
+        nextErrors.currentPassword = 'Mật khẩu hiện tại không được vượt quá 255 ký tự.';
       }
 
       if (!isRequired(values.newPassword)) {
         nextErrors.newPassword = 'Vui lòng nhập mật khẩu mới.';
       } else if (!hasMinLength(values.newPassword, 8)) {
         nextErrors.newPassword = 'Mật khẩu mới phải có ít nhất 8 ký tự.';
+      } else if (!hasMaxLength(values.newPassword, 255)) {
+        nextErrors.newPassword = 'Mật khẩu mới không được vượt quá 255 ký tự.';
       } else if (values.currentPassword === values.newPassword) {
         nextErrors.newPassword = 'Mật khẩu mới cần khác mật khẩu hiện tại.';
       }
@@ -50,13 +53,11 @@ const { errors, validate, clearErrors, clearFieldError } = useFormValidation(
 function clearForm() {
   currentPassword.value = '';
   newPassword.value = '';
-  error.value = '';
   notice.value = '';
   clearErrors();
 }
 
 async function submit() {
-  error.value = '';
   notice.value = '';
   clearErrors();
   if (!validate()) {
@@ -69,7 +70,10 @@ async function submit() {
     notice.value = 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại.';
     clearForm();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Không thể đổi mật khẩu.';
+    applyApiError(err, {
+      invalid_current_password: 'currentPassword',
+      validation_error: FORM_ERROR
+    }, 'Không thể đổi mật khẩu.');
   } finally {
     isLoading.value = false;
   }
@@ -121,7 +125,7 @@ async function submit() {
             </template>
           </BaseInput>
         </div>
-        <p v-if="error" class="message message--error">{{ error }}</p>
+        <p v-if="formError" class="message message--error">{{ formError }}</p>
         <div class="action-bar">
           <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">Xóa</BaseButton>
           <BaseButton type="submit" :disabled="isLoading">
