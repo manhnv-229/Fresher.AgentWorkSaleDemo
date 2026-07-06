@@ -29,7 +29,6 @@ const toastIconByTone: Record<ToastItem['tone'], Component> = {
         :key="toast.id"
         :is="AppToast"
         :tone="toast.tone"
-        :title="toast.title"
         :message="toast.message"
         @close="toastStore.remove(toast.id)"
       >

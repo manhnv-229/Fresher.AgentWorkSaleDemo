@@ -7,7 +7,6 @@ defineOptions({
 
 defineProps<{
   tone: 'success' | 'error' | 'warning' | 'info';
-  title: string;
   message?: string;
 }>();
 
@@ -23,7 +22,6 @@ defineEmits<{
     </div>
 
     <div class="toast__body">
-      <p class="toast__title">{{ title }}</p>
       <p v-if="message" class="toast__message">{{ message }}</p>
     </div>
 
@@ -61,17 +59,13 @@ defineEmits<{
   min-width: 0;
 }
 
-.toast__title,
 .toast__message {
   margin: 0;
 }
 
-.toast__title {
-  font-weight: 600;
-}
-
 .toast__message {
   opacity: 0.92;
+  font-weight: 600;
 }
 
 .toast__close {
