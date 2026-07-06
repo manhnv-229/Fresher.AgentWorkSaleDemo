@@ -1,20 +1,106 @@
 :root {
-  --color-bg: #f5f7fb;
-  --color-text: #172033;
-  --color-muted: #5d6677;
-  --color-border: #dfe3ea;
-  --color-border-strong: #d0d7e2;
+  --color-brand: #3563ff;
+  --color-brand-hover: #244ee8;
+  --color-brand-soft: #e8efff;
+  --color-brand-soft-strong: #dbe7ff;
+  --color-bg: #f3f5f8;
   --color-surface: #ffffff;
-  --color-primary: #126bff;
-  --color-primary-hover: #075ee6;
-  --color-primary-soft: #eef4ff;
-  --color-success: #0b7a55;
-  --color-danger: #c9252d;
-  --shadow-panel: 0 16px 40px rgba(15, 23, 42, 0.08);
-  --radius-sm: 4px;
-  --radius-md: 5px;
-  --radius-lg: 8px;
-  --font-sans:
+  --color-surface-muted: #f9fafb;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+  --color-text: #111827;
+  --color-text-subtle: #6b7280;
+  --color-text-placeholder: #9ca3af;
+  --color-success: #16a34a;
+  --color-success-soft: #e8f7ef;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fff7e6;
+  --color-info: #2563eb;
+  --color-info-soft: #eff6ff;
+
+  --font-family-base:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  --font-size-h1: 24px;
+  --line-height-h1: 36px;
+  --font-size-h2: 20px;
+  --line-height-h2: 28px;
+  --font-size-h3: 16px;
+  --line-height-h3: 22px;
+  --font-size-body: 13px;
+  --line-height-body: 18px;
+  --font-size-body-large: 16px;
+  --line-height-body-large: 20px;
+
+  --icon-size-sm: 18px;
+  --icon-size-md: 22px;
+  --icon-size-default: 26px;
+  --icon-size-lg: 34px;
+  --icon-touch-target: 40px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --shadow-surface: 0 16px 40px rgba(15, 23, 42, 0.08);
+  --shadow-dialog: 0 24px 64px rgba(15, 23, 42, 0.18);
+
+  --control-height: 32px;
+  --control-padding-x: 12px;
+
+  --button-height-sm: 32px;
+  --button-min-width: 80px;
+  --button-radius: 8px;
+  --button-padding-x: 12px;
+  --button-icon-size: 16px;
+  --button-icon-only-size: 32px;
+
+  --field-height: 32px;
+  --field-radius: 8px;
+  --field-padding-x: 12px;
+  --field-caption-gap: 4px;
+
+  --header-height: 48px;
+  --header-content-height: 32px;
+  --header-padding-x: 16px;
+  --header-icon-button-size: 32px;
+  --header-logo-size: 32px;
+  --header-avatar-size: 32px;
+  --header-left-gap: 12px;
+  --header-action-gap: 8px;
+  --header-avatar-gap: 16px;
+
+  --sidebar-width: 224px;
+  --sidebar-settings-width: 220px;
+  --sidebar-padding-x: 16px;
+  --sidebar-item-height: 32px;
+  --sidebar-item-radius: 8px;
+  --sidebar-item-icon-size: 16px;
+  --sidebar-item-icon-text-gap: 12px;
+  --sidebar-item-gap: 8px;
+
+  --content-gap: 16px;
+  --card-padding: 16px;
+
+  --table-toolbar-control-height: 32px;
+  --table-toolbar-gap: 8px;
+  --table-header-height: 36px;
+  --table-row-height: 36px;
+  --table-pagination-height: 48px;
+  --table-container-radius: 16px;
+
+  --dialog-padding: 24px;
+  --dialog-radius: 12px;
+  --dialog-action-gap: 8px;
+  --dialog-close-offset: 24px;
+
+  --toast-max-width: 400px;
+  --toast-gap: 12px;
+  --toast-offset-top: 16px;
+  --toast-offset-right: 16px;
+  --toast-radius: 8px;
+  --toast-padding-y: 12px;
+  --toast-padding-x: 16px;
 }

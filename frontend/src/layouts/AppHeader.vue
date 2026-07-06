@@ -25,7 +25,31 @@ const emit = defineEmits<{
 
 <template>
   <header v-if="!isAgentRoute" class="workspace-header">
-    <span id="workspace-title" class="workspace-header__title">Demo AgentWorkSale</span>
+    <div class="workspace-header__left">
+      <button type="button" class="workspace-header__launcher" aria-label="Mở danh sách ứng dụng" title="Mở danh sách ứng dụng">
+        <i class="ti ti-grid-dots" aria-hidden="true"></i>
+      </button>
+      <div class="workspace-header__logo" aria-hidden="true">A</div>
+      <span id="workspace-title" class="workspace-header__title">Agentwork</span>
+    </div>
+
+    <div class="workspace-header__right">
+      <button type="button" class="workspace-header__credit" title="Nạp Credit">Nạp Credit</button>
+      <button type="button" class="workspace-header__icon-button" aria-label="Tin nhắn" title="Tin nhắn">
+        <i class="ti ti-message-circle" aria-hidden="true"></i>
+        <span class="workspace-header__badge"></span>
+      </button>
+      <button type="button" class="workspace-header__icon-button" aria-label="Thông báo" title="Thông báo">
+        <i class="ti ti-bell" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="workspace-header__icon-button" aria-label="Trợ giúp" title="Trợ giúp">
+        <i class="ti ti-help-circle" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="workspace-header__icon-button" aria-label="Tùy chọn khác" title="Tùy chọn khác">
+        <i class="ti ti-dots" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="workspace-header__avatar" aria-label="Tài khoản" title="Tài khoản">RG</button>
+    </div>
   </header>
 
   <header v-else class="agent-header">

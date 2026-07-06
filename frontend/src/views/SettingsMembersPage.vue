@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Lock, LoaderCircle, RefreshCw, ShieldCheck, X } from '../icons/tabler';
+import { Lock, LoaderCircle, RefreshCw, ShieldCheck } from '../icons/tabler';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
+import BaseModal from '../components/BaseModal.vue';
 import BaseTable from '../components/BaseTable.vue';
 import ContentPanel from '../components/ContentPanel.vue';
 import ListToolbar from '../components/ListToolbar.vue';
@@ -198,85 +199,75 @@ async function handleSaveJobPosition() {
 </script>
 
 <template>
-  <div class="settings-content-card">
-    <ContentPanel class="user-panel" with-pagination>
-      <ListToolbar class="toolbar">
-        <BaseInput
-          v-model="searchText"
-          placeholder="Tìm kiếm nhân viên..."
-          class="toolbar__search"
-          :disabled="isLoading"
-          clearable
-        />
-        <select v-model="selectedStatus" class="toolbar__status-filter" :disabled="isLoading">
-          <option v-for="option in STATUS_OPTIONS" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-        <div class="toolbar__actions">
-          <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
-            <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
-          </BaseButton>
-        </div>
-      </ListToolbar>
-
-      <p v-if="error" class="message message--error">{{ error }}</p>
-      <div v-else-if="isLoading && users.items.length === 0" class="loading-row">
-        <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-        <span>Đang tải danh sách tài khoản...</span>
-      </div>
-      <div v-else-if="users.items.length === 0" class="empty-card empty-card--tight">
-        <h3>Không tìm thấy kết quả</h3>
-        <p>{{ searchText || selectedStatus ? 'Không có nhân viên nào phù hợp với bộ lọc.' : 'Chưa có tài khoản.' }}</p>
-      </div>
-      <BaseTable v-else>
-        <thead>
-          <tr>
-            <th>Nhân viên</th>
-            <th>Vị trí công việc</th>
-            <th>Dự án</th>
-            <th>Email</th>
-            <th>Trạng thái</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in users.items" :key="user.id" class="clickable-row" @click="openPopup(user)">
-            <td>
-              <div class="user-cell">
-                <strong>{{ user.fullName || '—' }}</strong>
-                <span>{{ user.employeeCode || '—' }}</span>
-              </div>
-            </td>
-            <td>{{ user.jobPosition || '—' }}</td>
-            <td>{{ user.project || '—' }}</td>
-            <td>{{ user.email }}</td>
-            <td><span :class="statusTone(user.status)">{{ getMemberStatusLabel(user.status) }}</span></td>
-          </tr>
-        </tbody>
-      </BaseTable>
-      <PaginationFooter
-        :total-count="users.totalCount"
-        :current-page="currentPage"
-        :page-size="pageSize"
-        :page-size-options="PAGE_SIZE_OPTIONS"
-        count-label="Tổng số"
-        @update:currentPage="goToPage"
-        @update:pageSize="updatePageSize"
+  <ContentPanel class="user-panel" with-pagination>
+    <ListToolbar class="toolbar">
+      <BaseInput
+        v-model="searchText"
+        placeholder="Tìm kiếm nhân viên..."
+        class="toolbar__search"
+        :disabled="isLoading"
+        clearable
       />
-    </ContentPanel>
-  </div>
+      <select v-model="selectedStatus" class="toolbar__status-filter" :disabled="isLoading">
+        <option v-for="option in STATUS_OPTIONS" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+      <div class="toolbar__actions">
+        <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
+          <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
+        </BaseButton>
+      </div>
+    </ListToolbar>
 
-  <Teleport to="body">
-    <div v-if="isPopupOpen && selectedUser" class="popup-overlay" @click.self="closePopup">
-      <div class="popup">
-        <div class="popup__header">
-          <h3>Thông tin nhân viên</h3>
-          <button class="popup__close" type="button" @click="closePopup">
-            <X :size="20" aria-hidden="true" />
-          </button>
-        </div>
+    <p v-if="error" class="message message--error">{{ error }}</p>
+    <div v-else-if="isLoading && users.items.length === 0" class="loading-row">
+      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+      <span>Đang tải danh sách tài khoản...</span>
+    </div>
+    <div v-else-if="users.items.length === 0" class="empty-card empty-card--tight">
+      <h3>Không tìm thấy kết quả</h3>
+      <p>{{ searchText || selectedStatus ? 'Không có nhân viên nào phù hợp với bộ lọc.' : 'Chưa có tài khoản.' }}</p>
+    </div>
+    <BaseTable v-else>
+      <thead>
+        <tr>
+          <th>Nhân viên</th>
+          <th>Vị trí công việc</th>
+          <th>Dự án</th>
+          <th>Email</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="user in users.items" :key="user.id" class="clickable-row" @click="openPopup(user)">
+          <td>
+            <div class="user-cell">
+              <strong>{{ user.fullName || '—' }}</strong>
+              <span>{{ user.employeeCode || '—' }}</span>
+            </div>
+          </td>
+          <td>{{ user.jobPosition || '—' }}</td>
+          <td>{{ user.project || '—' }}</td>
+          <td>{{ user.email }}</td>
+          <td><span :class="statusTone(user.status)">{{ getMemberStatusLabel(user.status) }}</span></td>
+        </tr>
+      </tbody>
+    </BaseTable>
+    <PaginationFooter
+      :total-count="users.totalCount"
+      :current-page="currentPage"
+      :page-size="pageSize"
+      :page-size-options="PAGE_SIZE_OPTIONS"
+      count-label="Tổng số"
+      @update:currentPage="goToPage"
+      @update:pageSize="updatePageSize"
+    />
+  </ContentPanel>
 
-        <div class="popup__content">
+  <BaseModal :open="isPopupOpen && Boolean(selectedUser)" title="Thông tin nhân viên" @close="closePopup">
+    <div v-if="selectedUser" class="popup">
+      <div class="popup__content">
           <p v-if="popupError" class="message message--error">{{ popupError }}</p>
 
           <div class="popup__section">
@@ -341,18 +332,16 @@ async function handleSaveJobPosition() {
               {{ activeActionId === selectedUser.id ? 'Đang xử lý...' : selectedUser.status === 'Locked' ? 'Mở khóa' : 'Khóa tài khoản' }}
             </BaseButton>
           </div>
-        </div>
       </div>
     </div>
-  </Teleport>
+  </BaseModal>
 </template>
 
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 12px;
+  gap: var(--table-toolbar-gap);
   align-items: center;
-  margin-bottom: 16px;
 }
 
 .toolbar__search {
@@ -361,19 +350,19 @@ async function handleSaveJobPosition() {
 
 .toolbar__status-filter {
   flex: 0 1 240px;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border, #d0d5dd);
-  border-radius: 6px;
-  background: #fff;
-  color: #344054;
-  font-size: 14px;
+  height: var(--field-height);
+  padding: 0 var(--field-padding-x);
+  border: 1px solid var(--color-border);
+  border-radius: var(--field-radius);
+  background: var(--color-surface);
+  color: var(--color-text);
   outline: none;
   cursor: pointer;
 }
 
 .toolbar__status-filter:focus {
-  border-color: #2479ff;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
 }
 
 .toolbar__actions {
@@ -385,79 +374,29 @@ async function handleSaveJobPosition() {
 }
 
 .clickable-row:hover {
-  background: #f9fafb;
-}
-
-.popup-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  background: var(--color-brand-soft);
 }
 
 .popup {
-  background: #fff;
-  border-radius: 12px;
-  width: 480px;
-  max-width: 90vw;
-  max-height: 85vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-}
-
-.popup__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.popup__header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #101828;
-}
-
-.popup__close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #667085;
-  cursor: pointer;
-  transition: background 120ms ease;
-}
-
-.popup__close:hover {
-  background: #f2f4f7;
+  width: min(100%, 480px);
 }
 
 .popup__content {
-  padding: 1.25rem;
+  display: grid;
+  gap: 24px;
+  padding: 8px 0 0;
 }
 
 .popup__section {
-  margin-bottom: 1.5rem;
-}
-
-.popup__section:last-child {
-  margin-bottom: 0;
+  display: grid;
+  gap: 12px;
 }
 
 .popup__section h4 {
-  margin: 0 0 0.75rem;
-  font-size: 13px;
+  margin: 0;
+  font-size: var(--font-size-body);
   font-weight: 600;
-  color: #667085;
+  color: var(--color-text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -465,23 +404,17 @@ async function handleSaveJobPosition() {
 .popup__field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 0.75rem;
+  gap: 4px;
 }
 
 .popup__field label {
   font-size: 12px;
   font-weight: 500;
-  color: #667085;
+  color: var(--color-text-subtle);
 }
 
 .popup__field span {
-  font-size: 14px;
-  color: #101828;
-}
-
-.popup__field--edit {
-  margin-bottom: 0.5rem;
+  color: var(--color-text);
 }
 
 .popup__section-header {
@@ -496,23 +429,23 @@ async function handleSaveJobPosition() {
 
 .popup-select {
   width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--color-border, #d0d5dd);
-  border-radius: 6px;
-  background: #fff;
-  color: #344054;
-  font-size: 14px;
+  height: var(--field-height);
+  padding: 0 var(--field-padding-x);
+  border: 1px solid var(--color-border);
+  border-radius: var(--field-radius);
+  background: var(--color-surface);
+  color: var(--color-text);
   outline: none;
   cursor: pointer;
 }
 
 .popup-select:focus {
-  border-color: #2479ff;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
 }
 
 .popup-select--error {
-  border-color: #d92d20;
+  border-color: var(--color-danger);
 }
 
 .popup-select:disabled {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { X } from '../icons/tabler';
+
 defineProps<{
   open: boolean;
   title?: string;
@@ -15,6 +17,9 @@ const emit = defineEmits<{
       <section class="modal" role="dialog" aria-modal="true" :aria-label="title">
         <header v-if="title" class="modal__header">
           <h2>{{ title }}</h2>
+          <button type="button" class="modal__close" aria-label="Đóng" @click="emit('close')">
+            <X :size="18" aria-hidden="true" />
+          </button>
         </header>
         <slot />
       </section>

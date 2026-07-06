@@ -218,172 +218,169 @@ function toggleMenu() {
 </script>
 
 <template>
-  <div class="settings-content-card">
-    <ContentPanel with-pagination>
-      <ListToolbar class="audit-log-toolbar">
-        <BaseInput
-          v-model="searchText"
-          placeholder="Tìm kiếm nhật ký..."
-          class="field"
+  <ContentPanel with-pagination>
+    <ListToolbar class="audit-log-toolbar">
+      <BaseInput
+        v-model="searchText"
+        placeholder="Tìm kiếm nhật ký..."
+        class="field"
+        :disabled="isLoading"
+        clearable
+        @keydown.enter="applySearch"
+      />
+      <div class="filter-trigger" ref="menuRef">
+        <button
+          class="filter-button"
+          :class="{ 'filter-button--active': hasActiveMenuFilters }"
+          type="button"
           :disabled="isLoading"
-          clearable
-          @keydown.enter="applySearch"
-        />
-        <div class="filter-trigger" ref="menuRef">
-          <button
-            class="filter-button"
-            :class="{ 'filter-button--active': hasActiveMenuFilters }"
-            type="button"
-            :disabled="isLoading"
-            @click.stop="toggleMenu"
-          >
-            <Filter :size="18" aria-hidden="true" />
-            <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
-          </button>
+          @click.stop="toggleMenu"
+        >
+          <Filter :size="18" aria-hidden="true" />
+          <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
+        </button>
 
-          <div v-if="isMenuOpen" class="filter-menu">
-            <div class="filter-menu__section">
-              <p class="filter-menu__label">Thời gian</p>
-              <select v-model="selectedTimePreset" class="filter-select">
-                <option value="">Tất cả</option>
-                <option v-for="preset in TIME_PRESETS" :key="preset.value" :value="preset.value">
-                  {{ preset.label }}
-                </option>
-              </select>
-            </div>
+        <div v-if="isMenuOpen" class="filter-menu">
+          <div class="filter-menu__section">
+            <p class="filter-menu__label">Thời gian</p>
+            <select v-model="selectedTimePreset" class="filter-select">
+              <option value="">Tất cả</option>
+              <option v-for="preset in TIME_PRESETS" :key="preset.value" :value="preset.value">
+                {{ preset.label }}
+              </option>
+            </select>
+          </div>
 
-            <div class="filter-menu__divider"></div>
+          <div class="filter-menu__divider"></div>
 
-            <div class="filter-menu__section">
-              <p class="filter-menu__label">Hành động</p>
-              <div class="filter-combo" ref="actionComboRef">
-                <button
-                  class="filter-combo__trigger"
-                  type="button"
-                  @click.stop="isActionComboOpen = !isActionComboOpen"
+          <div class="filter-menu__section">
+            <p class="filter-menu__label">Hành động</p>
+            <div class="filter-combo" ref="actionComboRef">
+              <button
+                class="filter-combo__trigger"
+                type="button"
+                @click.stop="isActionComboOpen = !isActionComboOpen"
+              >
+                <span class="filter-combo__value">
+                  {{ selectedActions.length === 0 ? 'Tất cả' : `${selectedActions.length} đã chọn` }}
+                </span>
+                <span class="filter-combo__arrow">▾</span>
+              </button>
+              <div v-if="isActionComboOpen" class="filter-combo__dropdown">
+                <label
+                  v-for="action in AVAILABLE_ACTIONS"
+                  :key="action"
+                  class="filter-combo__option"
                 >
-                  <span class="filter-combo__value">
-                    {{ selectedActions.length === 0 ? 'Tất cả' : `${selectedActions.length} đã chọn` }}
-                  </span>
-                  <span class="filter-combo__arrow">▾</span>
-                </button>
-                <div v-if="isActionComboOpen" class="filter-combo__dropdown">
-                  <label
-                    v-for="action in AVAILABLE_ACTIONS"
-                    :key="action"
-                    class="filter-combo__option"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="selectedActions.includes(action)"
-                      @change="toggleAction(action)"
-                    />
-                    <span>{{ getActionLabel(action) }}</span>
-                  </label>
-                </div>
+                  <input
+                    type="checkbox"
+                    :checked="selectedActions.includes(action)"
+                    @change="toggleAction(action)"
+                  />
+                  <span>{{ getActionLabel(action) }}</span>
+                </label>
               </div>
-            </div>
-
-            <div class="filter-menu__divider"></div>
-
-            <div class="filter-menu__section">
-              <p class="filter-menu__label">Đối tượng</p>
-              <div class="filter-combo" ref="targetComboRef">
-                <button
-                  class="filter-combo__trigger"
-                  type="button"
-                  @click.stop="isTargetComboOpen = !isTargetComboOpen"
-                >
-                  <span class="filter-combo__value">
-                    {{ selectedTargetTypes.length === 0 ? 'Tất cả' : `${selectedTargetTypes.length} đã chọn` }}
-                  </span>
-                  <span class="filter-combo__arrow">▾</span>
-                </button>
-                <div v-if="isTargetComboOpen" class="filter-combo__dropdown">
-                  <label
-                    v-for="targetType in AVAILABLE_TARGET_TYPES"
-                    :key="targetType"
-                    class="filter-combo__option"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="selectedTargetTypes.includes(targetType)"
-                      @change="toggleTargetType(targetType)"
-                    />
-                    <span>{{ getTargetTypeLabel(targetType) }}</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div class="filter-menu__divider"></div>
-
-            <div class="filter-menu__actions">
-              <BaseButton variant="primary" type="button" @click="applyMenuFilters">
-                Áp dụng
-              </BaseButton>
-              <BaseButton variant="secondary" type="button" @click="resetMenuFilters">
-                <X :size="14" aria-hidden="true" />
-                Đặt lại
-              </BaseButton>
             </div>
           </div>
-        </div>
-        <div class="audit-log-toolbar__actions">
-          <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
-            <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
-          </BaseButton>
-        </div>
-      </ListToolbar>
 
-      <p v-if="error" class="message message--error">{{ error }}</p>
-      <div v-else-if="isLoading && entries.items.length === 0" class="loading-row">
-        <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-        <span>Đang tải nhật ký hoạt động...</span>
+          <div class="filter-menu__divider"></div>
+
+          <div class="filter-menu__section">
+            <p class="filter-menu__label">Đối tượng</p>
+            <div class="filter-combo" ref="targetComboRef">
+              <button
+                class="filter-combo__trigger"
+                type="button"
+                @click.stop="isTargetComboOpen = !isTargetComboOpen"
+              >
+                <span class="filter-combo__value">
+                  {{ selectedTargetTypes.length === 0 ? 'Tất cả' : `${selectedTargetTypes.length} đã chọn` }}
+                </span>
+                <span class="filter-combo__arrow">▾</span>
+              </button>
+              <div v-if="isTargetComboOpen" class="filter-combo__dropdown">
+                <label
+                  v-for="targetType in AVAILABLE_TARGET_TYPES"
+                  :key="targetType"
+                  class="filter-combo__option"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="selectedTargetTypes.includes(targetType)"
+                    @change="toggleTargetType(targetType)"
+                  />
+                  <span>{{ getTargetTypeLabel(targetType) }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-menu__divider"></div>
+
+          <div class="filter-menu__actions">
+            <BaseButton variant="primary" type="button" @click="applyMenuFilters">
+              Áp dụng
+            </BaseButton>
+            <BaseButton variant="secondary" type="button" @click="resetMenuFilters">
+              <X :size="14" aria-hidden="true" />
+              Đặt lại
+            </BaseButton>
+          </div>
+        </div>
       </div>
-      <div v-else-if="entries.items.length === 0" class="empty-card empty-card--tight">
-        <h3>Không tìm thấy kết quả</h3>
-        <p>{{ hasActiveMenuFilters || searchText ? 'Không có nhật ký nào phù hợp với bộ lọc.' : 'Chưa có nhật ký hoạt động.' }}</p>
+      <div class="audit-log-toolbar__actions">
+        <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
+          <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
+        </BaseButton>
       </div>
-      <BaseTable v-else>
-        <thead>
-          <tr>
-            <th>Thời gian</th>
-            <th>Người dùng</th>
-            <th>Hành động</th>
-            <th>Đối tượng</th>
-            <th>Mô tả</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="entry in entries.items" :key="entry.id">
-            <td>{{ formatDate(entry.createdAt) }}</td>
-            <td>{{ entry.userName }}</td>
-            <td><span class="status-chip">{{ entry.action }}</span></td>
-            <td>{{ entry.targetType ? getTargetTypeLabel(entry.targetType) : '—' }}</td>
-            <td>{{ entry.description }}</td>
-          </tr>
-        </tbody>
-      </BaseTable>
-      <PaginationFooter
-        :total-count="entries.totalCount"
-        :current-page="currentPage"
-        :page-size="pageSize"
-        :page-size-options="PAGE_SIZE_OPTIONS"
-        count-label="Tổng số"
-        @update:currentPage="goToPage"
-        @update:pageSize="updatePageSize"
-      />
-    </ContentPanel>
-  </div>
+    </ListToolbar>
+
+    <p v-if="error" class="message message--error">{{ error }}</p>
+    <div v-else-if="isLoading && entries.items.length === 0" class="loading-row">
+      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+      <span>Đang tải nhật ký hoạt động...</span>
+    </div>
+    <div v-else-if="entries.items.length === 0" class="empty-card empty-card--tight">
+      <h3>Không tìm thấy kết quả</h3>
+      <p>{{ hasActiveMenuFilters || searchText ? 'Không có nhật ký nào phù hợp với bộ lọc.' : 'Chưa có nhật ký hoạt động.' }}</p>
+    </div>
+    <BaseTable v-else>
+      <thead>
+        <tr>
+          <th>Thời gian</th>
+          <th>Người dùng</th>
+          <th>Hành động</th>
+          <th>Đối tượng</th>
+          <th>Mô tả</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="entry in entries.items" :key="entry.id">
+          <td>{{ formatDate(entry.createdAt) }}</td>
+          <td>{{ entry.userName }}</td>
+          <td><span class="status-chip">{{ entry.action }}</span></td>
+          <td>{{ entry.targetType ? getTargetTypeLabel(entry.targetType) : '—' }}</td>
+          <td>{{ entry.description }}</td>
+        </tr>
+      </tbody>
+    </BaseTable>
+    <PaginationFooter
+      :total-count="entries.totalCount"
+      :current-page="currentPage"
+      :page-size="pageSize"
+      :page-size-options="PAGE_SIZE_OPTIONS"
+      count-label="Tổng số"
+      @update:currentPage="goToPage"
+      @update:pageSize="updatePageSize"
+    />
+  </ContentPanel>
 </template>
 
 <style scoped>
 .audit-log-toolbar {
   display: flex;
-  gap: 12px;
+  gap: var(--table-toolbar-gap);
   align-items: center;
-  margin-bottom: 16px;
 }
 
 .audit-log-toolbar .field {
@@ -402,12 +399,12 @@ function toggleMenu() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--color-border, #d0d5dd);
-  border-radius: 6px;
-  background: var(--color-surface, #fff);
-  color: #344054;
+  width: var(--button-icon-only-size);
+  height: var(--button-icon-only-size);
+  border: 1px solid var(--color-border);
+  border-radius: var(--button-radius);
+  background: var(--color-surface);
+  color: var(--color-text-subtle);
   cursor: pointer;
   position: relative;
   transition:
@@ -416,13 +413,13 @@ function toggleMenu() {
 }
 
 .filter-button:hover {
-  background: #f9fafb;
+  background: var(--color-surface-muted);
 }
 
 .filter-button--active {
-  border-color: #2479ff;
-  background: #eff6ff;
-  color: #2479ff;
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 
 .filter-badge {
@@ -446,11 +443,11 @@ function toggleMenu() {
   top: calc(100% + 6px);
   right: 0;
   width: 260px;
-  padding: 0.75rem;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   z-index: 100;
 }
 
@@ -463,7 +460,7 @@ function toggleMenu() {
 .filter-menu__label {
   font-size: 12px;
   font-weight: 600;
-  color: #667085;
+  color: var(--color-text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 0.25rem;
@@ -471,7 +468,7 @@ function toggleMenu() {
 
 .filter-menu__divider {
   height: 1px;
-  background: #e2e8f0;
+  background: var(--color-border);
   margin: 0.5rem 0;
 }
 
@@ -488,19 +485,20 @@ function toggleMenu() {
 
 .filter-select {
   width: 100%;
-  height: 34px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border, #d0d5dd);
-  border-radius: 6px;
-  background: #fff;
-  color: #344054;
+  height: var(--field-height);
+  padding: 0 var(--field-padding-x);
+  border: 1px solid var(--color-border);
+  border-radius: var(--field-radius);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 13px;
   outline: none;
   cursor: pointer;
 }
 
 .filter-select:focus {
-  border-color: #2479ff;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
 }
 
 .filter-combo {
@@ -512,23 +510,23 @@ function toggleMenu() {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  height: 34px;
-  padding: 0 8px;
-  border: 1px solid var(--color-border, #d0d5dd);
-  border-radius: 6px;
-  background: #fff;
-  color: #344054;
+  height: var(--field-height);
+  padding: 0 var(--field-padding-x);
+  border: 1px solid var(--color-border);
+  border-radius: var(--field-radius);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 13px;
   cursor: pointer;
 }
 
 .filter-combo__trigger:hover {
-  background: #f9fafb;
+  background: var(--color-surface-muted);
 }
 
 .filter-combo__arrow {
   font-size: 12px;
-  color: #667085;
+  color: var(--color-text-subtle);
 }
 
 .filter-combo__dropdown {
@@ -538,30 +536,31 @@ function toggleMenu() {
   right: 0;
   max-height: 180px;
   overflow-y: auto;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 6px;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--field-radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   z-index: 10;
 }
 
 .filter-combo__option {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 12px;
   font-size: 13px;
-  color: #344054;
+  color: var(--color-text);
   cursor: pointer;
 }
 
 .filter-combo__option:hover {
-  background: #f9fafb;
+  background: var(--color-brand-soft);
 }
 
 .filter-combo__option input {
   margin: 0;
-  accent-color: #2479ff;
+  accent-color: var(--color-brand);
 }
 
 </style>

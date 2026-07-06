@@ -5,7 +5,9 @@
 :root {
   color: var(--color-text);
   background: var(--color-bg);
-  font-family: var(--font-sans);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -30,8 +32,23 @@ button {
 }
 
 button:disabled,
-input:disabled {
+input:disabled,
+select:disabled,
+textarea:disabled {
   cursor: not-allowed;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(53, 99, 255, 0.32);
+  outline-offset: 2px;
+}
+
+a {
+  color: inherit;
 }
 
 .sr-only {

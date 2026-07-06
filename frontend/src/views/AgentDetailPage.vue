@@ -3,11 +3,13 @@ import { LoaderCircle } from '../icons/tabler';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseInput from '../components/BaseInput.vue';
+import UnsavedChangesModal from '../components/UnsavedChangesModal.vue';
 import type { AgentDetail, UpdateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentDetail } from '../composables/useAgentDetail';
 import { useAgentDetailEditor } from '../composables/useAgentDetailEditor';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
+import { useUnsavedChangesGuard } from '../composables/useUnsavedChangesGuard';
 import { hasMaxLength, isRequired } from '../utils/validators';
 
 const props = defineProps<{ agentId: string }>();
@@ -87,6 +89,20 @@ const avatarOptions = [
 
 const currentStatus = computed(() => persistedAgent.value?.status ?? agent.value?.status ?? 'Draft');
 const canEdit = computed(() => Boolean(agent.value) && !isLoading.value);
+const isDirty = computed(() => {
+  if (!isEditing.value || !persistedAgent.value) {
+    return false;
+  }
+
+  return editName.value.trim() !== persistedAgent.value.name
+    || editRole.value.trim() !== persistedAgent.value.role
+    || editDescription.value.trim() !== (persistedAgent.value.description ?? '')
+    || editIcon.value !== (persistedAgent.value.icon ?? 'mint');
+});
+const { isDialogOpen, discardChanges, stayOnPage } = useUnsavedChangesGuard({
+  isDirty,
+  isSubmitting: isSaving
+});
 
 onMounted(() => {
   editor.registerHandlers({
@@ -282,6 +298,7 @@ async function submitSaveWithStatus(status: string) {
       </div>
     </template>
   </div>
+  <UnsavedChangesModal :open="isDialogOpen" @stay="stayOnPage" @discard="discardChanges" />
 </template>
 
 <style scoped>

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import BaseButton from './BaseButton.vue';
 import BaseModal from './BaseModal.vue';
+import UnsavedChangesModal from './UnsavedChangesModal.vue';
+import { ref } from 'vue';
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     open: boolean;
     title?: string;
@@ -12,6 +14,7 @@ withDefaults(
     confirmLabel?: string;
     busyLabel?: string;
     confirmVariant?: 'primary' | 'secondary' | 'danger';
+    hasUnsavedChanges?: boolean;
   }>(),
   {
     title: '',
@@ -20,7 +23,8 @@ withDefaults(
     cancelLabel: 'Hủy',
     confirmLabel: 'Lưu',
     busyLabel: 'Đang xử lý...',
-    confirmVariant: 'primary'
+    confirmVariant: 'primary',
+    hasUnsavedChanges: false
   }
 );
 
@@ -28,14 +32,25 @@ const emit = defineEmits<{
   close: [];
   confirm: [];
 }>();
+
+const isUnsavedChangesModalOpen = ref(false);
+
+function handleCloseRequest() {
+  if (props.hasUnsavedChanges && !props.busy) {
+    isUnsavedChangesModalOpen.value = true;
+    return;
+  }
+
+  emit('close');
+}
 </script>
 
 <template>
-  <BaseModal :open="open" :title="title" @close="emit('close')">
+  <BaseModal :open="open" :title="title" @close="handleCloseRequest">
     <div class="modal-action-shell">
       <slot />
       <div class="action-bar">
-        <BaseButton variant="secondary" type="button" :disabled="busy" @click="emit('close')">
+        <BaseButton variant="secondary" type="button" :disabled="busy" @click="handleCloseRequest">
           {{ cancelLabel }}
         </BaseButton>
         <BaseButton :variant="confirmVariant" type="button" :disabled="busy || confirmDisabled" @click="emit('confirm')">
@@ -44,4 +59,9 @@ const emit = defineEmits<{
       </div>
     </div>
   </BaseModal>
+  <UnsavedChangesModal
+    :open="isUnsavedChangesModalOpen"
+    @stay="isUnsavedChangesModalOpen = false"
+    @discard="isUnsavedChangesModalOpen = false; emit('close')"
+  />
 </template>

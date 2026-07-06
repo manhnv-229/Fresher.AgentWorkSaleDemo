@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
 import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
-import ContentPanel from '../components/ContentPanel.vue';
 import ListToolbar from '../components/ListToolbar.vue';
 import ModalActionShell from '../components/ModalActionShell.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
@@ -93,6 +92,12 @@ const avatarOptions = [
   { id: 'ocean', label: 'Ocean', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
   { id: 'violet', label: 'Violet', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
+const isCreateDirty = computed(() =>
+  createName.value.trim() !== ''
+  || createRole.value.trim() !== ''
+  || createDescription.value.trim() !== ''
+  || createIcon.value !== 'mint'
+);
 
 onMounted(async () => {
   if (tenants.value.length === 0) {
@@ -261,63 +266,61 @@ onBeforeUnmount(() => {
     </div>
   </ListToolbar>
 
-  <ContentPanel with-pagination>
-    <p v-if="error" class="message message--error">{{ error }}</p>
-    <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-      <span>Đang tải agent của đơn vị...</span>
-    </div>
-    <div v-else-if="!selectedTenant" class="empty-card">
-      <h3>Chưa chọn đơn vị</h3>
-      <p>Chọn một đơn vị ở sidebar để xem agent.</p>
-    </div>
-    <div v-else-if="agents.items.length === 0" class="empty-card">
-      <h3>{{ filters.hasActiveFilters.value ? 'Không có agent phù hợp' : `${selectedTenant.name} chưa có agent` }}</h3>
-      <p>{{ filters.hasActiveFilters.value ? 'Hãy thử đổi bộ lọc.' : 'Danh sách agent sẽ xuất hiện khi có dữ liệu.' }}</p>
-    </div>
-    <div v-else class="agent-grid">
-      <article v-for="agent in agents.items" :key="agent.id" class="agent-card" @click="openDetail(agent)">
-        <div class="agent-card__avatar" :style="avatarStyle(agent.icon)" aria-hidden="true"></div>
-        <div class="agent-card__body">
-          <div class="agent-card__top">
-            <div>
-              <h3>{{ agent.name }}</h3>
-              <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
-            </div>
-            <div class="agent-card__actions" @click.stop>
-              <div class="card-menu-wrapper">
-                <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
-                  <MoreVertical :size="16" aria-hidden="true" />
+  <p v-if="error" class="message message--error">{{ error }}</p>
+  <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
+    <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+    <span>Đang tải agent của đơn vị...</span>
+  </div>
+  <div v-else-if="!selectedTenant" class="empty-card">
+    <h3>Chưa chọn đơn vị</h3>
+    <p>Chọn một đơn vị ở sidebar để xem agent.</p>
+  </div>
+  <div v-else-if="agents.items.length === 0" class="empty-card">
+    <h3>{{ filters.hasActiveFilters.value ? 'Không có agent phù hợp' : `${selectedTenant.name} chưa có agent` }}</h3>
+    <p>{{ filters.hasActiveFilters.value ? 'Hãy thử đổi bộ lọc.' : 'Danh sách agent sẽ xuất hiện khi có dữ liệu.' }}</p>
+  </div>
+  <div v-else class="agent-grid">
+    <article v-for="agent in agents.items" :key="agent.id" class="agent-card" @click="openDetail(agent)">
+      <div class="agent-card__avatar" :style="avatarStyle(agent.icon)" aria-hidden="true"></div>
+      <div class="agent-card__body">
+        <div class="agent-card__top">
+          <div>
+            <h3>{{ agent.name }}</h3>
+            <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
+          </div>
+          <div class="agent-card__actions" @click.stop>
+            <div class="card-menu-wrapper">
+              <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
+                <MoreVertical :size="16" aria-hidden="true" />
+              </button>
+              <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
+                <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">
+                  Xem chi tiết
                 </button>
-                <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
-                  <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">
-                    Xem chi tiết
-                  </button>
-                  <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'edit', $event)">
-                    Sửa
-                  </button>
-                  <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardAction(agent, 'delete', $event)">
-                    Xóa
-                  </button>
-                </div>
+                <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'edit', $event)">
+                  Sửa
+                </button>
+                <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardAction(agent, 'delete', $event)">
+                  Xóa
+                </button>
               </div>
             </div>
           </div>
-          <dl class="agent-meta">
-            <div class="agent-meta__row">
-              <dt>Vai trò</dt>
-              <dd>{{ agent.role }}</dd>
-            </div>
-            <div class="agent-meta__row">
-              <dt>Trạng thái</dt>
-              <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
-            </div>
-          </dl>
         </div>
-      </article>
-    </div>
-    <div ref="loadMoreTrigger" class="agent-list-sentinel" aria-hidden="true"></div>
-  </ContentPanel>
+        <dl class="agent-meta">
+          <div class="agent-meta__row">
+            <dt>Vai trò</dt>
+            <dd>{{ agent.role }}</dd>
+          </div>
+          <div class="agent-meta__row">
+            <dt>Trạng thái</dt>
+            <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
+          </div>
+        </dl>
+      </div>
+    </article>
+  </div>
+  <div ref="loadMoreTrigger" class="agent-list-sentinel" aria-hidden="true"></div>
 
   <DeleteConfirmModal
     :open="isDeleteModalOpen"
@@ -334,6 +337,7 @@ onBeforeUnmount(() => {
     :open="isCreateModalOpen"
     :title="`Tạo agent cho ${selectedTenant?.name || 'đơn vị'}`"
     :busy="isSaving"
+    :has-unsaved-changes="isCreateDirty"
     confirm-label="Lưu"
     busy-label="Đang lưu..."
     @close="closeCreateModal"

@@ -81,10 +81,16 @@ async function submit() {
 </script>
 
 <template>
-  <div class="settings-content-card">
-    <ContentPanel class="settings-form-panel">
+  <section class="settings-password-page">
+    <ContentPanel class="settings-password-card">
+      <header class="settings-password-header">
+        <h2 class="settings-password-title">Đổi mật khẩu</h2>
+        <!-- <p class="settings-password-description">Cập nhật mật khẩu đăng nhập cho tài khoản của bạn.</p> -->
+      </header>
+
       <p v-if="notice" class="message">{{ notice }}</p>
-      <form class="create-agent" @submit.prevent="submit">
+
+      <form class="settings-password-form" @submit.prevent="submit">
         <div class="create-agent__group">
           <label class="create-agent__label" for="current-password">Mật khẩu hiện tại</label>
           <BaseInput
@@ -98,13 +104,20 @@ async function submit() {
             @input="clearFieldError('currentPassword')"
           >
             <template #action>
-              <button class="field__action" type="button" @click="showCurrentPassword = !showCurrentPassword">
+              <button
+                class="field__action"
+                type="button"
+                :aria-label="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
+                :title="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
+                @click="showCurrentPassword = !showCurrentPassword"
+              >
                 <EyeOff v-if="showCurrentPassword" :size="16" aria-hidden="true" />
                 <Eye v-else :size="16" aria-hidden="true" />
               </button>
             </template>
           </BaseInput>
         </div>
+
         <div class="create-agent__group">
           <label class="create-agent__label" for="new-password">Mật khẩu mới</label>
           <BaseInput
@@ -118,14 +131,22 @@ async function submit() {
             @input="clearFieldError('newPassword')"
           >
             <template #action>
-              <button class="field__action" type="button" @click="showNewPassword = !showNewPassword">
+              <button
+                class="field__action"
+                type="button"
+                :aria-label="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
+                :title="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
+                @click="showNewPassword = !showNewPassword"
+              >
                 <EyeOff v-if="showNewPassword" :size="16" aria-hidden="true" />
                 <Eye v-else :size="16" aria-hidden="true" />
               </button>
             </template>
           </BaseInput>
         </div>
+
         <p v-if="formError" class="message message--error">{{ formError }}</p>
+
         <div class="action-bar">
           <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">Xóa</BaseButton>
           <BaseButton type="submit" :disabled="isLoading">
@@ -134,5 +155,35 @@ async function submit() {
         </div>
       </form>
     </ContentPanel>
-  </div>
+  </section>
 </template>
+
+<style scoped>
+.settings-password-page {
+  display: grid;
+  gap: 24px;
+}
+
+.settings-password-header {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-password-title {
+  margin: 0;
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: 700;
+}
+
+.settings-password-description {
+  margin: 0;
+  color: var(--color-text-subtle);
+}
+
+.settings-password-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+</style>

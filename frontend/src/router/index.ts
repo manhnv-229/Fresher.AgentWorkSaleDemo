@@ -5,6 +5,7 @@ import MainLayout from '../layouts/MainLayout.vue';
 import { canAccessPermissions } from './guards';
 import { useAuthStore } from '../stores/useAuthStore';
 import LoginPage from '../views/LoginPage.vue';
+import DashboardPage from '../views/DashboardPage.vue';
 import InternalAgentsPage from '../views/InternalAgentsPage.vue';
 import TenantAgentsPage from '../views/TenantAgentsPage.vue';
 import AgentDetailPage from '../views/AgentDetailPage.vue';
@@ -37,7 +38,12 @@ export const router = createRouter({
       children: [
         {
           path: '',
-          redirect: { name: 'agents-internal' }
+          redirect: { name: 'dashboard' }
+        },
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: DashboardPage
         },
         {
           path: 'agents/internal',
@@ -68,7 +74,9 @@ export const router = createRouter({
         },
         {
           path: 'settings',
-          redirect: { name: 'settings-members' }
+          name: 'settings',
+          component: SettingsMembersPage,
+          meta: { requiredPermissions: ['user.view'] }
         },
         {
           path: 'settings/members',
