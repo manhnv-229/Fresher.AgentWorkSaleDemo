@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, LogOut } from '../icons/tabler';
 import { RouterLink } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import type { TenantSummary } from '../api';
+import {
+  IconBuildingStore,
+  IconHome,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
+  IconLogout,
+  IconSettings,
+  IconUserStar
+} from '@tabler/icons-vue';
 
 defineProps<{
   activeRouteName: string | symbol | null | undefined;
@@ -30,7 +38,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': activeRouteName === 'dashboard' }"
           :to="{ name: 'dashboard' }"
         >
-          <i class="ti ti-home" aria-hidden="true"></i>
+          <IconHome :size="18" stroke-width="1.5" aria-hidden="true" />
           <span>Tổng quan</span>
         </RouterLink>
         <RouterLink
@@ -38,7 +46,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': activeRouteName === 'agents-internal' }"
           :to="{ name: 'agents-internal' }"
         >
-          <i class="ti ti-user-star" aria-hidden="true"></i>
+          <IconUserStar :size="18" stroke-width="1.5" aria-hidden="true" />
           <span>Nhân viên AI</span>
         </RouterLink>
         <RouterLink
@@ -46,7 +54,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': isSettingsRoute }"
           :to="{ name: 'settings' }"
         >
-          <i class="ti ti-settings" aria-hidden="true"></i>
+          <IconSettings :size="18" stroke-width="1.5" aria-hidden="true" />
           <span>Thiết lập</span>
         </RouterLink>
       </nav>
@@ -67,7 +75,7 @@ const emit = defineEmits<{
             :to="{ name: 'agents-tenant', params: { tenantId: tenant.id } }"
             @click="emit('selectTenant', tenant.id)"
           >
-            <i class="ti ti-building-store" aria-hidden="true"></i>
+            <IconBuildingStore :size="18" stroke-width="1.5" aria-hidden="true" />
             <span>{{ tenant.name }}</span>
           </RouterLink>
           <p v-if="tenants.length === 0" class="message">Chưa có đơn vị nào.</p>
@@ -77,7 +85,7 @@ const emit = defineEmits<{
 
     <div class="workspace__sidebar-action">
       <BaseButton class="workspace__sidebar-action-button" variant="secondary" type="button" @click="emit('logout')">
-        <LogOut :size="18" aria-hidden="true" />
+        <IconLogout :size="18" stroke-width="1.5" aria-hidden="true" />
         <span class="workspace__sidebar-action-label">Đăng xuất</span>
       </BaseButton>
     </div>
@@ -91,8 +99,8 @@ const emit = defineEmits<{
         :title="isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'"
         @click="emit('toggleSidebar')"
       >
-        <i v-if="isCollapsed" class="ti ti-layout-sidebar-left-expand" aria-hidden="true"></i>
-        <i v-else class="ti ti-layout-sidebar-left-collapse" aria-hidden="true"></i>
+        <IconLayoutSidebarLeftExpand v-if="isCollapsed" :size="18" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftCollapse v-else :size="18" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </aside>

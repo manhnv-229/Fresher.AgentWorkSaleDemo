@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Eye, EyeOff } from '../../icons/tabler';
 import BaseButton from '../BaseButton.vue';
 import BaseInput from '../BaseInput.vue';
 import { FORM_ERROR, useFormValidation } from '../../composables/useFormValidation';
 import { useAuth } from '../../composables/useAuth';
 import { isEmail, isRequired } from '../../utils/validators';
+import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 
 const email = ref('');
 const password = ref('');
@@ -105,8 +105,8 @@ async function submitLogin() {
             :disabled="isLoading"
             @click="showPassword = !showPassword"
           >
-            <EyeOff v-if="showPassword" :size="18" aria-hidden="true" />
-            <Eye v-else :size="18" aria-hidden="true" />
+            <IconEyeOff v-if="showPassword" :size="18" stroke-width="1.5" aria-hidden="true" />
+            <IconEye v-else :size="18" stroke-width="1.5" aria-hidden="true" />
           </button>
         </template>
       </BaseInput>

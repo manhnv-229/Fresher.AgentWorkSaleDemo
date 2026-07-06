@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Eye, EyeOff } from '../icons/tabler';
 import { ref } from 'vue';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
@@ -7,6 +6,7 @@ import ContentPanel from '../components/ContentPanel.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { useAuth } from '../composables/useAuth';
 import { hasMaxLength, hasMinLength, isRequired } from '../utils/validators';
+import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 
 const { changePassword: submitPasswordChange } = useAuth();
 
@@ -111,8 +111,8 @@ async function submit() {
                 :title="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
                 @click="showCurrentPassword = !showCurrentPassword"
               >
-                <EyeOff v-if="showCurrentPassword" :size="16" aria-hidden="true" />
-                <Eye v-else :size="16" aria-hidden="true" />
+                <IconEyeOff v-if="showCurrentPassword" :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconEye v-else :size="16" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
           </BaseInput>
@@ -138,8 +138,8 @@ async function submit() {
                 :title="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
                 @click="showNewPassword = !showNewPassword"
               >
-                <EyeOff v-if="showNewPassword" :size="16" aria-hidden="true" />
-                <Eye v-else :size="16" aria-hidden="true" />
+                <IconEyeOff v-if="showNewPassword" :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconEye v-else :size="16" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
           </BaseInput>

@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
+import {
+  IconClock,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
+  IconPasswordUser,
+  IconUserPlus
+} from '@tabler/icons-vue';
 
 defineProps<{
   activeRouteName: string | symbol | null | undefined;
@@ -21,7 +28,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': (activeRouteName === 'settings') || (activeRouteName === 'settings-members') }"
           :to="{ name: 'settings-members' }"
         >
-          <i class="ti ti-user-plus" aria-hidden="true"></i>
+          <IconUserPlus :size="18" stroke-width="1.5" aria-hidden="true" />
           <span>Quản lý thành viên</span>
         </RouterLink>
         <RouterLink
@@ -29,7 +36,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': activeRouteName === 'settings-password' }"
           :to="{ name: 'settings-password' }"
         >
-          <i class="ti ti-password-user" aria-hidden="true"></i>
+          <IconPasswordUser :size="18" stroke-width="1.5" aria-hidden="true" />
           <span>Đổi mật khẩu</span>
         </RouterLink>
         <RouterLink
@@ -37,7 +44,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': activeRouteName === 'settings-audit-log' }"
           :to="{ name: 'settings-audit-log' }"
         >
-          <i class="ti ti-clock" aria-hidden="true"></i>
+          <IconClock :size="18" stroke-width="1.5" aria-hidden="true" />
           <span>Nhật ký hoạt động</span>
         </RouterLink>
       </nav>
@@ -52,8 +59,8 @@ const emit = defineEmits<{
         :title="isCollapsed ? 'Mở rộng sidebar thiết lập' : 'Thu gọn sidebar thiết lập'"
         @click="emit('toggleSidebar')"
       >
-        <i v-if="isCollapsed" class="ti ti-layout-sidebar-left-expand" aria-hidden="true"></i>
-        <i v-else class="ti ti-layout-sidebar-left-collapse" aria-hidden="true"></i>
+        <IconLayoutSidebarLeftExpand v-if="isCollapsed" :size="18" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftCollapse v-else :size="18" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </aside>

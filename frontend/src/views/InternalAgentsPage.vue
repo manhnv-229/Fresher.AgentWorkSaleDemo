@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { LoaderCircle, MoreVertical, Plus } from '../icons/tabler';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
@@ -18,6 +17,7 @@ import { ApiError } from '../api/http';
 import { useAgentList, useInternalAgents } from '../composables/useAgentList';
 import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
 import { hasMaxLength, isRequired } from '../utils/validators';
+import { IconLoader2, IconDotsVertical, IconPlus } from '@tabler/icons-vue';
 
 const router = useRouter();
 const filters = useAgentList();
@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
     </label>
     <div class="filter-bar__actions">
       <BaseButton type="button" :disabled="Boolean(error)" @click="openCreateModal">
-        <Plus :size="18" aria-hidden="true" />
+        <IconPlus :size="18" stroke-width="1.5" aria-hidden="true" />
         Thêm mới
       </BaseButton>
     </div>
@@ -252,7 +252,7 @@ onBeforeUnmount(() => {
 
   <p v-if="error" class="message message--error">{{ error }}</p>
   <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
-    <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+    <IconLoader2 :size="18" class="spin" stroke-width="1.5" aria-hidden="true" />
     <span>Đang tải agent nội bộ...</span>
   </div>
   <div v-else-if="agents.items.length === 0" class="empty-card">
@@ -271,7 +271,7 @@ onBeforeUnmount(() => {
           <div class="agent-card__actions" @click.stop>
             <div class="card-menu-wrapper">
               <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
-                <MoreVertical :size="16" aria-hidden="true" />
+                <IconDotsVertical :size="16" stroke-width="1.5" aria-hidden="true" />
               </button>
               <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">

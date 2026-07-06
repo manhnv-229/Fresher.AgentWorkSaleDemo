@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { LoaderCircle, RefreshCw } from '../icons/tabler';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import AgentFooter from './AgentFooter.vue';

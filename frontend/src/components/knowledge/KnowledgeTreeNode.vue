@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Folder } from '../../icons/tabler';
 import type { KnowledgeFolderTreeItem } from '../../api';
+import { IconFolder } from '@tabler/icons-vue';
 
 defineProps<{
   node: KnowledgeFolderTreeItem;
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 
 <template>
   <button class="tree-node" type="button" :class="{ 'tree-node--active': activeId === node.id }" :style="{ marginLeft: (depth ?? 0) * 14 + 'px' }" @click="emit('select', node.id)">
-    <Folder :size="16" aria-hidden="true" />
+    <IconFolder :size="16" stroke-width="1.5" aria-hidden="true" />
     <span>{{ node.name }}</span>
   </button>
   <KnowledgeTreeNode v-for="child in node.children" :key="child.id" :node="child" :active-id="activeId" :depth="(depth ?? 0) + 1" @select="emit('select', $event)" />

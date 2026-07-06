@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Lock, LoaderCircle, RefreshCw, ShieldCheck } from '../icons/tabler';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
@@ -17,6 +16,7 @@ import { ApiError } from '../api/http';
 import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
 import { MEMBER_STATUSES, withAllOption, getMemberStatusLabel } from '../utils/statuses';
 import { hasMaxLength, isOneOf } from '../utils/validators';
+import { IconLock, IconLoader2, IconRefresh, IconShieldCheck } from '@tabler/icons-vue';
 
 const router = useRouter();
 const users = ref<PagedResult<AdminUserSummary>>({ items: [], page: 1, pageSize: PAGE_SIZE_OPTIONS[0], totalCount: 0, totalPages: 0 });
@@ -215,14 +215,14 @@ async function handleSaveJobPosition() {
       </select>
       <div class="toolbar__actions">
         <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
-          <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
+          <IconRefresh :size="18" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </BaseButton>
       </div>
     </ListToolbar>
 
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && users.items.length === 0" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+      <IconLoader2 :size="18" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải danh sách tài khoản...</span>
     </div>
     <div v-else-if="users.items.length === 0" class="empty-card empty-card--tight">
@@ -328,7 +328,7 @@ async function handleSaveJobPosition() {
               :disabled="activeActionId === selectedUser.id"
               @click="handleToggleLock"
             >
-              <component :is="selectedUser.status === 'Locked' ? ShieldCheck : Lock" :size="16" aria-hidden="true" />
+              <component :is="selectedUser.status === 'Locked' ? IconShieldCheck : IconLock" :size="16" stroke-width="1.5" aria-hidden="true" />
               {{ activeActionId === selectedUser.id ? 'Đang xử lý...' : selectedUser.status === 'Locked' ? 'Mở khóa' : 'Khóa tài khoản' }}
             </BaseButton>
           </div>

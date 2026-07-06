@@ -1,4 +1,13 @@
 <script setup lang="ts">
+import {
+  IconArrowDownRight,
+  IconArrowUpRight,
+  IconDownload,
+  IconFilter,
+  IconRefresh,
+  IconSearch,
+  IconSettings
+} from '@tabler/icons-vue';
 const internalAgentStats = [
   {
     id: 'sales',
@@ -208,7 +217,7 @@ const agentRows = [
       <div class="dashboard-page__toolbar">
         <span class="dashboard-page__updated">Cập nhật lần cuối: 08h51</span>
         <button class="dashboard-icon-button" type="button" aria-label="Tải lại dữ liệu">
-          <i class="ti ti-refresh"></i>
+          <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
         </button>
         <select class="dashboard-select" aria-label="Thời gian">
           <option>Tháng này</option>
@@ -223,7 +232,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Tổng Agent hoạt động</div>
         <div class="dashboard-stat-card__value">5</div>
         <div class="dashboard-trend dashboard-trend--up">
-          <i class="ti ti-arrow-up-right"></i>
+          <IconArrowUpRight :size="18" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -233,7 +242,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Số lượt sử dụng</div>
         <div class="dashboard-stat-card__value">0</div>
         <div class="dashboard-trend dashboard-trend--down">
-          <i class="ti ti-arrow-down-right"></i>
+          <IconArrowDownRight :size="18" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -243,7 +252,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Chi phí vận hành</div>
         <div class="dashboard-stat-card__value">0d</div>
         <div class="dashboard-trend dashboard-trend--down">
-          <i class="ti ti-arrow-down-right"></i>
+          <IconArrowDownRight :size="18" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -257,10 +266,10 @@ const agentRows = [
           <div class="dashboard-panel__actions">
             <span class="dashboard-page__updated">Cập nhật lần cuối: 08h51</span>
             <button class="dashboard-icon-button" type="button" aria-label="Tải lại">
-              <i class="ti ti-refresh"></i>
+              <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="dashboard-icon-button" type="button" aria-label="Thiết lập">
-              <i class="ti ti-settings"></i>
+              <IconSettings :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -291,10 +300,10 @@ const agentRows = [
           <div class="dashboard-panel__title">Hiệu quả của Agent bên ngoài</div>
           <div class="dashboard-panel__actions">
             <button class="dashboard-icon-button" type="button" aria-label="Tải lại">
-              <i class="ti ti-refresh"></i>
+              <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="dashboard-icon-button" type="button" aria-label="Thiết lập">
-              <i class="ti ti-settings"></i>
+              <IconSettings :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -321,10 +330,10 @@ const agentRows = [
         <div class="dashboard-panel__actions">
           <span class="dashboard-page__updated">Cập nhật lần cuối: 08h51</span>
           <button class="dashboard-icon-button" type="button" aria-label="Tải lại danh sách">
-            <i class="ti ti-refresh"></i>
+            <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
           <button class="dashboard-icon-button" type="button" aria-label="Thiết lập bảng">
-            <i class="ti ti-settings"></i>
+            <IconSettings :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -332,7 +341,7 @@ const agentRows = [
       <div class="dashboard-table-toolbar">
         <div class="dashboard-table-toolbar__left">
           <label class="dashboard-search">
-            <i class="ti ti-search"></i>
+            <IconSearch :size="18" stroke-width="1.5" aria-hidden="true" />
             <input type="search" placeholder="Tìm kiếm Agent" />
           </label>
 
@@ -345,10 +354,10 @@ const agentRows = [
 
         <div class="dashboard-table-toolbar__right">
           <button class="dashboard-icon-button" type="button" aria-label="Lọc">
-            <i class="ti ti-filter"></i>
+            <IconFilter :size="18" stroke-width="1.5" aria-hidden="true" />
           </button>
           <button class="dashboard-icon-button" type="button" aria-label="Xuất dữ liệu">
-            <i class="ti ti-download"></i>
+            <IconDownload :size="18" stroke-width="1.5" aria-hidden="true" />
           </button>
         </div>
       </div>

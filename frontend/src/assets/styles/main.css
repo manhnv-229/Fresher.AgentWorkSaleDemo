@@ -231,23 +231,11 @@
   color: var(--color-text-subtle);
 }
 
-.ti {
-  font-size: var(--icon-size-md);
-  line-height: 1;
-  flex: 0 0 auto;
-}
-
-.workspace-header__launcher .ti,
-.workspace-header__icon-button .ti,
-.scope-link .ti,
-.tenant-link .ti,
-.icon-button .ti,
-.dashboard-icon-button .ti {
-  font-size: var(--icon-size-md);
-}
-
 .button svg,
 .icon-button svg,
+.dashboard-icon-button svg,
+.scope-link svg,
+.tenant-link svg,
 .workspace-header__launcher svg,
 .workspace-header__icon-button svg,
 .field__action svg,
@@ -639,13 +627,6 @@
 .tenant-link--active {
   background: var(--color-brand-soft-strong);
   color: var(--color-brand);
-}
-
-.scope-link .ti,
-.tenant-link .ti {
-  width: var(--icon-size-sm);
-  font-size: var(--icon-size-sm);
-  text-align: center;
 }
 
 .workspace__content {

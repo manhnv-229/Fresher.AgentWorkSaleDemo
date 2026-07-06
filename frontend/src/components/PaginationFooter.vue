@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChevronLeft, ChevronRight } from '../icons/tabler';
 import BaseButton from './BaseButton.vue';
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-vue';
 
 const props = withDefaults(
   defineProps<{
@@ -61,7 +61,7 @@ function handlePageSizeChange(event: Event) {
         :title="previousLabel"
         @click="emit('update:currentPage', currentPage - 1)"
       >
-        <ChevronLeft :size="18" aria-hidden="true" />
+        <IconChevronLeft :size="18" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
       <span class="pagination__range">{{ rangeStart }} - {{ rangeEnd }}</span>
       <BaseButton
@@ -73,7 +73,7 @@ function handlePageSizeChange(event: Event) {
         :title="nextLabel"
         @click="emit('update:currentPage', currentPage + 1)"
       >
-        <ChevronRight :size="18" aria-hidden="true" />
+        <IconChevronRight :size="18" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </div>

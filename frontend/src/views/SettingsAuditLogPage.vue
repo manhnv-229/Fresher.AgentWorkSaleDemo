@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Filter, LoaderCircle, RefreshCw, X } from '../icons/tabler';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
@@ -13,6 +12,7 @@ import type { PagedResult } from '../api/agents';
 import { ApiError } from '../api/http';
 import { formatDate } from '../utils/formatDate';
 import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
+import { IconFilter, IconLoader2, IconRefresh, IconX } from '@tabler/icons-vue';
 
 const router = useRouter();
 const entries = ref<PagedResult<AuditLogEntry>>({ items: [], page: 1, pageSize: PAGE_SIZE_OPTIONS[0], totalCount: 0, totalPages: 0 });
@@ -236,7 +236,7 @@ function toggleMenu() {
           :disabled="isLoading"
           @click.stop="toggleMenu"
         >
-          <Filter :size="18" aria-hidden="true" />
+          <IconFilter :size="18" stroke-width="1.5" aria-hidden="true" />
           <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
         </button>
 
@@ -322,7 +322,7 @@ function toggleMenu() {
               Áp dụng
             </BaseButton>
             <BaseButton variant="secondary" type="button" @click="resetMenuFilters">
-              <X :size="14" aria-hidden="true" />
+              <IconX :size="14" stroke-width="1.5" aria-hidden="true" />
               Đặt lại
             </BaseButton>
           </div>
@@ -330,14 +330,14 @@ function toggleMenu() {
       </div>
       <div class="audit-log-toolbar__actions">
         <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
-          <RefreshCw :size="18" :class="{ spin: isLoading }" aria-hidden="true" />
+          <IconRefresh :size="18" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </BaseButton>
       </div>
     </ListToolbar>
 
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && entries.items.length === 0" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+      <IconLoader2 :size="18" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải nhật ký hoạt động...</span>
     </div>
     <div v-else-if="entries.items.length === 0" class="empty-card empty-card--tight">

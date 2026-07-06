@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { X } from '../icons/tabler';
 import { computed, useAttrs } from 'vue';
+import { IconX } from '@tabler/icons-vue';
 
 defineOptions({
   inheritAttrs: false
@@ -83,7 +83,7 @@ function clearValue() {
         @mousedown.prevent
         @click="clearValue"
       >
-        <X :size="14" aria-hidden="true" />
+        <IconX :size="14" stroke-width="1.5" aria-hidden="true" />
       </button>
     </div>
     <span v-if="error" :id="`${id || name || 'field'}-error`" class="field__feedback field__feedback--error" role="alert">

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { LoaderCircle } from '../icons/tabler';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseInput from '../components/BaseInput.vue';
@@ -11,6 +10,7 @@ import { useAgentDetailEditor } from '../composables/useAgentDetailEditor';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { useUnsavedChangesGuard } from '../composables/useUnsavedChangesGuard';
 import { hasMaxLength, isRequired } from '../utils/validators';
+import { IconLoader2 } from '@tabler/icons-vue';
 
 const props = defineProps<{ agentId: string }>();
 const route = useRoute();
@@ -228,7 +228,7 @@ async function submitSaveWithStatus(status: string) {
 <template>
   <div class="content-panel agent-detail-panel">
     <div v-if="isLoading" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+      <IconLoader2 :size="18" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải chi tiết agent...</span>
     </div>
     <div v-else-if="error" class="message message--error">{{ error }}</div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { X } from '../icons/tabler';
+import { IconX } from '@tabler/icons-vue';
 
 defineProps<{
   open: boolean;
@@ -18,7 +18,7 @@ const emit = defineEmits<{
         <header v-if="title" class="modal__header">
           <h2>{{ title }}</h2>
           <button type="button" class="modal__close" aria-label="Đóng" @click="emit('close')">
-            <X :size="18" aria-hidden="true" />
+            <IconX :size="18" stroke-width="1.5" aria-hidden="true" />
           </button>
         </header>
         <slot />

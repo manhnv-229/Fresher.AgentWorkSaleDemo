@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@tabler/icons-vue": "^3.44.0",
-    "@tabler/icons-webfont": "^3.44.0",
     "@vitejs/plugin-vue": "^5.2.4",
     "axios": "^1.18.1",
     "pinia": "^3.0.4",

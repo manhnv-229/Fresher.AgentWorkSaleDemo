@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { MoreHorizontal, Pencil } from '../icons/tabler';
 import BaseButton from '../components/BaseButton.vue';
 import type { AgentDetail } from '../api';
+import {
+  IconBell,
+  IconDots,
+  IconGridDots,
+  IconHelpCircle,
+  IconMessageCircle,
+  IconEdit
+} from '@tabler/icons-vue';
 
 defineProps<{
   isAgentRoute: boolean;
@@ -27,7 +34,7 @@ const emit = defineEmits<{
   <header v-if="!isAgentRoute" class="workspace-header">
     <div class="workspace-header__left">
       <button type="button" class="workspace-header__launcher" aria-label="Mở danh sách ứng dụng" title="Mở danh sách ứng dụng">
-        <i class="ti ti-grid-dots" aria-hidden="true"></i>
+        <IconGridDots :size="20" stroke-width="1.5" aria-hidden="true" />
       </button>
       <div class="workspace-header__logo" aria-hidden="true">A</div>
       <span id="workspace-title" class="workspace-header__title">Agentwork</span>
@@ -36,17 +43,17 @@ const emit = defineEmits<{
     <div class="workspace-header__right">
       <button type="button" class="workspace-header__credit" title="Nạp Credit">Nạp Credit</button>
       <button type="button" class="workspace-header__icon-button" aria-label="Tin nhắn" title="Tin nhắn">
-        <i class="ti ti-message-circle" aria-hidden="true"></i>
+        <IconMessageCircle :size="20" stroke-width="1.5" aria-hidden="true" />
         <span class="workspace-header__badge"></span>
       </button>
       <button type="button" class="workspace-header__icon-button" aria-label="Thông báo" title="Thông báo">
-        <i class="ti ti-bell" aria-hidden="true"></i>
+        <IconBell :size="20" stroke-width="1.5" aria-hidden="true" />
       </button>
       <button type="button" class="workspace-header__icon-button" aria-label="Trợ giúp" title="Trợ giúp">
-        <i class="ti ti-help-circle" aria-hidden="true"></i>
+        <IconHelpCircle :size="20" stroke-width="1.5" aria-hidden="true" />
       </button>
       <button type="button" class="workspace-header__icon-button" aria-label="Tùy chọn khác" title="Tùy chọn khác">
-        <i class="ti ti-dots" aria-hidden="true"></i>
+        <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
       </button>
       <button type="button" class="workspace-header__avatar" aria-label="Tài khoản" title="Tài khoản">RG</button>
     </div>
@@ -74,7 +81,7 @@ const emit = defineEmits<{
         :disabled="isLoadingAgent"
         @click="emit('beginEdit')"
       >
-        <Pencil :size="16" aria-hidden="true" />
+        <IconEdit :size="16" stroke-width="1.5" aria-hidden="true" />
         Sửa
       </BaseButton>
       <div v-if="isAgentDetailRoute" class="agent-header__menu">
@@ -86,7 +93,7 @@ const emit = defineEmits<{
           aria-haspopup="menu"
           @click="emit('toggleAgentMenu')"
         >
-          <MoreHorizontal :size="16" aria-hidden="true" />
+          <IconDots :size="16" stroke-width="1.5" aria-hidden="true" />
         </button>
         <div v-if="isAgentMenuOpen && canToggleAgentStatus" class="agent-header__menu-panel" role="menu">
           <button
