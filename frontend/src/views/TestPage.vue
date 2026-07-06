@@ -2,6 +2,8 @@
 import { ref } from 'vue';
 import { IconDots, IconFilter, IconPlus, IconRefresh, IconTrash } from '@tabler/icons-vue';
 import BaseButton from '../components/BaseButton.vue';
+import Combobox, { type ComboboxOption } from '../components/Combobox.vue';
+import DropdownList, { type DropdownOption } from '../components/DropdownList.vue';
 import SplitButton from '../components/SplitButton.vue';
 import IconButton from '../components/IconButton.vue';
 import TextField from '../components/TextField.vue';
@@ -22,6 +24,74 @@ const textFieldReadonlyValue = ref('Readonly value');
 const textFieldErrorValue = ref('');
 const textFieldValidateValue = ref('misa-agent');
 const textFieldVerifyingValue = ref('pending-value');
+const dropdownSupplierValue = ref('');
+const dropdownAccountValue = ref('vietcombank');
+const dropdownIndustryValue = ref('retail');
+const dropdownHoverValue = ref('');
+const dropdownFocusValue = ref('');
+const dropdownDisabledValue = ref('');
+const dropdownErrorValue = ref('');
+const comboboxCountryValue = ref('');
+const comboboxCityValue = ref('hcm');
+const comboboxMultipleValue = ref<string[]>(['retail', 'technology', 'finance']);
+const comboboxSplitValue = ref('');
+const comboboxMultipleSplitValue = ref<string[]>(['an-phat', 'binh-minh', 'dai-nam']);
+const comboboxHoverValue = ref('');
+const comboboxFocusValue = ref('');
+const comboboxDisabledValue = ref('');
+const comboboxErrorValue = ref('');
+const comboboxLoadingValue = ref('');
+
+const supplierOptions: DropdownOption[] = [
+  { label: 'Công ty An Phát', value: 'an-phat' },
+  { label: 'Công ty Bình Minh', value: 'binh-minh' },
+  { label: 'Công ty Đại Nam', value: 'dai-nam' },
+  { label: 'Công ty Hoàng Gia', value: 'hoang-gia' },
+  { label: 'Công ty Minh Long', value: 'minh-long' },
+  { label: 'Công ty Phú Khang', value: 'phu-khang' },
+  { label: 'Công ty Thành Công', value: 'thanh-cong' }
+];
+
+const accountOptions: DropdownOption[] = [
+  { label: 'ACB - 986 456 001', value: 'acb' },
+  { label: 'BIDV - 126 002 789', value: 'bidv' },
+  { label: 'Techcombank - 190 388 198', value: 'techcombank' },
+  { label: 'Vietcombank - 102 009 456', value: 'vietcombank' },
+  { label: 'VPBank - 881 445 200', value: 'vpbank' }
+];
+
+const industryOptions: DropdownOption[] = [
+  { label: 'Bán lẻ', value: 'retail' },
+  { label: 'Công nghệ thông tin', value: 'technology' },
+  { label: 'Dịch vụ tài chính', value: 'finance' },
+  {
+    label: 'Sản xuất và phân phối thiết bị công nghiệp quy mô lớn',
+    value: 'industrial-equipment'
+  },
+  { label: 'Thương mại điện tử', value: 'ecommerce' },
+  { label: 'Y tế', value: 'healthcare' }
+];
+
+const countryOptions: ComboboxOption[] = [
+  { label: 'Canada', value: 'canada', description: 'Bắc Mỹ' },
+  { label: 'Hàn Quốc', value: 'korea', description: 'Đông Á' },
+  { label: 'Nhật Bản', value: 'japan', description: 'Đông Á' },
+  { label: 'Singapore', value: 'singapore', description: 'Đông Nam Á' },
+  { label: 'Thái Lan', value: 'thailand', description: 'Đông Nam Á' },
+  { label: 'Việt Nam', value: 'vietnam', description: 'Đông Nam Á' }
+];
+
+const cityOptions: ComboboxOption[] = [
+  { label: 'Cần Thơ', value: 'can-tho', description: 'Thành phố trực thuộc trung ương' },
+  { label: 'Đà Nẵng', value: 'da-nang', description: 'Thành phố trực thuộc trung ương' },
+  { label: 'Hà Nội', value: 'ha-noi', description: 'Thủ đô' },
+  { label: 'Hải Phòng', value: 'hai-phong', description: 'Thành phố cảng' },
+  { label: 'TP. Hồ Chí Minh', value: 'hcm', description: 'Trung tâm kinh tế phía Nam' },
+  { label: 'Huế', value: 'hue', description: 'Thành phố di sản' }
+];
+
+const comboboxIndustryOptions: ComboboxOption[] = industryOptions;
+const comboboxSupplierOptions: ComboboxOption[] = supplierOptions;
 
 const buttonVariants: Array<{
   variant: 'brand' | 'info' | 'warning' | 'danger' | 'success' | 'neutral' | 'neutralInverse';
@@ -326,6 +396,203 @@ function closeLeavePageWarning() {
         </div>
       </article>
 
+      <article class="test-page__card test-page__card--full">
+        <h2 class="test-page__card-title">Dropdown List</h2>
+
+        <div class="test-page__field-section test-page__dropdown-grid">
+          <div class="test-page__field-group">
+            <p class="test-page__group-label">Normal</p>
+            <DropdownList
+              v-model="dropdownSupplierValue"
+              label="Nhà cung cấp"
+              placeholder="Chọn nhà cung cấp"
+              :options="supplierOptions"
+              hint="Dùng khi danh sách có từ 6 đến 10 lựa chọn."
+            />
+          </div>
+
+          <div class="test-page__field-group">
+            <p class="test-page__group-label">Selected</p>
+            <DropdownList
+              v-model="dropdownAccountValue"
+              label="Tài khoản"
+              placeholder="Chọn tài khoản"
+              :options="accountOptions"
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Long option</p>
+            <DropdownList
+              v-model="dropdownIndustryValue"
+              label="Ngành nghề"
+              placeholder="Chọn ngành nghề"
+              :options="industryOptions"
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Hover</p>
+            <DropdownList
+              v-model="dropdownHoverValue"
+              label="Nhà cung cấp"
+              placeholder="Chọn nhà cung cấp"
+              :options="supplierOptions"
+              state="hover"
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Focus</p>
+            <DropdownList
+              v-model="dropdownFocusValue"
+              label="Nhà cung cấp"
+              placeholder="Chọn nhà cung cấp"
+              :options="supplierOptions"
+              state="focus"
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Disabled</p>
+            <DropdownList
+              v-model="dropdownDisabledValue"
+              label="Nhà cung cấp"
+              placeholder="Chọn nhà cung cấp"
+              :options="supplierOptions"
+              disabled
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Error</p>
+            <DropdownList
+              v-model="dropdownErrorValue"
+              label="Nhà cung cấp"
+              placeholder="Chọn nhà cung cấp"
+              :options="supplierOptions"
+              error="Vui lòng chọn nhà cung cấp."
+            />
+          </div>
+        </div>
+      </article>
+
+      <article class="test-page__card test-page__card--full">
+        <h2 class="test-page__card-title">Combobox</h2>
+
+        <div class="test-page__field-section test-page__dropdown-grid">
+          <div class="test-page__field-group">
+            <p class="test-page__group-label">Single</p>
+            <Combobox
+              v-model="comboboxCountryValue"
+              label="Quốc gia"
+              placeholder="Chọn quốc gia"
+              :options="countryOptions"
+              hint="Có thể gõ trực tiếp để lọc danh sách."
+            />
+          </div>
+
+          <div class="test-page__field-group">
+            <p class="test-page__group-label">Single selected</p>
+            <Combobox
+              v-model="comboboxCityValue"
+              label="Tỉnh thành"
+              placeholder="Chọn tỉnh thành"
+              :options="cityOptions"
+            />
+          </div>
+
+          <div class="test-page__field-group">
+            <p class="test-page__group-label">Multiple</p>
+            <Combobox
+              v-model="comboboxMultipleValue"
+              label="Ngành nghề"
+              placeholder="Chọn ngành nghề"
+              :options="comboboxIndustryOptions"
+              multiple
+            />
+          </div>
+
+          <div class="test-page__field-group">
+            <p class="test-page__group-label">Single Split</p>
+            <Combobox
+              v-model="comboboxSplitValue"
+              label="Khách hàng"
+              placeholder="Chọn khách hàng"
+              :options="comboboxSupplierOptions"
+              split
+            />
+          </div>
+
+          <div class="test-page__field-group">
+            <p class="test-page__group-label">Multiple Split</p>
+            <Combobox
+              v-model="comboboxMultipleSplitValue"
+              label="Nhà cung cấp"
+              placeholder="Chọn nhà cung cấp"
+              :options="comboboxSupplierOptions"
+              multiple
+              split
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Hover</p>
+            <Combobox
+              v-model="comboboxHoverValue"
+              label="Quốc gia"
+              placeholder="Chọn quốc gia"
+              :options="countryOptions"
+              state="hover"
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Focus</p>
+            <Combobox
+              v-model="comboboxFocusValue"
+              label="Quốc gia"
+              placeholder="Chọn quốc gia"
+              :options="countryOptions"
+              state="focus"
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Disabled</p>
+            <Combobox
+              v-model="comboboxDisabledValue"
+              label="Quốc gia"
+              placeholder="Chọn quốc gia"
+              :options="countryOptions"
+              disabled
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Error</p>
+            <Combobox
+              v-model="comboboxErrorValue"
+              label="Quốc gia"
+              placeholder="Chọn quốc gia"
+              :options="countryOptions"
+              error="Vui lòng chọn quốc gia."
+            />
+          </div>
+
+          <div class="test-page__field-group test-page__field-group--narrow">
+            <p class="test-page__group-label">Loading</p>
+            <Combobox
+              v-model="comboboxLoadingValue"
+              label="Quốc gia"
+              placeholder="Đang tải quốc gia"
+              :options="countryOptions"
+              loading
+            />
+          </div>
+        </div>
+      </article>
+
       <article class="test-page__card">
         <h2 class="test-page__card-title">Toast</h2>
         <div class="test-page__actions">
@@ -474,6 +741,10 @@ function closeLeavePageWarning() {
   gap: 16px;
 }
 
+.test-page__dropdown-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .test-page__field-group {
   display: grid;
   gap: 8px;
@@ -509,6 +780,10 @@ function closeLeavePageWarning() {
 
 @media (max-width: 960px) {
   .test-page__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .test-page__dropdown-grid {
     grid-template-columns: 1fr;
   }
 }
