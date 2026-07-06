@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChevronLeft, ChevronRight } from '@lucide/vue';
+import { ChevronLeft, ChevronRight } from '../icons/tabler';
 import BaseButton from './BaseButton.vue';
 
 const props = withDefaults(

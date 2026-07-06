@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LoaderCircle } from '@lucide/vue';
+import { LoaderCircle } from '../icons/tabler';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseInput from '../components/BaseInput.vue';

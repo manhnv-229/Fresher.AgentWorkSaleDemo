@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LoaderCircle, MoreVertical, Plus } from '@lucide/vue';
+import { LoaderCircle, MoreVertical, Plus } from '../icons/tabler';
 import { onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';

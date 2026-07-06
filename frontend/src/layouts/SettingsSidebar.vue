@@ -14,6 +14,7 @@ defineProps<{
         :class="{ 'scope-link--active': activeRouteName === 'settings-members' }"
         :to="{ name: 'settings-members' }"
       >
+        <i class="ti ti-user-plus" aria-hidden="true"></i>
         Quản lý thành viên
       </RouterLink>
       <RouterLink
@@ -28,6 +29,7 @@ defineProps<{
         :class="{ 'scope-link--active': activeRouteName === 'settings-audit-log' }"
         :to="{ name: 'settings-audit-log' }"
       >
+        <i class="ti ti-clock" aria-hidden="true"></i>
         Nhật ký hoạt động
       </RouterLink>
     </nav>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Lock, LoaderCircle, RefreshCw, ShieldCheck, X } from '@lucide/vue';
+import { Lock, LoaderCircle, RefreshCw, ShieldCheck, X } from '../icons/tabler';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';

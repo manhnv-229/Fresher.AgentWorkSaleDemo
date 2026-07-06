@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Filter, LoaderCircle, RefreshCw, X } from '@lucide/vue';
+import { Filter, LoaderCircle, RefreshCw, X } from '../icons/tabler';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';

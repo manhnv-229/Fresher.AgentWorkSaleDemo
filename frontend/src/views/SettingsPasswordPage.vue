@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Eye, EyeOff } from '@lucide/vue';
+import { Eye, EyeOff } from '../icons/tabler';
 import { ref } from 'vue';
 import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';

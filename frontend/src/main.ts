@@ -4,6 +4,7 @@ import App from './layouts/AppShell.vue';
 import { setAccessTokenProvider } from './api/interceptors';
 import { router } from './router';
 import { useAuthStore } from './stores/useAuthStore';
+import '@tabler/icons-webfont/dist/tabler-icons.min.css';
 import './assets/styles/main.css';
 
 const app = createApp(App);

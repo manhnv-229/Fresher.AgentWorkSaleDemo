@@ -14,7 +14,7 @@ import {
   Pencil,
   Trash2,
   Upload
-} from '@lucide/vue';
+} from '../icons/tabler';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {

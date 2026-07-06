@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MoreHorizontal, Pencil } from '@lucide/vue';
+import { MoreHorizontal, Pencil } from '../icons/tabler';
 import BaseButton from '../components/BaseButton.vue';
 import type { AgentDetail } from '../api';
 

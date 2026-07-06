@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Eye, EyeOff } from '@lucide/vue';
+import { Eye, EyeOff } from '../../icons/tabler';
 import BaseButton from '../BaseButton.vue';
 import BaseInput from '../BaseInput.vue';
 import { FORM_ERROR, useFormValidation } from '../../composables/useFormValidation';

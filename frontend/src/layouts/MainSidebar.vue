@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Building2, LogOut, Settings2, Shield } from '@lucide/vue';
+import { Building2, LogOut } from '../icons/tabler';
 import { RouterLink } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import type { TenantSummary } from '../api';
@@ -27,7 +27,7 @@ const emit = defineEmits<{
         :class="{ 'scope-link--active': activeRouteName === 'agents-internal' }"
         :to="{ name: 'agents-internal' }"
       >
-        <Shield :size="17" aria-hidden="true" />
+        <i class="ti ti-user-star" aria-hidden="true"></i>
         Nhân viên AI
       </RouterLink>
       <RouterLink
@@ -35,7 +35,7 @@ const emit = defineEmits<{
         :class="{ 'scope-link--active': isSettingsRoute }"
         :to="{ name: 'settings-members' }"
       >
-        <Settings2 :size="17" aria-hidden="true" />
+        <i class="ti ti-settings" aria-hidden="true"></i>
         Thiết lập
       </RouterLink>
     </nav>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Folder } from '@lucide/vue';
+import { Folder } from '../../icons/tabler';
 import type { KnowledgeFolderTreeItem } from '../../api';
 
 defineProps<{
