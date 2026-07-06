@@ -1,20 +1,25 @@
 <script setup lang="ts">
-withDefaults(
+import { computed } from 'vue';
+import { normalizeButtonVariant, type ButtonVariant } from './buttonVariants';
+
+const props = withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary' | 'danger';
+    variant?: ButtonVariant;
     type?: 'button' | 'submit' | 'reset';
     disabled?: boolean;
   }>(),
   {
-    variant: 'primary',
+    variant: 'brand',
     type: 'button',
     disabled: false
   }
 );
+
+const buttonVariantClass = computed(() => `button--${normalizeButtonVariant(props.variant)}`);
 </script>
 
 <template>
-  <button class="button" :class="`button--${variant}`" :type="type" :disabled="disabled">
+  <button class="button" :class="buttonVariantClass" :type="type" :disabled="disabled">
     <slot />
   </button>
 </template>

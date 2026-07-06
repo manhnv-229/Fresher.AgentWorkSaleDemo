@@ -28,7 +28,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': (activeRouteName === 'settings') || (activeRouteName === 'settings-members') }"
           :to="{ name: 'settings-members' }"
         >
-          <IconUserPlus :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconUserPlus :size="20" stroke-width="1.5" aria-hidden="true" />
           <span>Quản lý thành viên</span>
         </RouterLink>
         <RouterLink
@@ -36,7 +36,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': activeRouteName === 'settings-password' }"
           :to="{ name: 'settings-password' }"
         >
-          <IconPasswordUser :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconPasswordUser :size="20" stroke-width="1.5" aria-hidden="true" />
           <span>Đổi mật khẩu</span>
         </RouterLink>
         <RouterLink
@@ -44,7 +44,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': activeRouteName === 'settings-audit-log' }"
           :to="{ name: 'settings-audit-log' }"
         >
-          <IconClock :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconClock :size="20" stroke-width="1.5" aria-hidden="true" />
           <span>Nhật ký hoạt động</span>
         </RouterLink>
       </nav>
@@ -59,8 +59,8 @@ const emit = defineEmits<{
         :title="isCollapsed ? 'Mở rộng sidebar thiết lập' : 'Thu gọn sidebar thiết lập'"
         @click="emit('toggleSidebar')"
       >
-        <IconLayoutSidebarLeftExpand v-if="isCollapsed" :size="18" stroke-width="1.5" aria-hidden="true" />
-        <IconLayoutSidebarLeftCollapse v-else :size="18" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftExpand v-if="isCollapsed" :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftCollapse v-else :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </aside>

@@ -236,7 +236,7 @@ function toggleMenu() {
           :disabled="isLoading"
           @click.stop="toggleMenu"
         >
-          <IconFilter :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconFilter :size="20" stroke-width="1.5" aria-hidden="true" />
           <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
         </button>
 
@@ -322,7 +322,7 @@ function toggleMenu() {
               Áp dụng
             </BaseButton>
             <BaseButton variant="secondary" type="button" @click="resetMenuFilters">
-              <IconX :size="14" stroke-width="1.5" aria-hidden="true" />
+              <IconX :size="16" stroke-width="1.5" aria-hidden="true" />
               Đặt lại
             </BaseButton>
           </div>
@@ -330,14 +330,14 @@ function toggleMenu() {
       </div>
       <div class="audit-log-toolbar__actions">
         <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
-          <IconRefresh :size="18" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
+          <IconRefresh :size="20" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </BaseButton>
       </div>
     </ListToolbar>
 
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && entries.items.length === 0" class="loading-row">
-      <IconLoader2 :size="18" class="spin" stroke-width="1.5" aria-hidden="true" />
+      <IconLoader2 :size="20" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải nhật ký hoạt động...</span>
     </div>
     <div v-else-if="entries.items.length === 0" class="empty-card empty-card--tight">

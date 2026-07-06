@@ -8,50 +8,6 @@ import {
   IconSearch,
   IconSettings
 } from '@tabler/icons-vue';
-import BaseButton from '../components/BaseButton.vue';
-import { useToastStore, type ToastTone } from '../stores/useToastStore';
-
-const toastStore = useToastStore();
-
-const toastSamples: Array<{
-  tone: ToastTone;
-  label: string;
-  title: string;
-  message: string;
-}> = [
-  {
-    tone: 'success',
-    label: 'Success',
-    title: 'Thành công',
-    message: 'Đã lưu thông tin thành công.'
-  },
-  {
-    tone: 'error',
-    label: 'Error',
-    title: 'Lỗi hệ thống',
-    message: 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.'
-  },
-  {
-    tone: 'warning',
-    label: 'Warning',
-    title: 'Cảnh báo',
-    message: 'Tính năng đang phát triển. Vui lòng quay lại sau.'
-  },
-  {
-    tone: 'info',
-    label: 'Info',
-    title: 'Thông tin',
-    message: 'Đã cập nhật phiên bản phần mềm mới nhất.'
-  }
-] as const;
-
-function showToast(sample: (typeof toastSamples)[number]) {
-  toastStore.push({
-    tone: sample.tone,
-    title: sample.title,
-    message: sample.message
-  });
-}
 
 const internalAgentStats = [
   {
@@ -269,18 +225,6 @@ const agentRows = [
           <option>Tuần này</option>
           <option>Hôm nay</option>
         </select>
-        <div class="dashboard-toast-controls" aria-label="Nút test toast">
-          <BaseButton
-            v-for="sample in toastSamples"
-            :key="sample.tone"
-            variant="secondary"
-            type="button"
-            class="dashboard-toast-control"
-            @click="showToast(sample)"
-          >
-            {{ sample.label }}
-          </BaseButton>
-        </div>
       </div>
     </div>
 
@@ -289,7 +233,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Tổng Agent hoạt động</div>
         <div class="dashboard-stat-card__value">5</div>
         <div class="dashboard-trend dashboard-trend--up">
-          <IconArrowUpRight :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconArrowUpRight :size="20" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -299,7 +243,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Số lượt sử dụng</div>
         <div class="dashboard-stat-card__value">0</div>
         <div class="dashboard-trend dashboard-trend--down">
-          <IconArrowDownRight :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconArrowDownRight :size="20" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -309,7 +253,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Chi phí vận hành</div>
         <div class="dashboard-stat-card__value">0d</div>
         <div class="dashboard-trend dashboard-trend--down">
-          <IconArrowDownRight :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconArrowDownRight :size="20" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -398,7 +342,7 @@ const agentRows = [
       <div class="dashboard-table-toolbar">
         <div class="dashboard-table-toolbar__left">
           <label class="dashboard-search">
-            <IconSearch :size="18" stroke-width="1.5" aria-hidden="true" />
+            <IconSearch :size="16" stroke-width="1.5" aria-hidden="true" />
             <input type="search" placeholder="Tìm kiếm Agent" />
           </label>
 
@@ -411,10 +355,10 @@ const agentRows = [
 
         <div class="dashboard-table-toolbar__right">
           <button class="dashboard-icon-button" type="button" aria-label="Lọc">
-            <IconFilter :size="18" stroke-width="1.5" aria-hidden="true" />
+            <IconFilter :size="16" stroke-width="1.5" aria-hidden="true" />
           </button>
           <button class="dashboard-icon-button" type="button" aria-label="Xuất dữ liệu">
-            <IconDownload :size="18" stroke-width="1.5" aria-hidden="true" />
+            <IconDownload :size="16" stroke-width="1.5" aria-hidden="true" />
           </button>
         </div>
       </div>

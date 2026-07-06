@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
     </label>
     <div class="filter-bar__actions">
       <BaseButton type="button" :disabled="Boolean(error)" @click="openCreateModal">
-        <IconPlus :size="18" stroke-width="1.5" aria-hidden="true" />
+        <IconPlus :size="20" stroke-width="1.5" aria-hidden="true" />
         Thêm mới
       </BaseButton>
     </div>
@@ -252,7 +252,7 @@ onBeforeUnmount(() => {
 
   <p v-if="error" class="message message--error">{{ error }}</p>
   <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
-    <IconLoader2 :size="18" class="spin" stroke-width="1.5" aria-hidden="true" />
+    <IconLoader2 :size="20" class="spin" stroke-width="1.5" aria-hidden="true" />
     <span>Đang tải agent nội bộ...</span>
   </div>
   <div v-else-if="agents.items.length === 0" class="empty-card">

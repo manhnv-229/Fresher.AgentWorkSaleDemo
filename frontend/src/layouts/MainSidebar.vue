@@ -38,7 +38,7 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': activeRouteName === 'dashboard' }"
           :to="{ name: 'dashboard' }"
         >
-          <IconHome :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconHome :size="20" stroke-width="1.5" aria-hidden="true" />
           <span>Tổng quan</span>
         </RouterLink>
         <RouterLink
@@ -46,15 +46,23 @@ const emit = defineEmits<{
           :class="{ 'scope-link--active': activeRouteName === 'agents-internal' }"
           :to="{ name: 'agents-internal' }"
         >
-          <IconUserStar :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconUserStar :size="20" stroke-width="1.5" aria-hidden="true" />
           <span>Nhân viên AI</span>
+        </RouterLink>
+        <RouterLink
+          class="scope-link"
+          :class="{ 'scope-link--active': activeRouteName === 'test' }"
+          :to="{ name: 'test' }"
+        >
+          <i class="ti ti-test-pipe" aria-hidden="true"></i>
+          <span>Test</span>
         </RouterLink>
         <RouterLink
           class="scope-link"
           :class="{ 'scope-link--active': isSettingsRoute }"
           :to="{ name: 'settings' }"
         >
-          <IconSettings :size="18" stroke-width="1.5" aria-hidden="true" />
+          <IconSettings :size="20" stroke-width="1.5" aria-hidden="true" />
           <span>Thiết lập</span>
         </RouterLink>
       </nav>
@@ -75,7 +83,7 @@ const emit = defineEmits<{
             :to="{ name: 'agents-tenant', params: { tenantId: tenant.id } }"
             @click="emit('selectTenant', tenant.id)"
           >
-            <IconBuildingStore :size="18" stroke-width="1.5" aria-hidden="true" />
+            <IconBuildingStore :size="20" stroke-width="1.5" aria-hidden="true" />
             <span>{{ tenant.name }}</span>
           </RouterLink>
           <p v-if="tenants.length === 0" class="message">Chưa có đơn vị nào.</p>
@@ -85,7 +93,7 @@ const emit = defineEmits<{
 
     <div class="workspace__sidebar-action">
       <BaseButton class="workspace__sidebar-action-button" variant="secondary" type="button" @click="emit('logout')">
-        <IconLogout :size="18" stroke-width="1.5" aria-hidden="true" />
+        <IconLogout :size="20" stroke-width="1.5" aria-hidden="true" />
         <span class="workspace__sidebar-action-label">Đăng xuất</span>
       </BaseButton>
     </div>
@@ -99,8 +107,8 @@ const emit = defineEmits<{
         :title="isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'"
         @click="emit('toggleSidebar')"
       >
-        <IconLayoutSidebarLeftExpand v-if="isCollapsed" :size="18" stroke-width="1.5" aria-hidden="true" />
-        <IconLayoutSidebarLeftCollapse v-else :size="18" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftExpand v-if="isCollapsed" :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftCollapse v-else :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </aside>

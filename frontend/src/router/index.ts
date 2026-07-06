@@ -6,6 +6,7 @@ import { canAccessPermissions } from './guards';
 import { useAuthStore } from '../stores/useAuthStore';
 import LoginPage from '../views/LoginPage.vue';
 import DashboardPage from '../views/DashboardPage.vue';
+import TestPage from '../views/TestPage.vue';
 import InternalAgentsPage from '../views/InternalAgentsPage.vue';
 import TenantAgentsPage from '../views/TenantAgentsPage.vue';
 import AgentDetailPage from '../views/AgentDetailPage.vue';
@@ -43,6 +44,11 @@ export const router = createRouter({
           path: 'dashboard',
           name: 'dashboard',
           component: DashboardPage
+        },
+        {
+          path: 'test',
+          name: 'test',
+          component: TestPage
         },
         {
           path: 'agents/internal',

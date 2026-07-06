@@ -18,7 +18,7 @@ const emit = defineEmits<{
         <header v-if="title" class="modal__header">
           <h2>{{ title }}</h2>
           <button type="button" class="modal__close" aria-label="Đóng" @click="emit('close')">
-            <IconX :size="18" stroke-width="1.5" aria-hidden="true" />
+            <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
         </header>
         <slot />

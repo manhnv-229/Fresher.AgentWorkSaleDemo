@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BaseButton from './BaseButton.vue';
 import BaseModal from './BaseModal.vue';
-import UnsavedChangesModal from './UnsavedChangesModal.vue';
+import AppLeavePageWarning from './AppLeavePageWarning.vue';
 import { ref } from 'vue';
 
 const props = withDefaults(
@@ -33,11 +33,11 @@ const emit = defineEmits<{
   confirm: [];
 }>();
 
-const isUnsavedChangesModalOpen = ref(false);
+const isLeavePageWarningOpen = ref(false);
 
 function handleCloseRequest() {
   if (props.hasUnsavedChanges && !props.busy) {
-    isUnsavedChangesModalOpen.value = true;
+    isLeavePageWarningOpen.value = true;
     return;
   }
 
@@ -59,9 +59,9 @@ function handleCloseRequest() {
       </div>
     </div>
   </BaseModal>
-  <UnsavedChangesModal
-    :open="isUnsavedChangesModalOpen"
-    @stay="isUnsavedChangesModalOpen = false"
-    @discard="isUnsavedChangesModalOpen = false; emit('close')"
+  <AppLeavePageWarning
+    :open="isLeavePageWarningOpen"
+    @stay="isLeavePageWarningOpen = false"
+    @discard="isLeavePageWarningOpen = false; emit('close')"
   />
 </template>

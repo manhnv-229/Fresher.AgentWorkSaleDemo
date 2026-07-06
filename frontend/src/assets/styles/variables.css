@@ -34,10 +34,10 @@
   --font-size-body-large: 16px;
   --line-height-body-large: 20px;
 
-  --icon-size-sm: 18px;
-  --icon-size-md: 22px;
-  --icon-size-default: 26px;
-  --icon-size-lg: 34px;
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-default: 24px;
+  --icon-size-lg: 32px;
   --icon-touch-target: 40px;
 
   --radius-sm: 8px;
@@ -56,6 +56,11 @@
   --button-padding-x: 12px;
   --button-icon-size: 16px;
   --button-icon-only-size: 32px;
+  --button-icon-padding: 8px;
+  --button-split-icon-width: 32px;
+  --button-gap: 8px;
+  --button-focus-ring-width: 2px;
+  --button-focus-ring-offset: 2px;
 
   --field-height: 32px;
   --field-radius: 8px;
@@ -103,4 +108,10 @@
   --toast-radius: 8px;
   --toast-padding-y: 12px;
   --toast-padding-x: 16px;
+
+  --notification-max-width: 400px;
+  --notification-gap: 12px;
+  --notification-offset-top: 16px;
+  --notification-offset-right: 16px;
+  --notification-radius: 8px;
 }

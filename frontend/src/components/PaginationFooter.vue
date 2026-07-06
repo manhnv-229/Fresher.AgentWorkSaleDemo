@@ -61,7 +61,7 @@ function handlePageSizeChange(event: Event) {
         :title="previousLabel"
         @click="emit('update:currentPage', currentPage - 1)"
       >
-        <IconChevronLeft :size="18" stroke-width="1.5" aria-hidden="true" />
+        <IconChevronLeft :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
       <span class="pagination__range">{{ rangeStart }} - {{ rangeEnd }}</span>
       <BaseButton
@@ -73,7 +73,7 @@ function handlePageSizeChange(event: Event) {
         :title="nextLabel"
         @click="emit('update:currentPage', currentPage + 1)"
       >
-        <IconChevronRight :size="18" stroke-width="1.5" aria-hidden="true" />
+        <IconChevronRight :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </div>

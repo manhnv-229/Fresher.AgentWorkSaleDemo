@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseInput from '../components/BaseInput.vue';
-import UnsavedChangesModal from '../components/UnsavedChangesModal.vue';
+import AppLeavePageWarning from '../components/AppLeavePageWarning.vue';
 import type { AgentDetail, UpdateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentDetail } from '../composables/useAgentDetail';
@@ -228,7 +228,7 @@ async function submitSaveWithStatus(status: string) {
 <template>
   <div class="content-panel agent-detail-panel">
     <div v-if="isLoading" class="loading-row">
-      <IconLoader2 :size="18" class="spin" stroke-width="1.5" aria-hidden="true" />
+      <IconLoader2 :size="20" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải chi tiết agent...</span>
     </div>
     <div v-else-if="error" class="message message--error">{{ error }}</div>
@@ -298,7 +298,7 @@ async function submitSaveWithStatus(status: string) {
       </div>
     </template>
   </div>
-  <UnsavedChangesModal :open="isDialogOpen" @stay="stayOnPage" @discard="discardChanges" />
+  <AppLeavePageWarning :open="isDialogOpen" @stay="stayOnPage" @discard="discardChanges" />
 </template>
 
 <style scoped>

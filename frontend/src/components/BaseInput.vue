@@ -1,19 +1,11 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue';
-import { IconX } from '@tabler/icons-vue';
+import TextField from './TextField.vue';
 
 defineOptions({
   inheritAttrs: false
 });
 
-const attrs = useAttrs();
-const wrapperClass = computed(() => attrs.class);
-const inputAttrs = computed(() => {
-  const { class: _class, ...rest } = attrs;
-  return rest;
-});
 const model = defineModel<string>({ required: true });
-const inputId = computed(() => attrs.id as string | undefined);
 
 withDefaults(
   defineProps<{
@@ -38,59 +30,27 @@ withDefaults(
     hint: ''
   }
 );
-
-const emit = defineEmits<{
-  clear: [];
-}>();
-
-function clearValue() {
-  if (model.value === '') {
-    return;
-  }
-
-  model.value = '';
-  emit('clear');
-}
 </script>
 
 <template>
-  <label
-    class="field"
-    :class="[wrapperClass, { 'field--with-action': hasAction, 'field--clearable': clearable, 'field--invalid': Boolean(error) }]"
+  <TextField
+    v-model="model"
+    label-position="hidden"
+    v-bind="$attrs"
+    :id="id"
+    :name="name"
+    :type="type"
+    :placeholder="placeholder"
+    :autocomplete="autocomplete"
+    :disabled="disabled"
+    :label="label"
+    :has-action="hasAction"
+    :clearable="clearable"
+    :error="error"
+    :hint="hint"
   >
-    <span v-if="label" class="sr-only">{{ label }}</span>
-    <div class="field__control">
-      <input
-        :id="id"
-        v-model="model"
-        :type="type"
-        :name="name"
-        :autocomplete="autocomplete"
-        :placeholder="placeholder"
-        :disabled="disabled"
-        :aria-invalid="error ? 'true' : 'false'"
-        :aria-describedby="error ? `${id || name || 'field'}-error` : hint ? `${id || name || 'field'}-hint` : undefined"
-        v-bind="inputAttrs"
-      />
+    <template #action>
       <slot name="action" />
-      <button
-        v-if="clearable && model && model.trim()"
-        type="button"
-        class="field__action field__action--clear"
-        :aria-label="`Xóa ${label || inputId || name || 'nội dung tìm kiếm'}`"
-        title="Xóa nội dung"
-        :disabled="disabled"
-        @mousedown.prevent
-        @click="clearValue"
-      >
-        <IconX :size="14" stroke-width="1.5" aria-hidden="true" />
-      </button>
-    </div>
-    <span v-if="error" :id="`${id || name || 'field'}-error`" class="field__feedback field__feedback--error" role="alert">
-      {{ error }}
-    </span>
-    <span v-else-if="hint" :id="`${id || name || 'field'}-hint`" class="field__feedback">
-      {{ hint }}
-    </span>
-  </label>
+    </template>
+  </TextField>
 </template>
