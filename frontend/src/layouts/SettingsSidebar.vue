@@ -22,6 +22,7 @@ defineProps<{
         :class="{ 'scope-link--active': activeRouteName === 'settings-password' }"
         :to="{ name: 'settings-password' }"
       >
+        <i class="ti ti-password-user" aria-hidden="true"></i>
         Đổi mật khẩu
       </RouterLink>
       <RouterLink

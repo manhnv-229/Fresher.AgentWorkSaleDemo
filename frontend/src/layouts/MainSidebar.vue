@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Building2, LogOut } from '../icons/tabler';
+import { LogOut } from '../icons/tabler';
 import { RouterLink } from 'vue-router';
 import BaseButton from '../components/BaseButton.vue';
 import type { TenantSummary } from '../api';
@@ -56,7 +56,7 @@ const emit = defineEmits<{
           :to="{ name: 'agents-tenant', params: { tenantId: tenant.id } }"
           @click="emit('selectTenant', tenant.id)"
         >
-          <Building2 :size="16" aria-hidden="true" />
+          <i class="ti ti-building-store" aria-hidden="true"></i>
           <span>{{ tenant.name }}</span>
         </RouterLink>
         <p v-if="tenants.length === 0" class="message">Chưa có đơn vị nào.</p>
