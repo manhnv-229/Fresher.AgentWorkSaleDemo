@@ -14,7 +14,6 @@ import SettingsAuditLogPage from '../views/SettingsAuditLogPage.vue';
 import SettingsMembersPage from '../views/SettingsMembersPage.vue';
 import SettingsPasswordPage from '../views/SettingsPasswordPage.vue';
 import ErrorView from '../views/ErrorView.vue';
-import NotFoundView from '../views/NotFoundView.vue';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -106,7 +105,7 @@ export const router = createRouter({
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
-      component: NotFoundView
+      redirect: { name: 'dashboard' }
     }
   ]
 });

@@ -8,6 +8,51 @@ import {
   IconSearch,
   IconSettings
 } from '@tabler/icons-vue';
+import BaseButton from '../components/BaseButton.vue';
+import { useToastStore, type ToastTone } from '../stores/useToastStore';
+
+const toastStore = useToastStore();
+
+const toastSamples: Array<{
+  tone: ToastTone;
+  label: string;
+  title: string;
+  message: string;
+}> = [
+  {
+    tone: 'success',
+    label: 'Success',
+    title: 'Thành công',
+    message: 'Đã lưu thông tin thành công.'
+  },
+  {
+    tone: 'error',
+    label: 'Error',
+    title: 'Lỗi hệ thống',
+    message: 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.'
+  },
+  {
+    tone: 'warning',
+    label: 'Warning',
+    title: 'Cảnh báo',
+    message: 'Tính năng đang phát triển. Vui lòng quay lại sau.'
+  },
+  {
+    tone: 'info',
+    label: 'Info',
+    title: 'Thông tin',
+    message: 'Đã cập nhật phiên bản phần mềm mới nhất.'
+  }
+] as const;
+
+function showToast(sample: (typeof toastSamples)[number]) {
+  toastStore.push({
+    tone: sample.tone,
+    title: sample.title,
+    message: sample.message
+  });
+}
+
 const internalAgentStats = [
   {
     id: 'sales',
@@ -224,6 +269,18 @@ const agentRows = [
           <option>Tuần này</option>
           <option>Hôm nay</option>
         </select>
+        <div class="dashboard-toast-controls" aria-label="Nút test toast">
+          <BaseButton
+            v-for="sample in toastSamples"
+            :key="sample.tone"
+            variant="secondary"
+            type="button"
+            class="dashboard-toast-control"
+            @click="showToast(sample)"
+          >
+            {{ sample.label }}
+          </BaseButton>
+        </div>
       </div>
     </div>
 
@@ -448,6 +505,17 @@ const agentRows = [
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.dashboard-toast-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboard-toast-control {
+  min-width: 0;
 }
 
 .dashboard-page__updated {
@@ -856,6 +924,10 @@ const agentRows = [
   .dashboard-table-card__title-wrap {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .dashboard-toast-controls {
+    width: 100%;
   }
 
   .dashboard-search {

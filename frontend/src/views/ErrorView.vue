@@ -8,7 +8,7 @@ const router = useRouter();
 const isForbidden = computed(() => route.name === 'forbidden');
 
 function goHome() {
-  router.replace({ name: 'agents-internal' });
+  router.replace({ name: 'dashboard' });
 }
 </script>
 

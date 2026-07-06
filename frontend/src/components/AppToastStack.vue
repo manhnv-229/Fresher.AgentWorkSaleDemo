@@ -1,45 +1,42 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
-import { useToastStore, type ToastItem } from '../stores/useToastStore';
+import type { Component } from 'vue';
 import {
   IconAlertCircle,
   IconAlertTriangle,
   IconCircleCheck,
-  IconInfoCircle,
-  IconX
+  IconInfoCircle
 } from '@tabler/icons-vue';
+import { useToastStore, type ToastItem } from '../stores/useToastStore';
+import AppToast from './AppToast.vue';
 
 const toastStore = useToastStore();
 const { visibleToasts } = storeToRefs(toastStore);
 
-const iconByTone = computed<Record<ToastItem['tone'], typeof IconCircleCheck>>(() => ({
+const toastIconByTone: Record<ToastItem['tone'], Component> = {
   success: IconCircleCheck,
   error: IconAlertCircle,
   warning: IconAlertTriangle,
   info: IconInfoCircle
-}));
+};
 </script>
 
 <template>
   <Teleport to="body">
     <div v-if="visibleToasts.length > 0" class="toast-stack" aria-live="polite" aria-atomic="false">
-      <article
+      <component
         v-for="toast in visibleToasts"
         :key="toast.id"
-        class="toast"
-        :class="`toast--${toast.tone}`"
-        role="status"
+        :is="AppToast"
+        :tone="toast.tone"
+        :title="toast.title"
+        :message="toast.message"
+        @close="toastStore.remove(toast.id)"
       >
-        <component :is="iconByTone[toast.tone]" :size="20" stroke-width="1.5" aria-hidden="true" />
-        <div class="toast__body">
-          <p class="toast__title">{{ toast.title }}</p>
-          <p v-if="toast.message" class="toast__message">{{ toast.message }}</p>
-        </div>
-        <button type="button" class="toast__close" aria-label="Đóng thông báo" @click="toastStore.remove(toast.id)">
-          <IconX :size="16" stroke-width="1.5" aria-hidden="true" />
-        </button>
-      </article>
+        <template #icon>
+          <component :is="toastIconByTone[toast.tone]" :size="20" stroke-width="1.5" aria-hidden="true" />
+        </template>
+      </component>
     </div>
   </Teleport>
 </template>
