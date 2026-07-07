@@ -244,7 +244,7 @@ function removeValue(value: string) {
   selectionOrder.value = nextOrder;
   model.value = nextValue;
   emit('change', nextValue);
-  isHiddenTagsOpen.value = nextOrder.length > 2;
+  isHiddenTagsOpen.value = false;
   focusInput();
 }
 
@@ -389,8 +389,9 @@ onBeforeUnmount(() => {
               :aria-label="`Mở rộng ${selectedOrderedOptions.length} giá trị đã chọn`"
               :aria-expanded="isHiddenTagsOpen ? 'true' : 'false'"
               :disabled="isDisabled"
-              @mousedown.prevent
-              @click.stop="toggleHiddenTags"
+              @mousedown.stop.prevent="toggleHiddenTags"
+              @keydown.enter.stop.prevent="toggleHiddenTags"
+              @keydown.space.stop.prevent="toggleHiddenTags"
             >
               {{ hiddenTagCount }}
             </button>
@@ -401,8 +402,9 @@ onBeforeUnmount(() => {
                 class="combobox__tag-remove"
                 :aria-label="`Xóa ${option.label}`"
                 :disabled="isDisabled"
-                @mousedown.prevent
-                @click.stop="removeValue(option.value)"
+                @mousedown.stop.prevent="removeValue(option.value)"
+                @keydown.enter.stop.prevent="removeValue(option.value)"
+                @keydown.space.stop.prevent="removeValue(option.value)"
               >
                 <IconX :size="12" stroke-width="1.8" aria-hidden="true" />
               </button>
@@ -441,8 +443,9 @@ onBeforeUnmount(() => {
             class="combobox__icon-button"
             :disabled="isDisabled"
             aria-label="Mở tìm kiếm nâng cao"
-            @mousedown.prevent
-            @click.stop="handleAdvancedClick"
+            @mousedown.stop.prevent="handleAdvancedClick"
+            @keydown.enter.stop.prevent="handleAdvancedClick"
+            @keydown.space.stop.prevent="handleAdvancedClick"
           >
             <IconSearch :size="16" stroke-width="1.5" aria-hidden="true" />
           </button>
@@ -452,8 +455,9 @@ onBeforeUnmount(() => {
             class="combobox__icon-button"
             :disabled="isDisabled"
             aria-label="Mở danh sách"
-            @mousedown.prevent
-            @click.stop="handleToggleClick"
+            @mousedown.stop.prevent="handleToggleClick"
+            @keydown.enter.stop.prevent="handleToggleClick"
+            @keydown.space.stop.prevent="handleToggleClick"
           >
             <IconLoader2 v-if="isLoading" :size="16" stroke="1.5" class="spin" aria-hidden="true" />
             <IconChevronDown
@@ -474,8 +478,9 @@ onBeforeUnmount(() => {
             type="button"
             class="combobox__hidden-tag"
             :aria-label="`Xóa ${option.label}`"
-            @mousedown.prevent
-            @click.stop="removeValue(option.value)"
+            @mousedown.stop.prevent="removeValue(option.value)"
+            @keydown.enter.stop.prevent="removeValue(option.value)"
+            @keydown.space.stop.prevent="removeValue(option.value)"
           >
             <span>{{ option.label }}</span>
             <IconX :size="12" stroke-width="1.8" aria-hidden="true" />
@@ -507,8 +512,7 @@ onBeforeUnmount(() => {
             :aria-selected="isSelected(option.value) ? 'true' : 'false'"
             :aria-disabled="option.disabled ? 'true' : undefined"
             @mouseenter="activeIndex = option.disabled ? activeIndex : index"
-            @mousedown.prevent
-            @click="updateModel(option)"
+            @mousedown.stop.prevent="updateModel(option)"
           >
             <img v-if="option.image" class="combobox__option-image" :src="option.image" alt="" />
             <span class="combobox__option-body">
@@ -548,6 +552,27 @@ onBeforeUnmount(() => {
 
 .combobox__anchor {
   position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--field-radius);
+  background: var(--color-surface);
+  transition: box-shadow 120ms ease;
+}
+
+.combobox__anchor:hover,
+.field--hover .combobox__anchor,
+.field--focus .combobox__anchor,
+.combobox__anchor:focus-within {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
+}
+
+.field--invalid .combobox__anchor {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+}
+
+.field--disabled .combobox__anchor {
+  background: var(--color-surface-muted);
 }
 
 .combobox__control {
@@ -559,41 +584,20 @@ onBeforeUnmount(() => {
   gap: 4px;
   overflow: hidden;
   padding: 3px 8px 3px var(--field-padding-x);
-  border: 1px solid var(--color-border);
-  border-radius: var(--field-radius);
-  background: var(--color-surface);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
   color: var(--color-text);
   transition:
     border-color 120ms ease,
-    box-shadow 120ms ease,
     background 120ms ease;
 }
 
-.combobox__control:hover,
-.field--hover .combobox__control {
-  border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
-}
-
-.field--focus .combobox__control,
-.combobox__control:focus-within {
-  border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
-}
-
-.field--invalid .combobox__control {
-  border-color: var(--color-danger);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
-}
-
-.field--disabled .combobox__control {
-  background: var(--color-surface-muted);
-  color: var(--color-text-subtle);
-}
 
 .combobox__input {
   flex: 1 1 auto;
-  width: 100%;
+  width: auto;
   min-width: 24px;
   height: 24px;
   padding: 0;
@@ -603,10 +607,30 @@ onBeforeUnmount(() => {
   font: inherit;
   line-height: var(--line-height-body);
   outline: none;
+  box-shadow: none;
 }
 
 .combobox__input::placeholder {
   color: var(--color-text-placeholder);
+}
+
+.field .combobox__input:hover,
+.field--hover .combobox__input,
+.field--focus .combobox__input,
+.field--invalid .combobox__input,
+.field--validate .combobox__input,
+.field--verifying .combobox__input,
+.combobox__input:hover {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+
+.combobox__input:focus,
+.combobox__input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
 }
 
 .combobox__input:read-only {
@@ -621,7 +645,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex: 0 1 auto;
   min-width: 0;
-  width: 100%;
+  width: auto;
   height: 24px;
   align-items: center;
   gap: 4px;
@@ -630,7 +654,7 @@ onBeforeUnmount(() => {
 
 .combobox__tag {
   display: inline-flex;
-  flex: 0 1 120px;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 120px;
   height: 24px;
@@ -671,6 +695,12 @@ onBeforeUnmount(() => {
   background: rgba(17, 24, 39, 0.08);
 }
 
+.combobox__tag-remove:focus,
+.combobox__tag-remove:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .combobox__tag--more {
   flex: 0 0 28px;
   width: 28px;
@@ -684,6 +714,7 @@ onBeforeUnmount(() => {
   background: var(--color-brand-soft);
   color: var(--color-brand);
   outline: none;
+  box-shadow: none;
 }
 
 .combobox__icon-button {
@@ -697,6 +728,12 @@ onBeforeUnmount(() => {
   background: transparent;
   color: var(--color-text-subtle);
   line-height: 1;
+}
+
+.combobox__icon-button:focus,
+.combobox__icon-button:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .combobox__icon-button:disabled {
