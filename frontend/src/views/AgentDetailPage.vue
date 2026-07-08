@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import BaseInput from '../components/BaseInput.vue';
-import AppLeavePageWarning from '../components/AppLeavePageWarning.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import Dialog from '../components/dialog/Dialog.vue';
 import type { AgentDetail, UpdateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentDetail } from '../composables/useAgentDetail';
@@ -259,9 +259,10 @@ async function submitSaveWithStatus(status: string) {
         </div>
         <div class="create-agent__group">
           <label class="create-agent__label" for="edit-name">Tên</label>
-          <BaseInput
+          <TextBoxTopLabel
             id="edit-name"
             v-model="editName"
+            label-position="hidden"
             placeholder="Nhập tên"
             :disabled="!isEditing"
             :error="editErrors.name"
@@ -298,7 +299,16 @@ async function submitSaveWithStatus(status: string) {
       </div>
     </template>
   </div>
-  <AppLeavePageWarning :open="isDialogOpen" @stay="stayOnPage" @discard="discardChanges" />
+  <Dialog
+    :open="isDialogOpen"
+    title="Thoát và không lưu?"
+    description="Nếu bạn thoát, các dữ liệu đang nhập liệu sẽ không được lưu lại."
+    cancel-label="Ở lại"
+    confirm-label="Thoát, không lưu"
+    confirm-variant="danger"
+    @cancel="stayOnPage"
+    @confirm="discardChanges"
+  />
 </template>
 
 <style scoped>

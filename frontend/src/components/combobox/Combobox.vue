@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useAttrs, watch } from 'vue';
-import { IconCheck, IconChevronDown, IconLoader2, IconSearch, IconX } from '@tabler/icons-vue';
+import { IconCheck, IconChevronDown, IconLoader2, IconX } from '@tabler/icons-vue';
 
 export type ComboboxOption = {
   label: string;
@@ -440,14 +440,14 @@ onBeforeUnmount(() => {
           <button
             v-if="split"
             type="button"
-            class="combobox__icon-button"
+            class="combobox__icon-button combobox__icon-button--divider"
             :disabled="isDisabled"
             aria-label="Mở tìm kiếm nâng cao"
             @mousedown.stop.prevent="handleAdvancedClick"
             @keydown.enter.stop.prevent="handleAdvancedClick"
             @keydown.space.stop.prevent="handleAdvancedClick"
           >
-            <IconSearch :size="16" stroke-width="1.5" aria-hidden="true" />
+            <span aria-hidden="true" class="combobox__divider-line" />
           </button>
 
           <button
@@ -728,6 +728,17 @@ onBeforeUnmount(() => {
   background: transparent;
   color: var(--color-text-subtle);
   line-height: 1;
+}
+
+.combobox__icon-button--divider {
+  position: relative;
+}
+
+.combobox__divider-line {
+  display: block;
+  width: 1px;
+  height: 16px;
+  background: var(--color-border-strong);
 }
 
 .combobox__icon-button:focus,

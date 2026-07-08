@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { useToastStore, type ToastItem } from '../stores/useToastStore';
-import AppToast from './AppToast.vue';
+import { useToastStore, type ToastItem } from '../../stores/useToastStore';
+import Toast from './Toast.vue';
 
 const toastStore = useToastStore();
 const { visibleToasts } = storeToRefs(toastStore);
@@ -13,7 +13,7 @@ const { visibleToasts } = storeToRefs(toastStore);
       <component
         v-for="toast in visibleToasts"
         :key="toast.id"
-        :is="AppToast"
+        :is="Toast"
         :tone="toast.tone"
         :message="toast.message"
         @close="toastStore.remove(toast.id)"

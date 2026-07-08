@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import BaseButton from '../components/BaseButton.vue';
-import BaseInput from '../components/BaseInput.vue';
-import ContentPanel from '../components/ContentPanel.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { useAuth } from '../composables/useAuth';
 import { hasMaxLength, hasMinLength, isRequired } from '../utils/validators';
@@ -82,7 +81,7 @@ async function submit() {
 
 <template>
   <section class="settings-password-page">
-    <ContentPanel class="settings-password-card">
+    <div class="content-panel settings-password-card">
       <header class="settings-password-header">
         <h2 class="settings-password-title">Đổi mật khẩu</h2>
         <!-- <p class="settings-password-description">Cập nhật mật khẩu đăng nhập cho tài khoản của bạn.</p> -->
@@ -93,9 +92,10 @@ async function submit() {
       <form class="settings-password-form" @submit.prevent="submit">
         <div class="create-agent__group">
           <label class="create-agent__label" for="current-password">Mật khẩu hiện tại</label>
-          <BaseInput
+          <TextBoxTopLabel
             id="current-password"
             v-model="currentPassword"
+            label-position="hidden"
             :type="showCurrentPassword ? 'text' : 'password'"
             autocomplete="current-password"
             placeholder="Nhập mật khẩu hiện tại"
@@ -115,14 +115,15 @@ async function submit() {
                 <IconEye v-else :size="16" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
-          </BaseInput>
+          </TextBoxTopLabel>
         </div>
 
         <div class="create-agent__group">
           <label class="create-agent__label" for="new-password">Mật khẩu mới</label>
-          <BaseInput
+          <TextBoxTopLabel
             id="new-password"
             v-model="newPassword"
+            label-position="hidden"
             :type="showNewPassword ? 'text' : 'password'"
             autocomplete="new-password"
             placeholder="Nhập mật khẩu mới"
@@ -142,7 +143,7 @@ async function submit() {
                 <IconEye v-else :size="16" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
-          </BaseInput>
+          </TextBoxTopLabel>
         </div>
 
         <p v-if="formError" class="message message--error">{{ formError }}</p>
@@ -154,7 +155,7 @@ async function submit() {
           </BaseButton>
         </div>
       </form>
-    </ContentPanel>
+    </div>
   </section>
 </template>
 

@@ -81,6 +81,10 @@ defineEmits<{
   color: var(--color-text);
 }
 
+.inline-notification:not(.inline-notification--compact) {
+  align-items: start;
+}
+
 .inline-notification--compact {
   min-height: 40px;
   align-items: center;
@@ -91,21 +95,21 @@ defineEmits<{
 .inline-notification__icon-wrap {
   width: 24px;
   height: 24px;
-  margin-top: 1px;
   display: inline-grid;
   place-items: center;
   color: inherit;
   border-radius: 999px;
+  align-self: start;
 }
 
 .inline-notification__icon {
   width: 20px;
   height: 20px;
-  margin-top: 1px;
 }
 
 .inline-notification--compact .inline-notification__icon-wrap {
   margin-top: 0;
+  align-self: center;
 }
 
 .inline-notification__content {

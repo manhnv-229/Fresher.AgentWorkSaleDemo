@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import BaseButton from '../components/BaseButton.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
 
 const route = useRoute();
 const router = useRouter();

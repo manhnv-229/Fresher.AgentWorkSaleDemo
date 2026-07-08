@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import BaseButton from '../components/BaseButton.vue';
-import BaseInput from '../components/BaseInput.vue';
-import BaseModal from '../components/BaseModal.vue';
-import BaseTable from '../components/BaseTable.vue';
-import ContentPanel from '../components/ContentPanel.vue';
-import ListToolbar from '../components/ListToolbar.vue';
-import PaginationFooter from '../components/PaginationFooter.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import PaginationFooter from '../components/tables/PaginationFooter.vue';
+import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { getUsers, lockUser, unlockUser, updateJobPosition, type AdminUserSummary } from '../api';
 import type { PagedResult } from '../api/agents';
@@ -199,10 +196,11 @@ async function handleSaveJobPosition() {
 </script>
 
 <template>
-  <ContentPanel class="user-panel" with-pagination>
-    <ListToolbar class="toolbar">
-      <BaseInput
+  <div class="content-panel content-panel--with-pagination user-panel">
+    <div class="list-toolbar toolbar">
+      <TextBoxTopLabel
         v-model="searchText"
+        label-position="hidden"
         placeholder="Tìm kiếm nhân viên..."
         class="toolbar__search"
         :disabled="isLoading"
@@ -218,7 +216,7 @@ async function handleSaveJobPosition() {
           <IconRefresh :size="20" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </BaseButton>
       </div>
-    </ListToolbar>
+    </div>
 
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && users.items.length === 0" class="loading-row">
@@ -229,7 +227,8 @@ async function handleSaveJobPosition() {
       <h3>Không tìm thấy kết quả</h3>
       <p>{{ searchText || selectedStatus ? 'Không có nhân viên nào phù hợp với bộ lọc.' : 'Chưa có tài khoản.' }}</p>
     </div>
-    <BaseTable v-else>
+    <div v-else class="table-shell">
+      <table>
       <thead>
         <tr>
           <th>Nhân viên</th>
@@ -253,7 +252,8 @@ async function handleSaveJobPosition() {
           <td><span :class="statusTone(user.status)">{{ getMemberStatusLabel(user.status) }}</span></td>
         </tr>
       </tbody>
-    </BaseTable>
+      </table>
+    </div>
     <PaginationFooter
       :total-count="users.totalCount"
       :current-page="currentPage"
@@ -263,9 +263,15 @@ async function handleSaveJobPosition() {
       @update:currentPage="goToPage"
       @update:pageSize="updatePageSize"
     />
-  </ContentPanel>
+  </div>
 
-  <BaseModal :open="isPopupOpen && Boolean(selectedUser)" title="Thông tin nhân viên" @close="closePopup">
+  <PopupTopOneColumn
+    :open="isPopupOpen && Boolean(selectedUser)"
+    title="Thông tin nhân viên"
+    cancel-label="Đóng"
+    :show-confirm="false"
+    @cancel="closePopup"
+  >
     <div v-if="selectedUser" class="popup">
       <div class="popup__content">
           <p v-if="popupError" class="message message--error">{{ popupError }}</p>
@@ -334,7 +340,7 @@ async function handleSaveJobPosition() {
           </div>
       </div>
     </div>
-  </BaseModal>
+  </PopupTopOneColumn>
 </template>
 
 <style scoped>

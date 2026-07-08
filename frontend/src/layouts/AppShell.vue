@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import AppToastStack from '../components/AppToastStack.vue';
-import AppNotificationStack from '../components/AppNotificationStack.vue';
+import ToastStack from '../components/notifications/ToastStack.vue';
+import NotificationStack from '../components/notifications/NotificationStack.vue';
 </script>
 
 <template>
   <RouterView />
-  <AppToastStack />
-  <AppNotificationStack />
+  <ToastStack />
+  <NotificationStack />
 </template>

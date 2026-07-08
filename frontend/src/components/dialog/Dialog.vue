@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { IconX } from '@tabler/icons-vue';
-import BaseButton from './BaseButton.vue';
+import BaseButton from '../buttons/BaseButton.vue';
 
 withDefaults(
   defineProps<{
@@ -106,7 +106,7 @@ const emit = defineEmits<{
 }
 
 .dialog__title {
-  margin: 24px 0 16px;
+  margin: 0 0 16px;
   font-size: var(--font-size-h3);
   line-height: var(--line-height-h3);
   font-weight: 700;

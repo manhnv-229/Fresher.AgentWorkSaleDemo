@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import BaseButton from './BaseButton.vue';
-import { IconChevronLeft, IconChevronRight } from '@tabler/icons-vue';
+import BaseButton from '../buttons/BaseButton.vue';
+import { IconChevronLeft, IconChevronRight, IconChevronLeftPipe, IconChevronRightPipe } from '@tabler/icons-vue';
 
 const props = withDefaults(
   defineProps<{
@@ -57,6 +57,17 @@ function handlePageSizeChange(event: Event) {
         type="button"
         class="pagination__icon-button"
         :disabled="currentPage <= 1"
+        aria-label="Trang đầu"
+        title="Trang đầu"
+        @click="emit('update:currentPage', 1)"
+      >
+        <IconChevronLeftPipe :size="20" stroke-width="1.5" aria-hidden="true" />
+      </BaseButton>
+      <BaseButton
+        variant="secondary"
+        type="button"
+        class="pagination__icon-button"
+        :disabled="currentPage <= 1"
         :aria-label="previousLabel"
         :title="previousLabel"
         @click="emit('update:currentPage', currentPage - 1)"
@@ -74,6 +85,17 @@ function handlePageSizeChange(event: Event) {
         @click="emit('update:currentPage', currentPage + 1)"
       >
         <IconChevronRight :size="20" stroke-width="1.5" aria-hidden="true" />
+      </BaseButton>
+      <BaseButton
+        variant="secondary"
+        type="button"
+        class="pagination__icon-button"
+        :disabled="currentPage >= totalPages"
+        aria-label="Trang cuối"
+        title="Trang cuối"
+        @click="emit('update:currentPage', totalPages)"
+      >
+        <IconChevronRightPipe :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </div>

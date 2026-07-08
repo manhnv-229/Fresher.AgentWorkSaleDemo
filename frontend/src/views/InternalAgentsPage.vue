@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import BaseButton from '../components/BaseButton.vue';
-import BaseInput from '../components/BaseInput.vue';
-import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
-import ListToolbar from '../components/ListToolbar.vue';
-import ModalActionShell from '../components/ModalActionShell.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import Dialog from '../components/dialog/Dialog.vue';
+import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import {
   createInternalAgent,
@@ -24,6 +23,7 @@ const filters = useAgentList();
 const { agents, isLoading, error, loadMore, refresh } = useInternalAgents(filters);
 
 const isCreateModalOpen = ref(false);
+const isUnsavedCreateDialogOpen = ref(false);
 const createName = ref('');
 const createRole = ref('');
 const createDescription = ref('');
@@ -167,6 +167,15 @@ function closeCreateModal() {
   clearCreateErrors();
 }
 
+function requestCloseCreateModal() {
+  if (isCreateDirty.value && !isSaving.value) {
+    isUnsavedCreateDialogOpen.value = true;
+    return;
+  }
+
+  closeCreateModal();
+}
+
 async function submitCreate() {
   clearCreateErrors();
   if (!validateCreateForm()) {
@@ -227,9 +236,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <ListToolbar class="filter-bar">
-    <BaseInput
+  <div class="list-toolbar filter-bar">
+    <TextBoxTopLabel
       v-model="filters.searchText.value"
+      label-position="hidden"
       placeholder="Tìm theo tên, mô tả hoặc vai trò"
       label="Tìm kiếm agent"
       clearable
@@ -248,7 +258,7 @@ onBeforeUnmount(() => {
         Thêm mới
       </BaseButton>
     </div>
-  </ListToolbar>
+  </div>
 
   <p v-if="error" class="message message--error">{{ error }}</p>
   <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
@@ -302,14 +312,14 @@ onBeforeUnmount(() => {
   </div>
   <div ref="loadMoreTrigger" class="agent-list-sentinel" aria-hidden="true"></div>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isCreateModalOpen"
     title="Tạo agent nội bộ"
-    :busy="isSaving"
-    :has-unsaved-changes="isCreateDirty"
     confirm-label="Lưu"
-    busy-label="Đang lưu..."
-    @close="closeCreateModal"
+    cancel-label="Hủy"
+    :confirm-disabled="isSaving"
+    :cancel-disabled="isSaving"
+    @cancel="requestCloseCreateModal"
     @confirm="submitCreate"
   >
     <div class="create-agent">
@@ -331,9 +341,10 @@ onBeforeUnmount(() => {
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="create-name">Tên</label>
-        <BaseInput
+        <TextBoxTopLabel
           id="create-name"
           v-model="createName"
+          label-position="hidden"
           placeholder="Nhập tên"
           :error="createErrors.name"
           @input="clearCreateFieldError('name')"
@@ -365,16 +376,29 @@ onBeforeUnmount(() => {
       </div>
       <p v-if="createFormError" class="message message--error">{{ createFormError }}</p>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 
-  <DeleteConfirmModal
+  <Dialog
     :open="isDeleteModalOpen"
+    title="Xác nhận xóa"
+    description=""
     :busy="isDeleting"
     confirm-label="Xác nhận xóa"
-    @close="closeDeleteModal"
+    confirm-variant="danger"
+    @cancel="closeDeleteModal"
     @confirm="confirmDelete"
   >
     <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
     <p>Hành động này không thể hoàn tác.</p>
-  </DeleteConfirmModal>
+  </Dialog>
+  <Dialog
+    :open="isUnsavedCreateDialogOpen"
+    title="Thoát và không lưu?"
+    description="Nếu bạn thoát, các dữ liệu đang nhập liệu sẽ không được lưu lại."
+    cancel-label="Ở lại"
+    confirm-label="Thoát, không lưu"
+    confirm-variant="danger"
+    @cancel="isUnsavedCreateDialogOpen = false"
+    @confirm="isUnsavedCreateDialogOpen = false; closeCreateModal()"
+  />
 </template>

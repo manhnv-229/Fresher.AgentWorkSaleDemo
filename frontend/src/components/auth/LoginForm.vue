@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import BaseButton from '../BaseButton.vue';
-import BaseInput from '../BaseInput.vue';
+import BaseButton from '../buttons/BaseButton.vue';
+import TextBoxTopLabel from '../forms/TextBoxTopLabel.vue';
 import { FORM_ERROR, useFormValidation } from '../../composables/useFormValidation';
 import { useAuth } from '../../composables/useAuth';
 import { isEmail, isRequired } from '../../utils/validators';
@@ -71,9 +71,10 @@ async function submitLogin() {
     <h1 id="login-title" class="sr-only">Đăng nhập</h1>
 
     <form class="login-form" novalidate @submit.prevent="submitLogin">
-      <BaseInput
+      <TextBoxTopLabel
         v-model="email"
         id="login-email"
+        label-position="hidden"
         name="email"
         autocomplete="username"
         placeholder="Email"
@@ -83,9 +84,10 @@ async function submitLogin() {
         @input="clearFieldError('email')"
       />
 
-      <BaseInput
+      <TextBoxTopLabel
         v-model="password"
         id="login-password"
+        label-position="hidden"
         :type="showPassword ? 'text' : 'password'"
         name="password"
         autocomplete="current-password"
@@ -109,7 +111,7 @@ async function submitLogin() {
             <IconEye v-else :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
         </template>
-      </BaseInput>
+      </TextBoxTopLabel>
 
       <p v-if="formError" class="message message--error" role="alert">{{ formError }}</p>
 

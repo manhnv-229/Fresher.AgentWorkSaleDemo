@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
-import { useNotificationStore, type NotificationItem } from '../stores/useNotificationStore';
-import AppNotification from './AppNotification.vue';
+import { useNotificationStore, type NotificationItem } from '../../stores/useNotificationStore';
+import Notification from './Notification.vue';
 
 const notificationStore = useNotificationStore();
 const { visibleNotifications } = storeToRefs(notificationStore);
@@ -13,7 +13,7 @@ const { visibleNotifications } = storeToRefs(notificationStore);
       <component
         v-for="notification in visibleNotifications"
         :key="notification.id"
-        :is="AppNotification"
+        :is="Notification"
         :tone="notification.tone"
         :title="notification.title"
         :message="notification.message"

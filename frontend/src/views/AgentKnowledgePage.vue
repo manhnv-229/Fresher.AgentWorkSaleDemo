@@ -39,12 +39,10 @@ import {
   type KnowledgeSearchResponse
 } from '../api';
 import { ApiError } from '../api/http';
-import BaseButton from '../components/BaseButton.vue';
-import BaseInput from '../components/BaseInput.vue';
-import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
-import ContentPanel from '../components/ContentPanel.vue';
-import ListToolbar from '../components/ListToolbar.vue';
-import ModalActionShell from '../components/ModalActionShell.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import Dialog from '../components/dialog/Dialog.vue';
+import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import KnowledgeTreeNode from '../components/knowledge/KnowledgeTreeNode.vue';
 import { getKnowledgeSearchTextSegments, normalizeKnowledgeSearchText } from '../utils/knowledge-search';
@@ -804,7 +802,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
     </div>
   </header>
 
-  <ContentPanel class="knowledge-panel">
+  <div class="content-panel knowledge-panel">
     <div v-if="isLoading" class="loading-row">
       <IconLoader2 :size="20" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải tri thức agent...</span>
@@ -813,9 +811,10 @@ function ensureItemOwner(item: ActiveItem): boolean {
       <p v-if="error" class="message message--error">{{ error }}</p>
       <p v-if="message" class="message message--success">{{ message }}</p>
 
-      <ListToolbar class="knowledge-toolbar">
-        <BaseInput
+      <div class="list-toolbar knowledge-toolbar">
+        <TextBoxTopLabel
           v-model="searchText"
+          label-position="hidden"
           type="search"
           placeholder="Tìm kiếm tài liệu hoặc thư mục"
           class="knowledge-search"
@@ -839,7 +838,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
             @change="onFileSelected"
           />
         </div>
-      </ListToolbar>
+      </div>
       <div class="knowledge-breadcrumb" v-if="breadcrumb.length">
         <template v-for="(crumb, idx) in breadcrumb" :key="crumb.id">
           <span v-if="idx > 0" class="knowledge-breadcrumb__sep">&gt;</span>
@@ -964,7 +963,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
         </section>
       </div>
     </template>
-  </ContentPanel>
+  </div>
 
   <Teleport to="body">
     <div
@@ -1004,53 +1003,58 @@ function ensureItemOwner(item: ActiveItem): boolean {
     </div>
   </Teleport>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isCreateFolderOpen"
     title="Tạo thư mục"
-    :busy="isBusy"
     confirm-label="Tạo"
-    busy-label="Đang xử lý..."
-    @close="closeCreateFolder"
+    cancel-label="Hủy"
+    :confirm-disabled="isBusy"
+    :cancel-disabled="isBusy"
+    @cancel="closeCreateFolder"
     @confirm="submitCreateFolder"
   >
     <div class="knowledge-modal">
-      <BaseInput
+      <TextBoxTopLabel
         v-model="folderName"
+        label-position="hidden"
         placeholder="Tên thư mục"
         :error="createFolderErrors.name"
         @input="clearCreateFolderFieldError('name')"
       />
       <p v-if="createFolderFormError" class="message message--error">{{ createFolderFormError }}</p>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isRenameOpen"
     title="Đổi tên"
-    :busy="isBusy"
     confirm-label="Lưu"
-    busy-label="Đang xử lý..."
-    @close="closeRename"
+    cancel-label="Hủy"
+    :confirm-disabled="isBusy"
+    :cancel-disabled="isBusy"
+    @cancel="closeRename"
     @confirm="submitRename"
   >
     <div class="knowledge-modal">
-      <BaseInput
+      <TextBoxTopLabel
         v-model="renameValue"
+        label-position="hidden"
         placeholder="Tên mới"
         :error="renameErrors.name"
         @input="clearRenameFieldError('name')"
       />
       <p v-if="renameFormError" class="message message--error">{{ renameFormError }}</p>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isMoveOpen"
     title="Di chuyển"
-    :busy="isBusy"
     confirm-label="Di chuyển"
-    busy-label="Đang xử lý..."
-    @close="closeMove"
+    cancel-label="Hủy"
+    :confirm-disabled="isBusy"
+    :cancel-disabled="isBusy"
+    @cancel="closeMove"
     @confirm="submitMove"
   >
     <div class="knowledge-modal">
@@ -1062,26 +1066,28 @@ function ensureItemOwner(item: ActiveItem): boolean {
       </select>
       <p v-if="moveFormError" class="message message--error">{{ moveFormError }}</p>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 
-  <DeleteConfirmModal
+  <Dialog
     :open="isDeleteOpen"
+    title="Xác nhận xóa"
+    description=""
     :busy="isBusy"
     confirm-label="Xóa"
-    @close="isDeleteOpen = false"
+    confirm-variant="danger"
+    @cancel="isDeleteOpen = false"
     @confirm="submitDelete"
   >
     <p>Bạn có chắc chắn muốn xóa <strong>{{ activeItem?.item.name }}</strong>?</p>
-  </DeleteConfirmModal>
+  </Dialog>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isContentViewOpen"
     title="Xem nội dung"
     confirm-label="Tải xuống"
     cancel-label="Đóng"
-    :busy="false"
     :confirm-disabled="!contentViewFile"
-    @close="closeContentView"
+    @cancel="closeContentView"
     @confirm="contentViewFile ? downloadFile(contentViewFile) : undefined"
   >
     <div class="knowledge-modal knowledge-content-view">
@@ -1119,7 +1125,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
         </div>
       </template>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 </template>
 
 <style scoped>

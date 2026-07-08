@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import BaseButton from '../components/BaseButton.vue';
-import BaseInput from '../components/BaseInput.vue';
-import BaseTable from '../components/BaseTable.vue';
-import ContentPanel from '../components/ContentPanel.vue';
-import ListToolbar from '../components/ListToolbar.vue';
-import PaginationFooter from '../components/PaginationFooter.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import PaginationFooter from '../components/tables/PaginationFooter.vue';
 import { getAuditLogs, type AuditLogEntry, type AuditLogFilters } from '../api';
 import type { PagedResult } from '../api/agents';
 import { ApiError } from '../api/http';
@@ -218,10 +215,11 @@ function toggleMenu() {
 </script>
 
 <template>
-  <ContentPanel with-pagination>
-    <ListToolbar class="audit-log-toolbar">
-      <BaseInput
+  <div class="content-panel content-panel--with-pagination">
+    <div class="list-toolbar audit-log-toolbar">
+      <TextBoxTopLabel
         v-model="searchText"
+        label-position="hidden"
         placeholder="Tìm kiếm nhật ký..."
         class="field"
         :disabled="isLoading"
@@ -333,7 +331,7 @@ function toggleMenu() {
           <IconRefresh :size="20" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </BaseButton>
       </div>
-    </ListToolbar>
+    </div>
 
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && entries.items.length === 0" class="loading-row">
@@ -344,7 +342,8 @@ function toggleMenu() {
       <h3>Không tìm thấy kết quả</h3>
       <p>{{ hasActiveMenuFilters || searchText ? 'Không có nhật ký nào phù hợp với bộ lọc.' : 'Chưa có nhật ký hoạt động.' }}</p>
     </div>
-    <BaseTable v-else>
+    <div v-else class="table-shell">
+      <table>
       <thead>
         <tr>
           <th>Thời gian</th>
@@ -363,7 +362,8 @@ function toggleMenu() {
           <td>{{ entry.description }}</td>
         </tr>
       </tbody>
-    </BaseTable>
+      </table>
+    </div>
     <PaginationFooter
       :total-count="entries.totalCount"
       :current-page="currentPage"
@@ -373,7 +373,7 @@ function toggleMenu() {
       @update:currentPage="goToPage"
       @update:pageSize="updatePageSize"
     />
-  </ContentPanel>
+  </div>
 </template>
 
 <style scoped>
