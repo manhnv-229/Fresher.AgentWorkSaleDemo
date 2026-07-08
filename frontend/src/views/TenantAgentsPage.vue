@@ -270,7 +270,7 @@ onBeforeUnmount(() => {
     </label>
     <div class="filter-bar__actions">
       <BaseButton type="button" :disabled="!selectedTenant || Boolean(error)" @click="openCreateModal">
-        <IconPlus :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconPlus :size="24" stroke-width="1.5" aria-hidden="true" />
         Thêm mới
       </BaseButton>
     </div>
@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
 
   <p v-if="error" class="message message--error">{{ error }}</p>
   <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
-    <IconLoader2 :size="20" class="spin" stroke-width="1.5" aria-hidden="true" />
+    <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
     <span>Đang tải agent của đơn vị...</span>
   </div>
   <div v-else-if="!selectedTenant" class="empty-card">
@@ -301,7 +301,7 @@ onBeforeUnmount(() => {
           <div class="agent-card__actions" @click.stop>
             <div class="card-menu-wrapper">
               <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
-                <IconDotsVertical :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconDotsVertical :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
               <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">

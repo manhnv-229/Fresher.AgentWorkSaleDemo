@@ -89,7 +89,7 @@ async function submit() {
 
       <p v-if="notice" class="message">{{ notice }}</p>
 
-      <form class="settings-password-form" @submit.prevent="submit">
+      <form id="settings-password-form" class="settings-password-form" @submit.prevent="submit">
         <div class="create-agent__group">
           <label class="create-agent__label" for="current-password">Mật khẩu hiện tại</label>
           <TextBoxTopLabel
@@ -105,14 +105,14 @@ async function submit() {
           >
             <template #action>
               <button
-                class="field__action"
+                class="field__action field__action--plain"
                 type="button"
                 :aria-label="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
                 :title="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
                 @click="showCurrentPassword = !showCurrentPassword"
               >
-                <IconEyeOff v-if="showCurrentPassword" :size="16" stroke-width="1.5" aria-hidden="true" />
-                <IconEye v-else :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconEyeOff v-if="showCurrentPassword" :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconEye v-else :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
           </TextBoxTopLabel>
@@ -133,28 +133,28 @@ async function submit() {
           >
             <template #action>
               <button
-                class="field__action"
+                class="field__action field__action--plain"
                 type="button"
                 :aria-label="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
                 :title="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
                 @click="showNewPassword = !showNewPassword"
               >
-                <IconEyeOff v-if="showNewPassword" :size="16" stroke-width="1.5" aria-hidden="true" />
-                <IconEye v-else :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconEyeOff v-if="showNewPassword" :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconEye v-else :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
           </TextBoxTopLabel>
         </div>
-
-        <p v-if="formError" class="message message--error">{{ formError }}</p>
-
-        <div class="action-bar">
-          <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">Xóa</BaseButton>
-          <BaseButton type="submit" :disabled="isLoading">
-            {{ isLoading ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
-          </BaseButton>
-        </div>
       </form>
+
+      <p v-if="formError" class="message message--error">{{ formError }}</p>
+
+      <div class="action-bar">
+        <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">Xóa</BaseButton>
+        <BaseButton type="submit" form="settings-password-form" :disabled="isLoading">
+          {{ isLoading ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
+        </BaseButton>
+      </div>
     </div>
   </section>
 </template>
@@ -163,6 +163,11 @@ async function submit() {
 .settings-password-page {
   display: grid;
   gap: 24px;
+}
+
+.settings-password-card {
+  display: flex;
+  flex-direction: column;
 }
 
 .settings-password-header {
@@ -186,5 +191,13 @@ async function submit() {
   display: grid;
   gap: 16px;
   margin-top: 16px;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
 }
 </style>

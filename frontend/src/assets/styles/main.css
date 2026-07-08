@@ -281,6 +281,13 @@
   outline: none;
 }
 
+.field__action--plain,
+.field__action--plain:hover:not(:disabled),
+.field__action--plain:focus-visible {
+  background: transparent;
+  border-radius: 0;
+}
+
 .field__action--clear:hover:not(:disabled),
 .field__action--clear:focus-visible {
   background: transparent;
@@ -458,8 +465,8 @@
 .pagination__icon-button svg,
 .agent-header__menu-trigger svg,
 .agent-header__close svg {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
 }
 
 .split-button {
@@ -613,6 +620,10 @@
   grid-template-columns: 72px var(--sidebar-settings-width) minmax(0, 1fr);
 }
 
+.workspace--settings.workspace--main-sidebar-collapsed:has(.workspace__sidebar:hover) {
+  grid-template-columns: var(--sidebar-width) var(--sidebar-settings-width) minmax(0, 1fr);
+}
+
 .workspace--settings.workspace--settings-sidebar-collapsed {
   grid-template-columns: var(--sidebar-width) 72px minmax(0, 1fr);
 }
@@ -653,6 +664,7 @@
   width: 72px;
   padding-inline: 12px;
   z-index: 15;
+  overflow: visible;
   transition:
     width 0.16s ease,
     padding 0.16s ease,
@@ -662,6 +674,7 @@
 .workspace--main-sidebar-collapsed .workspace__sidebar:hover {
   width: var(--sidebar-width);
   padding-inline: var(--sidebar-padding-x);
+  z-index: 30;
   box-shadow: 12px 0 24px rgba(15, 23, 42, 0.12);
 }
 
@@ -696,12 +709,16 @@
   align-items: center;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-border);
   overflow: visible;
+}
+
+.workspace__sidebar-footer {
+  border-top: 0;
 }
 
 .workspace__sidebar-footer-button {
   min-width: 0;
+  border: 0;
 }
 
 .workspace__sidebar-footer-button--icon {
@@ -746,6 +763,7 @@
   width: 72px;
   padding-inline: 12px;
   z-index: 15;
+  overflow: hidden;
   transition:
     width 0.16s ease,
     padding 0.16s ease,
@@ -779,6 +797,7 @@
   min-width: 0;
   width: var(--icon-touch-target);
   height: var(--icon-touch-target);
+  border: 0;
   padding: 0;
 }
 
@@ -806,6 +825,10 @@
   padding-inline: 0;
   display: grid;
   place-items: center;
+}
+
+.dashboard-icon-button {
+  border: 0;
 }
 
 .workspace-header,

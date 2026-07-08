@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
             @mousedown.prevent
             @click="togglePopover"
           >
-            <IconCalendarTime :size="16" stroke-width="1.5" aria-hidden="true" />
+            <IconCalendarTime :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
           <div v-if="showTooltip" class="field__tooltip" role="tooltip">
             {{ error }}
@@ -293,10 +293,10 @@ onBeforeUnmount(() => {
           <div class="picker__header">
             <div class="picker__calendar-header">
               <button type="button" class="picker__nav-button" aria-label="Năm trước" @click="displayDate = startOfMonth(addYears(displayDate, -1))">
-                <IconChevronsLeft :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconChevronsLeft :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
               <button type="button" class="picker__nav-button" aria-label="Tháng trước" @click="displayDate = startOfMonth(addMonths(displayDate, -1))">
-                <IconChevronLeft :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconChevronLeft :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
 
               <div class="picker__title">
@@ -305,10 +305,10 @@ onBeforeUnmount(() => {
               </div>
 
               <button type="button" class="picker__nav-button" aria-label="Tháng sau" @click="displayDate = startOfMonth(addMonths(displayDate, 1))">
-                <IconChevronRight :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconChevronRight :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
               <button type="button" class="picker__nav-button" aria-label="Năm sau" @click="displayDate = startOfMonth(addYears(displayDate, 1))">
-                <IconChevronsRight :size="16" stroke-width="1.5" aria-hidden="true" />
+                <IconChevronsRight :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
             </div>
 

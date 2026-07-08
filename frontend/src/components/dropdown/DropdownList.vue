@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
           <IconChevronDown
             class="dropdown-list__chevron"
             :class="{ 'dropdown-list__chevron--open': isOpen }"
-            :size="16"
+            :size="20"
             stroke-width="1.5"
             aria-hidden="true"
           />

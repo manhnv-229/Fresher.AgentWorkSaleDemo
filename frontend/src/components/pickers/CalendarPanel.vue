@@ -73,10 +73,10 @@ function isRangeBetween(date: Date) {
     <div class="calendar-panel__header">
       <div class="calendar-panel__nav">
         <button type="button" class="calendar-panel__nav-button" aria-label="Năm trước" @click="emit('navigateYear', addYears(displayDate, -1))">
-          <IconChevronsLeft :size="16" stroke-width="1.5" aria-hidden="true" />
+          <IconChevronsLeft :size="20" stroke-width="1.5" aria-hidden="true" />
         </button>
         <button type="button" class="calendar-panel__nav-button" aria-label="Tháng trước" @click="emit('navigateMonth', addMonths(displayDate, -1))">
-          <IconChevronLeft :size="16" stroke-width="1.5" aria-hidden="true" />
+          <IconChevronLeft :size="20" stroke-width="1.5" aria-hidden="true" />
         </button>
       </div>
 
@@ -87,10 +87,10 @@ function isRangeBetween(date: Date) {
 
       <div class="calendar-panel__nav">
         <button type="button" class="calendar-panel__nav-button" aria-label="Tháng sau" @click="emit('navigateMonth', addMonths(displayDate, 1))">
-          <IconChevronRight :size="16" stroke-width="1.5" aria-hidden="true" />
+          <IconChevronRight :size="20" stroke-width="1.5" aria-hidden="true" />
         </button>
         <button type="button" class="calendar-panel__nav-button" aria-label="Năm sau" @click="emit('navigateYear', addYears(displayDate, 1))">
-          <IconChevronsRight :size="16" stroke-width="1.5" aria-hidden="true" />
+          <IconChevronsRight :size="20" stroke-width="1.5" aria-hidden="true" />
         </button>
       </div>
     </div>

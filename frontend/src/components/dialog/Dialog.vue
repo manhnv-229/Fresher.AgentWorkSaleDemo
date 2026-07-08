@@ -35,7 +35,7 @@ const emit = defineEmits<{
     <div v-if="open" class="dialog-backdrop" role="presentation" @click.self="emit('cancel')">
       <section class="dialog" role="dialog" aria-modal="true" :aria-label="title">
         <button type="button" class="dialog__close" aria-label="Đóng" @click="emit('cancel')">
-          <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
+          <IconX :size="24" stroke-width="1.5" aria-hidden="true" />
         </button>
 
         <h2 class="dialog__title">{{ title }}</h2>

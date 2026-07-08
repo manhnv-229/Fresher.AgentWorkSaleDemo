@@ -213,14 +213,14 @@ async function handleSaveJobPosition() {
       </select>
       <div class="toolbar__actions">
         <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
-          <IconRefresh :size="20" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
+          <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </BaseButton>
       </div>
     </div>
 
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && users.items.length === 0" class="loading-row">
-      <IconLoader2 :size="20" class="spin" stroke-width="1.5" aria-hidden="true" />
+      <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải danh sách tài khoản...</span>
     </div>
     <div v-else-if="users.items.length === 0" class="empty-card empty-card--tight">
@@ -334,7 +334,7 @@ async function handleSaveJobPosition() {
               :disabled="activeActionId === selectedUser.id"
               @click="handleToggleLock"
             >
-              <component :is="selectedUser.status === 'Locked' ? IconShieldCheck : IconLock" :size="20" stroke-width="1.5" aria-hidden="true" />
+              <component :is="selectedUser.status === 'Locked' ? IconShieldCheck : IconLock" :size="24" stroke-width="1.5" aria-hidden="true" />
               {{ activeActionId === selectedUser.id ? 'Đang xử lý...' : selectedUser.status === 'Locked' ? 'Mở khóa' : 'Khóa tài khoản' }}
             </BaseButton>
           </div>

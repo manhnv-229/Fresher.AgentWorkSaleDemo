@@ -10,7 +10,8 @@ import {
   IconLayoutSidebarLeftExpand,
   IconLogout,
   IconSettings,
-  IconUserStar
+  IconUserStar,
+  IconSmartHome
 } from '@tabler/icons-vue';
 
 const emit = defineEmits<{
@@ -35,7 +36,7 @@ const mainItems = computed(() => [
     label: 'Tổng quan',
     to: { name: 'dashboard' as const },
     isActive: props.activeRouteName === 'dashboard',
-    icon: IconHome
+    icon: IconSmartHome
   },
   {
     key: 'agents-internal',
@@ -47,7 +48,7 @@ const mainItems = computed(() => [
   {
     key: 'settings',
     label: 'Thiết lập',
-    to: { name: 'settings' as const },
+    to: { name: 'settings-members' as const },
     isActive: props.isSettingsRoute,
     icon: IconSettings
   }
@@ -72,7 +73,7 @@ const mainItems = computed(() => [
             <component
               :is="item.icon"
               v-if="item.icon"
-              :size="16"
+              :size="20"
               stroke-width="1.5"
               aria-hidden="true"
             />
@@ -97,7 +98,7 @@ const mainItems = computed(() => [
             :to="{ name: 'agents-tenant', params: { tenantId: tenant.id } }"
             @click="emit('selectTenant', tenant.id)"
           >
-            <IconBuildingStore :size="16" stroke-width="1.5" aria-hidden="true" />
+            <IconBuildingStore :size="20" stroke-width="1.5" aria-hidden="true" />
             <span>{{ tenant.name }}</span>
           </RouterLink>
           <p v-if="props.tenants.length === 0" class="message">Chưa có đơn vị nào.</p>
@@ -107,7 +108,7 @@ const mainItems = computed(() => [
 
     <div class="workspace__sidebar-action">
       <BaseButton class="workspace__sidebar-action-button" variant="secondary" type="button" @click="emit('logout')">
-        <IconLogout :size="16" stroke-width="1.5" aria-hidden="true" />
+        <IconLogout :size="20" stroke-width="1.5" aria-hidden="true" />
         <span class="workspace__sidebar-action-label">Đăng xuất</span>
       </BaseButton>
     </div>
@@ -121,8 +122,8 @@ const mainItems = computed(() => [
         :title="props.isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'"
         @click="emit('toggleSidebar')"
       >
-        <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="16" stroke-width="1.5" aria-hidden="true" />
-        <IconLayoutSidebarLeftCollapse v-else :size="16" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftCollapse v-else :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </aside>

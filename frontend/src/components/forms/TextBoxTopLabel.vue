@@ -166,13 +166,13 @@ function clearValue() {
           @mousedown.prevent
           @click="clearValue"
         >
-          <IconX :size="16" stroke-width="1.5" aria-hidden="true" />
+          <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
         </button>
         <div v-if="isVerifyingState" class="field__status-icon" aria-hidden="true">
-          <IconLoader2 :size="16" stroke="1.5" class="spin" />
+          <IconLoader2 :size="20" stroke="1.5" class="spin" />
         </div>
         <div v-else-if="isValidateState" class="field__status-icon field__status-icon--success" aria-hidden="true">
-          <IconCircleCheck :size="16" stroke-width="1.5" />
+          <IconCircleCheck :size="20" stroke-width="1.5" />
         </div>
         <div v-if="showTooltip" class="field__tooltip" role="tooltip">
           {{ error }}
@@ -256,13 +256,13 @@ function clearValue() {
           @mousedown.prevent
           @click="clearValue"
         >
-          <IconX :size="16" stroke-width="1.5" aria-hidden="true" />
+          <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
         </button>
         <div v-if="isVerifyingState" class="field__status-icon" aria-hidden="true">
-          <IconLoader2 :size="16" stroke="1.5" class="spin" />
+          <IconLoader2 :size="20" stroke="1.5" class="spin" />
         </div>
         <div v-else-if="isValidateState" class="field__status-icon field__status-icon--success" aria-hidden="true">
-          <IconCircleCheck :size="16" stroke-width="1.5" />
+          <IconCircleCheck :size="20" stroke-width="1.5" />
         </div>
         <div v-if="showTooltip" class="field__tooltip" role="tooltip">
           {{ error }}

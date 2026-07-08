@@ -50,7 +50,7 @@ const splitButtonClass = computed(() => `split-button--${normalizeButtonVariant(
       aria-haspopup="menu"
       @click="emit('menuClick', $event)"
     >
-      <IconChevronDown :size="16" stroke-width="1.5" aria-hidden="true" />
+      <IconChevronDown :size="20" stroke-width="1.5" aria-hidden="true" />
     </button>
   </div>
 </template>

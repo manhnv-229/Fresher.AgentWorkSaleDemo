@@ -129,7 +129,7 @@ onBeforeUnmount(() => {
         @click="handleItemClick(item)"
       >
         <span class="context-menu__icon" aria-hidden="true">
-          <component v-if="item.icon" :is="item.icon" :size="16" stroke-width="1.5" />
+          <component v-if="item.icon" :is="item.icon" :size="20" stroke-width="1.5" />
         </span>
         <span class="context-menu__label">{{ item.label }}</span>
       </button>

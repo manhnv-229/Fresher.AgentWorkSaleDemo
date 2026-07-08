@@ -25,10 +25,10 @@ defineEmits<{
 <template>
   <article class="notification" :class="`notification--${tone}`" role="status">
     <div class="notification__icon-wrap" aria-hidden="true">
-      <IconCircleCheck v-if="tone === 'success'" :size="20" stroke-width="1.5" class="notification__icon" />
-      <IconAlertCircle v-else-if="tone === 'error'" :size="20" stroke-width="1.5" class="notification__icon" />
-      <IconAlertTriangle v-else-if="tone === 'warning'" :size="20" stroke-width="1.5" class="notification__icon" />
-      <IconInfoCircle v-else :size="20" stroke-width="1.5" class="notification__icon" />
+      <IconCircleCheck v-if="tone === 'success'" :size="24" stroke-width="1.5" class="notification__icon" />
+      <IconAlertCircle v-else-if="tone === 'error'" :size="24" stroke-width="1.5" class="notification__icon" />
+      <IconAlertTriangle v-else-if="tone === 'warning'" :size="24" stroke-width="1.5" class="notification__icon" />
+      <IconInfoCircle v-else :size="24" stroke-width="1.5" class="notification__icon" />
     </div>
 
     <div class="notification__body">
@@ -40,7 +40,7 @@ defineEmits<{
     </div>
 
     <button type="button" class="notification__close" aria-label="Đóng thông báo" @click="$emit('close')">
-      <IconX :size="16" stroke-width="1.5" aria-hidden="true" />
+      <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
     </button>
   </article>
 </template>

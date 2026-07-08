@@ -204,7 +204,7 @@ onBeforeUnmount(() => {
             @mousedown.prevent
             @click="togglePopover"
           >
-            <IconCalendarMonth :size="16" stroke-width="1.5" aria-hidden="true" />
+            <IconCalendarMonth :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
           <div v-if="showTooltip" class="field__tooltip" role="tooltip">
             {{ error }}
@@ -213,11 +213,11 @@ onBeforeUnmount(() => {
         <div v-if="isOpen" class="picker__popover">
           <div class="picker__header">
             <button type="button" class="picker__nav" aria-label="Năm trước" @click="displayDate = addYears(displayDate, -1)">
-              <IconChevronLeft :size="16" stroke-width="1.5" aria-hidden="true" />
+              <IconChevronLeft :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
             <span class="picker__year">{{ displayDate.getFullYear() }}</span>
             <button type="button" class="picker__nav" aria-label="Năm sau" @click="displayDate = addYears(displayDate, 1)">
-              <IconChevronRight :size="16" stroke-width="1.5" aria-hidden="true" />
+              <IconChevronRight :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
 

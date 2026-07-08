@@ -2,10 +2,7 @@
 import {
   IconArrowDownRight,
   IconArrowUpRight,
-  IconDownload,
-  IconFilter,
   IconRefresh,
-  IconSearch,
   IconSettings
 } from '@tabler/icons-vue';
 
@@ -218,7 +215,7 @@ const agentRows = [
       <div class="dashboard-page__toolbar">
         <span class="dashboard-page__updated">Cập nhật lần cuối: 08h51</span>
         <button class="dashboard-icon-button" type="button" aria-label="Tải lại dữ liệu">
-          <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
+          <IconRefresh :size="24" stroke-width="1.5" aria-hidden="true" />
         </button>
         <select class="dashboard-select" aria-label="Thời gian">
           <option>Tháng này</option>
@@ -233,7 +230,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Tổng Agent hoạt động</div>
         <div class="dashboard-stat-card__value">5</div>
         <div class="dashboard-trend dashboard-trend--up">
-          <IconArrowUpRight :size="20" stroke-width="1.5" aria-hidden="true" />
+          <IconArrowUpRight :size="24" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -243,7 +240,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Số lượt sử dụng</div>
         <div class="dashboard-stat-card__value">0</div>
         <div class="dashboard-trend dashboard-trend--down">
-          <IconArrowDownRight :size="20" stroke-width="1.5" aria-hidden="true" />
+          <IconArrowDownRight :size="24" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -253,7 +250,7 @@ const agentRows = [
         <div class="dashboard-stat-card__title">Chi phí vận hành</div>
         <div class="dashboard-stat-card__value">0d</div>
         <div class="dashboard-trend dashboard-trend--down">
-          <IconArrowDownRight :size="20" stroke-width="1.5" aria-hidden="true" />
+          <IconArrowDownRight :size="24" stroke-width="1.5" aria-hidden="true" />
           <strong>0</strong>
           <span>So với kì trước</span>
         </div>
@@ -267,10 +264,10 @@ const agentRows = [
           <div class="dashboard-panel__actions">
             <span class="dashboard-page__updated">Cập nhật lần cuối: 08h51</span>
             <button class="dashboard-icon-button" type="button" aria-label="Tải lại">
-              <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconRefresh :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="dashboard-icon-button" type="button" aria-label="Thiết lập">
-              <IconSettings :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconSettings :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -301,10 +298,10 @@ const agentRows = [
           <div class="dashboard-panel__title">Hiệu quả của Agent bên ngoài</div>
           <div class="dashboard-panel__actions">
             <button class="dashboard-icon-button" type="button" aria-label="Tải lại">
-              <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconRefresh :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="dashboard-icon-button" type="button" aria-label="Thiết lập">
-              <IconSettings :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconSettings :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -331,35 +328,23 @@ const agentRows = [
         <div class="dashboard-panel__actions">
           <span class="dashboard-page__updated">Cập nhật lần cuối: 08h51</span>
           <button class="dashboard-icon-button" type="button" aria-label="Tải lại danh sách">
-            <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
+            <IconRefresh :size="24" stroke-width="1.5" aria-hidden="true" />
           </button>
           <button class="dashboard-icon-button" type="button" aria-label="Thiết lập bảng">
-            <IconSettings :size="20" stroke-width="1.5" aria-hidden="true" />
+            <IconSettings :size="24" stroke-width="1.5" aria-hidden="true" />
           </button>
         </div>
       </div>
 
       <div class="dashboard-table-toolbar">
         <div class="dashboard-table-toolbar__left">
-          <label class="dashboard-search">
-            <IconSearch :size="16" stroke-width="1.5" aria-hidden="true" />
-            <input type="search" placeholder="Tìm kiếm Agent" />
-          </label>
+          <input class="dashboard-search" type="search" placeholder="Tìm kiếm Agent" />
 
           <select class="dashboard-select" aria-label="Lọc trạng thái">
             <option>Tất cả trạng thái</option>
             <option>Đang hoạt động</option>
             <option>Tạm dừng</option>
           </select>
-        </div>
-
-        <div class="dashboard-table-toolbar__right">
-          <button class="dashboard-icon-button" type="button" aria-label="Lọc">
-            <IconFilter :size="16" stroke-width="1.5" aria-hidden="true" />
-          </button>
-          <button class="dashboard-icon-button" type="button" aria-label="Xuất dữ liệu">
-            <IconDownload :size="16" stroke-width="1.5" aria-hidden="true" />
-          </button>
         </div>
       </div>
 
@@ -444,7 +429,6 @@ const agentRows = [
 .dashboard-page__toolbar,
 .dashboard-panel__actions,
 .dashboard-table-toolbar__left,
-.dashboard-table-toolbar__right,
 .dashboard-table-card__title-wrap {
   display: flex;
   align-items: center;
@@ -476,30 +460,14 @@ const agentRows = [
   box-shadow: var(--shadow-card);
 }
 
-.dashboard-icon-button,
 .dashboard-select,
-.dashboard-search input {
+.dashboard-search {
   height: var(--field-height);
   border-radius: var(--field-radius);
 }
 
-.dashboard-icon-button {
-  width: var(--button-icon-only-size);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-subtle);
-  display: inline-grid;
-  place-items: center;
-}
-
-.dashboard-icon-button:hover {
-  border-color: var(--color-border-strong);
-  background: var(--color-surface-muted);
-  color: var(--color-text);
-}
-
 .dashboard-select,
-.dashboard-search input {
+.dashboard-search {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -512,24 +480,8 @@ const agentRows = [
 }
 
 .dashboard-search {
-  position: relative;
   width: 260px;
-}
-
-.dashboard-search i {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-placeholder);
-}
-
-.dashboard-search input {
-  width: 100%;
-  padding: 0 12px 0 36px;
-}
-
-.dashboard-search input::placeholder {
+  padding: 0 12px;
   color: var(--color-text-placeholder);
 }
 

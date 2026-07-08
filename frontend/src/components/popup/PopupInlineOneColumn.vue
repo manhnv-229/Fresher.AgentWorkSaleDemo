@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
             title="Đóng"
             @click="handleBackdropClick"
           >
-            <IconX :size="18" stroke-width="1.5" aria-hidden="true" />
+            <IconX :size="24" stroke-width="1.5" aria-hidden="true" />
           </button>
         </header>
 
@@ -119,7 +119,6 @@ onBeforeUnmount(() => {
 .popup {
   width: fit-content;
   max-width: calc(100vw - 48px);
-  min-width: 460px;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 12px;

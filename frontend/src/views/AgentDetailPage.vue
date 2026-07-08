@@ -228,7 +228,7 @@ async function submitSaveWithStatus(status: string) {
 <template>
   <div class="content-panel agent-detail-panel">
     <div v-if="isLoading" class="loading-row">
-      <IconLoader2 :size="20" class="spin" stroke-width="1.5" aria-hidden="true" />
+      <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải chi tiết agent...</span>
     </div>
     <div v-else-if="error" class="message message--error">{{ error }}</div>
