@@ -111,8 +111,8 @@ async function submit() {
                 :title="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
                 @click="showCurrentPassword = !showCurrentPassword"
               >
-                <IconEyeOff v-if="showCurrentPassword" :size="20" stroke-width="1.5" aria-hidden="true" />
-                <IconEye v-else :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconEyeOff v-if="showCurrentPassword" :size="24" stroke-width="1.5" aria-hidden="true" />
+                <IconEye v-else :size="24" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
           </TextBoxTopLabel>
@@ -139,8 +139,8 @@ async function submit() {
                 :title="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
                 @click="showNewPassword = !showNewPassword"
               >
-                <IconEyeOff v-if="showNewPassword" :size="20" stroke-width="1.5" aria-hidden="true" />
-                <IconEye v-else :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconEyeOff v-if="showNewPassword" :size="24" stroke-width="1.5" aria-hidden="true" />
+                <IconEye v-else :size="24" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
           </TextBoxTopLabel>

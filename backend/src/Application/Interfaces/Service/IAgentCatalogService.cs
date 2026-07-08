@@ -16,6 +16,10 @@ public interface IAgentCatalogService
         AgentListFilters filters,
         CancellationToken cancellationToken);
 
+    Task<ServiceResult<PagedResult<AgentListItem>>> GetExternalAgentsPagedAsync(
+        AgentListFilters filters,
+        CancellationToken cancellationToken);
+
     Task<ServiceResult<AgentDetailItem>> GetInternalAgentDetailAsync(
         Guid agentId,
         CancellationToken cancellationToken);

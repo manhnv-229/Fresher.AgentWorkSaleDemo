@@ -854,13 +854,13 @@ function ensureItemOwner(item: ActiveItem): boolean {
         <aside class="knowledge-tree">
           <div class="knowledge-tree__nav">
             <button class="knowledge-tree__nav-btn" type="button" title="Lên trên (↑)" :disabled="!canGoUp" @click="goUp">
-              <IconArrowUp :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconArrowUp :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="knowledge-tree__nav-btn" type="button" title="Quay lại (←)" :disabled="!canGoBack" @click="goBack">
-              <IconArrowLeft :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconArrowLeft :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="knowledge-tree__nav-btn" type="button" title="Đi tiếp (→)" :disabled="!canGoForward" @click="goForward">
-              <IconArrowRight :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconArrowRight :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
           <p class="knowledge-section-title">Thư mục</p>
@@ -892,17 +892,17 @@ function ensureItemOwner(item: ActiveItem): boolean {
             <span class="knowledge-actions">
               <span class="knowledge-overflow-wrap">
                 <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('folder-' + folder.id, $event)">
-                  <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
+                  <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
                 </button>
                 <div v-if="openOverflowMenuId === 'folder-' + folder.id" class="knowledge-overflow-menu" @click.stop>
                   <button type="button" :disabled="!isFolderOwner(folder)" @click="openRename({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+                  <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
                   </button>
                   <button type="button" :disabled="!isFolderOwner(folder)" @click="openMove({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+                  <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
                   </button>
                   <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFolderOwner(folder)" @click="openDelete({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
+                  <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
                   </button>
                 </div>
               </span>
@@ -925,23 +925,23 @@ function ensureItemOwner(item: ActiveItem): boolean {
             <span class="knowledge-actions">
               <span class="knowledge-overflow-wrap">
                 <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('file-' + file.id, $event)">
-                  <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
+                  <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
                 </button>
                 <div v-if="openOverflowMenuId === 'file-' + file.id" class="knowledge-overflow-menu" @click.stop>
                   <button type="button" :disabled="!isFileOwner(file)" @click="downloadFile(file); openOverflowMenuId = null">
-                  <IconDownload :size="20" stroke-width="1.5" aria-hidden="true" /> Tải xuống
+                  <IconDownload :size="24" stroke-width="1.5" aria-hidden="true" /> Tải xuống
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openContentView(file); openOverflowMenuId = null">
-                  <IconEye :size="20" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
+                  <IconEye :size="24" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openRename({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+                  <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openMove({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+                  <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
                   </button>
                   <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFileOwner(file)" @click="openDelete({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
+                  <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
                   </button>
                 </div>
               </span>
@@ -974,30 +974,30 @@ function ensureItemOwner(item: ActiveItem): boolean {
     >
       <template v-if="contextMenu.item.type === 'file'">
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="downloadFile(contextMenu.item.item); closeContextMenu()">
-          <IconDownload :size="20" stroke-width="1.5" aria-hidden="true" /> Tải xuống
+          <IconDownload :size="24" stroke-width="1.5" aria-hidden="true" /> Tải xuống
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openContentView(contextMenu.item.item); closeContextMenu()">
-          <IconEye :size="20" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
+          <IconEye :size="24" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
-          <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+          <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
-          <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+          <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
         </button>
         <button type="button" class="knowledge-context-menu--danger" :disabled="!isFileOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
-          <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
+          <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
         </button>
       </template>
       <template v-else>
         <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
-          <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+          <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
         </button>
         <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
-          <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+          <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
         </button>
         <button type="button" class="knowledge-context-menu--danger" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
-          <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
+          <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
         </button>
       </template>
     </div>

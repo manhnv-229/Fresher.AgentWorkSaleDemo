@@ -81,7 +81,7 @@ const emit = defineEmits<{
         :disabled="isLoadingAgent"
         @click="emit('beginEdit')"
       >
-        <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" />
         Sửa
       </BaseButton>
       <div v-if="isAgentDetailRoute" class="agent-header__menu">
@@ -93,7 +93,7 @@ const emit = defineEmits<{
           aria-haspopup="menu"
           @click="emit('toggleAgentMenu')"
         >
-          <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
+          <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
         </button>
         <div v-if="isAgentMenuOpen && canToggleAgentStatus" class="agent-header__menu-panel" role="menu">
           <button

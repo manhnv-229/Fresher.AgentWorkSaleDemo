@@ -15,7 +15,7 @@ public sealed class AgentQueryRepository(IDbConnectionFactory connectionFactory)
         CancellationToken cancellationToken)
     {
         return GetAgentsPagedAsync(
-            "scope = 'Internal'",
+            "agents.scope = 'Internal'",
             new DynamicParameters(),
             filters,
             cancellationToken);
@@ -30,10 +30,22 @@ public sealed class AgentQueryRepository(IDbConnectionFactory connectionFactory)
         parameters.Add("TenantId", tenantId);
 
         return GetAgentsPagedAsync(
-            "scope = 'Tenant' AND tenant_id = @TenantId",
+            "agents.scope = 'Tenant' AND agents.tenant_id = @TenantId",
             parameters,
             filters,
             cancellationToken);
+    }
+
+    public Task<PagedResult<AgentListRow>> GetExternalAgentsPagedAsync(
+        AgentQueryFilters filters,
+        CancellationToken cancellationToken)
+    {
+        return GetAgentsPagedAsync(
+            "agents.scope = 'Tenant'",
+            new DynamicParameters(),
+            filters,
+            cancellationToken,
+            includeTenantColumns: true);
     }
 
     public async Task<AgentDetailRow?> GetInternalAgentDetailByIdAsync(
@@ -80,21 +92,30 @@ public sealed class AgentQueryRepository(IDbConnectionFactory connectionFactory)
         string scopeClause,
         DynamicParameters parameters,
         AgentQueryFilters filters,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeTenantColumns = false)
     {
+        var selectTenantColumns = includeTenantColumns
+            ? ", agents.tenant_id AS TenantId, tenants.name AS TenantName"
+            : string.Empty;
+        var joinTenantClause = includeTenantColumns
+            ? "LEFT JOIN tenants ON tenants.id = agents.tenant_id"
+            : string.Empty;
         var filterClause = BuildFilterClause(filters, parameters);
         var sql = $$"""
-            SELECT id, code, name, description, icon, role, scope, status
+            SELECT agents.id, agents.code, agents.name, agents.description, agents.icon, agents.role, agents.scope, agents.status{{selectTenantColumns}}
             FROM agents
+            {{joinTenantClause}}
             WHERE {{scopeClause}}
-              AND deleted_at IS NULL{{filterClause}}
-            ORDER BY name
+              AND agents.deleted_at IS NULL{{filterClause}}
+            ORDER BY agents.name
             LIMIT @PageSize OFFSET @Offset;
 
             SELECT COUNT(*)
             FROM agents
+            {{joinTenantClause}}
             WHERE {{scopeClause}}
-              AND deleted_at IS NULL{{filterClause}};
+              AND agents.deleted_at IS NULL{{filterClause}};
             """;
 
         parameters.Add("PageSize", filters.PageSize);

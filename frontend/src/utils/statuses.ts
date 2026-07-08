@@ -7,7 +7,7 @@ export const AGENT_STATUSES: StatusOption[] = [
   { value: 'Draft', label: 'Nháp' },
   { value: 'Active', label: 'Hoạt động' },
   { value: 'Published', label: 'Đã phát hành' },
-  { value: 'Inactive', label: 'Ngừng hoạt động' }
+  { value: 'Inactive', label: 'Dừng' }
 ];
 
 export const MEMBER_STATUSES: StatusOption[] = [
@@ -27,7 +27,7 @@ const AGENT_STATUS_LABELS: Record<string, string> = {
   Draft: 'Nháp',
   Active: 'Hoạt động',
   Published: 'Đã phát hành',
-  Inactive: 'Ngừng hoạt động',
+  Inactive: 'Dừng',
   Deleted: 'Đã xóa',
   Publish: 'Đã phát hành'
 };

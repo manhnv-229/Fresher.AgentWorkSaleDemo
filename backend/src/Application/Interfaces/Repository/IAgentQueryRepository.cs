@@ -14,6 +14,10 @@ public interface IAgentQueryRepository
         AgentQueryFilters filters,
         CancellationToken cancellationToken);
 
+    Task<PagedResult<AgentListRow>> GetExternalAgentsPagedAsync(
+        AgentQueryFilters filters,
+        CancellationToken cancellationToken);
+
     Task<AgentDetailRow?> GetInternalAgentDetailByIdAsync(
         Guid agentId,
         CancellationToken cancellationToken);

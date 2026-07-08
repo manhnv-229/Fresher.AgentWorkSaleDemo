@@ -20,6 +20,7 @@ export {
   createTenantAgent,
   deleteInternalAgent,
   deleteTenantAgent,
+  getExternalAgents,
   getInternalAgentDetail,
   getInternalAgents,
   getTenantAgentDetail,

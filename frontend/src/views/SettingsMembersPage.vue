@@ -2,6 +2,8 @@
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/buttons/BaseButton.vue';
+import IconButton from '../components/buttons/IconButton.vue';
+import DropdownList from '../components/dropdown/DropdownList.vue';
 import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
 import PaginationFooter from '../components/tables/PaginationFooter.vue';
 import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
@@ -206,15 +208,20 @@ async function handleSaveJobPosition() {
         :disabled="isLoading"
         clearable
       />
-      <select v-model="selectedStatus" class="toolbar__status-filter" :disabled="isLoading">
-        <option v-for="option in STATUS_OPTIONS" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
+      <DropdownList
+        v-model="selectedStatus"
+        class="toolbar__status-filter"
+        label="Lọc theo trạng thái"
+        label-position="hidden"
+        placeholder="Tất cả"
+        aria-label="Lọc theo trạng thái"
+        :options="STATUS_OPTIONS"
+        :disabled="isLoading"
+      />
       <div class="toolbar__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
+        <IconButton ariaLabel="Tải lại danh sách nhân viên" title="Tải lại danh sách nhân viên" variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
           <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
-        </BaseButton>
+        </IconButton>
       </div>
     </div>
 
@@ -356,19 +363,8 @@ async function handleSaveJobPosition() {
 
 .toolbar__status-filter {
   flex: 0 1 240px;
-  height: var(--field-height);
-  padding: 0 var(--field-padding-x);
-  border: 1px solid var(--color-border);
-  border-radius: var(--field-radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  outline: none;
-  cursor: pointer;
-}
-
-.toolbar__status-filter:focus {
-  border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
+  width: 240px;
+  min-width: 0;
 }
 
 .toolbar__actions {

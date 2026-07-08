@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/buttons/BaseButton.vue';
+import IconButton from '../components/buttons/IconButton.vue';
+import DropdownList from '../components/dropdown/DropdownList.vue';
 import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
 import Dialog from '../components/dialog/Dialog.vue';
 import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
@@ -16,7 +18,7 @@ import { ApiError } from '../api/http';
 import { useAgentList, useInternalAgents } from '../composables/useAgentList';
 import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
 import { hasMaxLength, isRequired } from '../utils/validators';
-import { IconLoader2, IconDotsVertical, IconPlus } from '@tabler/icons-vue';
+import { IconDotsVertical, IconEdit, IconEye, IconLoader2, IconPlus, IconRefresh, IconTrashX } from '@tabler/icons-vue';
 
 const router = useRouter();
 const filters = useAgentList();
@@ -244,15 +246,19 @@ onBeforeUnmount(() => {
       label="Tìm kiếm agent"
       clearable
     />
-    <label class="filter-select">
-      <span class="sr-only">Lọc theo trạng thái</span>
-      <select v-model="filters.statusFilter.value" aria-label="Lọc theo trạng thái">
-        <option v-for="option in withAllOption(AGENT_STATUSES)" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
-    </label>
+    <DropdownList
+      v-model="filters.statusFilter.value"
+      class="filter-select"
+      label="Lọc theo trạng thái"
+      label-position="hidden"
+      placeholder="Tất cả"
+      aria-label="Lọc theo trạng thái"
+      :options="withAllOption(AGENT_STATUSES)"
+    />
     <div class="filter-bar__actions">
+      <IconButton ariaLabel="Tải lại danh sách agent nội bộ" title="Tải lại danh sách agent nội bộ" variant="secondary" type="button" :disabled="isLoading" @click="refresh">
+        <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
+      </IconButton>
       <BaseButton type="button" :disabled="Boolean(error)" @click="openCreateModal">
         <IconPlus :size="24" stroke-width="1.5" aria-hidden="true" />
         Thêm mới
@@ -281,16 +287,19 @@ onBeforeUnmount(() => {
           <div class="agent-card__actions" @click.stop>
             <div class="card-menu-wrapper">
               <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
-                <IconDotsVertical :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconDotsVertical :size="24" stroke-width="1.5" aria-hidden="true" />
               </button>
               <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">
+                  <IconEye :size="16" stroke-width="1.5" aria-hidden="true" />
                   Xem chi tiết
                 </button>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'edit', $event)">
+                  <IconEdit :size="16" stroke-width="1.5" aria-hidden="true" />
                   Sửa
                 </button>
                 <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardAction(agent, 'delete', $event)">
+                  <IconTrashX :size="16" stroke-width="1.5" aria-hidden="true" />
                   Xóa
                 </button>
               </div>
@@ -304,7 +313,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="agent-meta__row">
             <dt>Trạng thái</dt>
-            <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
+            <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--danger': agent.status === 'Inactive', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
           </div>
         </dl>
       </div>

@@ -469,6 +469,32 @@
   height: var(--icon-size-md);
 }
 
+.dialog__close svg,
+.popup__close svg,
+.toast__close svg,
+.notification__close svg,
+.inline-notification__close svg,
+.pagination__icon-button svg,
+.field__action svg,
+.split-button__icon svg,
+.combobox__icon-button svg,
+.combobox__tag-remove svg,
+.combobox__hidden-tag svg,
+.combobox__option-check,
+.picker-field__action svg,
+.picker__nav svg,
+.picker__footer svg,
+.data-table__toolbar-actions svg,
+.data-table__search svg,
+.data-table__dropdown-filter svg,
+.data-table__header-button svg,
+.data-table__column-filter-trigger svg,
+.data-table__row-action svg,
+.calendar-panel__nav-button svg {
+  width: 20px;
+  height: 20px;
+}
+
 .split-button {
   display: inline-flex;
   align-items: stretch;
@@ -1196,6 +1222,12 @@
   grid-template-columns: minmax(240px, 360px) 220px auto;
 }
 
+.filter-select {
+  flex: 0 0 240px;
+  width: 240px;
+  min-width: 0;
+}
+
 .filter-bar__actions {
   justify-content: flex-end;
   gap: 8px;
@@ -1456,13 +1488,15 @@
 
 .agent-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+  align-items: stretch;
 }
 
 .agent-card {
   display: flex;
   gap: 16px;
+  min-width: 0;
   padding: 16px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1554,12 +1588,17 @@
   width: 100%;
   min-height: 32px;
   align-items: center;
+  gap: 8px;
   padding: 0 12px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: var(--color-text);
   text-align: left;
+}
+
+.card-menu__item svg {
+  flex: 0 0 16px;
 }
 
 .card-menu__item:hover {

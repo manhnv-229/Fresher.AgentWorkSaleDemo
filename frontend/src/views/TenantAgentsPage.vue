@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/buttons/BaseButton.vue';
+import IconButton from '../components/buttons/IconButton.vue';
 import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
 import Dialog from '../components/dialog/Dialog.vue';
 import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
@@ -12,7 +13,7 @@ import { useAgentList, useTenantAgents } from '../composables/useAgentList';
 import { useTenantSelection } from '../composables/useTenantSelection';
 import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
 import { hasMaxLength, isRequired } from '../utils/validators';
-import { IconLoader2, IconDotsVertical, IconPlus } from '@tabler/icons-vue';
+import { IconDotsVertical, IconEdit, IconEye, IconLoader2, IconPlus, IconRefresh, IconTrashX } from '@tabler/icons-vue';
 
 const props = defineProps<{ tenantId: string }>();
 const router = useRouter();
@@ -83,7 +84,7 @@ const {
   ]
 );
 
-const selectedTenant = computed(() => tenants.value.find(t => t.id === props.tenantId) ?? null);
+const selectedTenant = computed(() => tenants.value.find((tenant) => tenant.id === props.tenantId) ?? null);
 
 const avatarOptions = [
   { id: 'mint', label: 'Mint', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
@@ -92,11 +93,12 @@ const avatarOptions = [
   { id: 'ocean', label: 'Ocean', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
   { id: 'violet', label: 'Violet', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
-const isCreateDirty = computed(() =>
-  createName.value.trim() !== ''
-  || createRole.value.trim() !== ''
-  || createDescription.value.trim() !== ''
-  || createIcon.value !== 'mint'
+const isCreateDirty = computed(
+  () =>
+    createName.value.trim() !== ''
+    || createRole.value.trim() !== ''
+    || createDescription.value.trim() !== ''
+    || createIcon.value !== 'mint'
 );
 
 onMounted(async () => {
@@ -113,15 +115,20 @@ watch(() => props.tenantId, (id) => {
 watch(
   loadMoreTrigger,
   (element, _, onCleanup) => {
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
-    const observer = new IntersectionObserver(entries => {
-      if (entries.some(entry => entry.isIntersecting)) {
-        void loadMore();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadMore();
+        }
+      },
+      {
+        rootMargin: '240px 0px'
       }
-    }, {
-      rootMargin: '240px 0px'
-    });
+    );
 
     observer.observe(element);
     onCleanup(() => observer.disconnect());
@@ -130,7 +137,7 @@ watch(
 );
 
 function avatarStyle(icon: string | null | undefined) {
-  const option = avatarOptions.find(o => o.id === icon) ?? avatarOptions[0];
+  const option = avatarOptions.find((item) => item.id === icon) ?? avatarOptions[0];
   return { background: option.accent };
 }
 
@@ -215,9 +222,13 @@ async function submitCreate() {
       router.push({ name: 'login' });
       return;
     }
-    applyCreateApiError(err, {
-      validation_error: FORM_ERROR
-    }, 'Không tạo được agent cho đơn vị.');
+    applyCreateApiError(
+      err,
+      {
+        validation_error: FORM_ERROR
+      },
+      'Không tạo được agent cho đơn vị.'
+    );
   } finally {
     isSaving.value = false;
   }
@@ -229,7 +240,9 @@ function closeDeleteModal() {
 }
 
 async function confirmDelete() {
-  if (!agentToDelete.value) return;
+  if (!agentToDelete.value) {
+    return;
+  }
 
   isDeleting.value = true;
   try {
@@ -269,6 +282,9 @@ onBeforeUnmount(() => {
       </select>
     </label>
     <div class="filter-bar__actions">
+      <IconButton ariaLabel="Tải lại danh sách agent bên ngoài" title="Tải lại danh sách agent bên ngoài" variant="secondary" type="button" :disabled="isLoading || !selectedTenant" @click="refresh">
+        <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
+      </IconButton>
       <BaseButton type="button" :disabled="!selectedTenant || Boolean(error)" @click="openCreateModal">
         <IconPlus :size="24" stroke-width="1.5" aria-hidden="true" />
         Thêm mới
@@ -301,16 +317,19 @@ onBeforeUnmount(() => {
           <div class="agent-card__actions" @click.stop>
             <div class="card-menu-wrapper">
               <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
-                <IconDotsVertical :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconDotsVertical :size="24" stroke-width="1.5" aria-hidden="true" />
               </button>
               <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">
+                  <IconEye :size="16" stroke-width="1.5" aria-hidden="true" />
                   Xem chi tiết
                 </button>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'edit', $event)">
+                  <IconEdit :size="16" stroke-width="1.5" aria-hidden="true" />
                   Sửa
                 </button>
                 <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardAction(agent, 'delete', $event)">
+                  <IconTrashX :size="16" stroke-width="1.5" aria-hidden="true" />
                   Xóa
                 </button>
               </div>
@@ -324,7 +343,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="agent-meta__row">
             <dt>Trạng thái</dt>
-            <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
+            <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--danger': agent.status === 'Inactive', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
           </div>
         </dl>
       </div>

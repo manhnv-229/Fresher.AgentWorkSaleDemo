@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
             title="Đóng"
             @click="handleBackdropClick"
           >
-            <IconX :size="24" stroke-width="1.5" aria-hidden="true" />
+            <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
         </header>
 

@@ -11,12 +11,15 @@ export interface TenantSummary {
 
 export interface AgentSummary {
   id: string;
+  code?: string;
   name: string;
   description?: string | null;
   icon?: string | null;
   role: string;
   scope: 'Internal' | 'Tenant';
   status: string;
+  tenantId?: string | null;
+  tenantName?: string | null;
 }
 
 export interface AgentDetail {
@@ -69,6 +72,10 @@ export function getTenants(): Promise<TenantSummary[]> {
 
 export function getInternalAgents(filters: AgentListFilters = {}): Promise<PagedResult<AgentSummary>> {
   return apiRequest<PagedResult<AgentSummary>>({ url: buildAgentListPath('/api/admin/agents/internal', filters), requiresAuth: true });
+}
+
+export function getExternalAgents(filters: AgentListFilters = {}): Promise<PagedResult<AgentSummary>> {
+  return apiRequest<PagedResult<AgentSummary>>({ url: buildAgentListPath('/api/admin/agents/external', filters), requiresAuth: true });
 }
 
 export function getInternalAgentDetail(agentId: string): Promise<AgentDetail> {

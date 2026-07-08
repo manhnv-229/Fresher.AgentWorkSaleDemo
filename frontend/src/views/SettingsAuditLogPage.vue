@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/buttons/BaseButton.vue';
+import IconButton from '../components/buttons/IconButton.vue';
 import ComboboxMultiple from '../components/combobox/ComboboxMultiple.vue';
 import ComboboxSingle from '../components/combobox/ComboboxSingle.vue';
 import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
@@ -32,6 +33,17 @@ const currentPage = ref(1);
 const pageSize = ref<number>(PAGE_SIZE_OPTIONS[0]);
 const auditActionOptions = ref<ComboboxOption[]>([]);
 const auditTargetOptions = ref<ComboboxOption[]>([]);
+const timePresetOptions = [
+  { value: '', label: 'Tất cả' },
+  { value: 'today', label: 'Hôm nay' },
+  { value: 'yesterday', label: 'Hôm qua' },
+  { value: 'this_week', label: 'Tuần này' },
+  { value: 'last_week', label: 'Tuần trước' },
+  { value: 'this_month', label: 'Tháng này' },
+  { value: 'last_month', label: 'Tháng trước' },
+  { value: 'this_year', label: 'Năm nay' },
+  { value: 'last_year', label: 'Năm trước' }
+];
 
 const hasActiveMenuFilters = computed(() =>
   selectedTimePreset.value !== '' || selectedActions.value.length > 0 || selectedTargetType.value !== ''
@@ -262,9 +274,9 @@ function formatAuditLogOptionLabel(value: string) {
           </button>
       </div>
       <div class="audit-log-toolbar__actions">
-        <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
+        <IconButton ariaLabel="Tải lại nhật ký hoạt động" title="Tải lại nhật ký hoạt động" variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
           <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
-        </BaseButton>
+        </IconButton>
       </div>
     </div>
 
@@ -326,17 +338,13 @@ function formatAuditLogOptionLabel(value: string) {
     <div class="audit-log-filter-popup">
       <div class="filter-menu__section">
         <p class="filter-menu__label">Thời gian</p>
-        <select v-model="selectedTimePreset" class="filter-select">
-          <option value="">Tất cả</option>
-          <option value="today">Hôm nay</option>
-          <option value="yesterday">Hôm qua</option>
-          <option value="this_week">Tuần này</option>
-          <option value="last_week">Tuần trước</option>
-          <option value="this_month">Tháng này</option>
-          <option value="last_month">Tháng trước</option>
-          <option value="this_year">Năm nay</option>
-          <option value="last_year">Năm trước</option>
-        </select>
+        <ComboboxSingle
+          v-model="selectedTimePreset"
+          class="audit-log-filter-popup__combobox"
+          placeholder="Tất cả"
+          aria-label="Thời gian"
+          :options="timePresetOptions"
+        />
       </div>
 
       <div class="filter-menu__section">
@@ -464,20 +472,6 @@ function formatAuditLogOptionLabel(value: string) {
 
 .filter-select {
   width: 100%;
-  height: var(--field-height);
-  padding: 0 var(--field-padding-x);
-  border: 1px solid var(--color-border);
-  border-radius: var(--field-radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 13px;
-  outline: none;
-  cursor: pointer;
-}
-
-.filter-select:focus {
-  border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
 }
 
 .audit-log-filter-popup {

@@ -132,6 +132,32 @@ public sealed class AgentCatalogService(
     }
 
     /// <summary>
+    /// Lấy danh sách toàn bộ agent thuộc scope tenant để quản trị viên quản lý tập trung.
+    /// </summary>
+    public async Task<ServiceResult<PagedResult<AgentListItem>>> GetExternalAgentsPagedAsync(
+        AgentListFilters filters,
+        CancellationToken cancellationToken)
+    {
+        if (!TryCreateQueryFilters(filters, out var queryFilters))
+        {
+            return ServiceResult<PagedResult<AgentListItem>>.Failure(
+                AgentErrorCodes.ValidationError,
+                "Status filter is invalid.");
+        }
+
+        var pagedResult = await agentQueryRepository.GetExternalAgentsPagedAsync(queryFilters, cancellationToken);
+        var items = pagedResult.Items.Select(agent => mapper.Map<AgentListItem>(agent)).ToList();
+        var result = new PagedResult<AgentListItem>(
+            items,
+            pagedResult.Page,
+            pagedResult.PageSize,
+            pagedResult.TotalCount,
+            pagedResult.TotalPages);
+
+        return ServiceResult<PagedResult<AgentListItem>>.Success(result);
+    }
+
+    /// <summary>
     /// Lấy thông tin chi tiết của agent nội bộ.
     /// </summary>
     public async Task<ServiceResult<AgentDetailItem>> GetInternalAgentDetailAsync(

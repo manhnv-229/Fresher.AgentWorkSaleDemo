@@ -718,19 +718,19 @@ function closePopupTopTwoColumns() {
             <p class="test-page__group-label">IconButton</p>
             <div class="test-page__actions">
               <IconButton ariaLabel="Thêm mới" title="Thêm mới">
-                <IconPlus :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconPlus :size="24" stroke-width="1.5" aria-hidden="true" />
               </IconButton>
               <IconButton ariaLabel="Tải lại" title="Tải lại" variant="secondary">
-                <IconRefresh :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconRefresh :size="24" stroke-width="1.5" aria-hidden="true" />
               </IconButton>
               <IconButton ariaLabel="Lọc" title="Lọc" variant="secondary">
-                <IconFilter :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconFilter :size="24" stroke-width="1.5" aria-hidden="true" />
               </IconButton>
               <IconButton ariaLabel="Xóa" title="Xóa" variant="danger">
-                <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" />
               </IconButton>
               <IconButton ariaLabel="Khác" title="Khác" variant="secondary">
-                <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
               </IconButton>
             </div>
           </div>
@@ -758,7 +758,7 @@ function closePopupTopTwoColumns() {
                     aria-label="Mở menu"
                     @click="openContextMenuFromButton"
                   >
-                    <IconDotsVertical :size="20" stroke-width="1.5" aria-hidden="true" />
+                    <IconDotsVertical :size="24" stroke-width="1.5" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
@@ -767,7 +767,7 @@ function closePopupTopTwoColumns() {
                     @click="openContextMenuFromButton"
                   >
                     <span>Menu</span>
-                    <IconChevronDown :size="20" stroke-width="1.5" aria-hidden="true" />
+                    <IconChevronDown :size="24" stroke-width="1.5" aria-hidden="true" />
                   </button>
                 </div>
               </div>

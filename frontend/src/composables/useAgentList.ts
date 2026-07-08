@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import {
+  getExternalAgents,
   getInternalAgents,
   getTenantAgents,
   type AgentListFilters,
@@ -11,7 +12,7 @@ import { ApiError } from '../api/http';
 
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
-type AgentListScope = 'internal' | 'tenant';
+type AgentListScope = 'internal' | 'tenant' | 'external';
 
 interface AgentListCacheEntry {
   items: AgentSummary[];
@@ -311,6 +312,21 @@ export function useInternalAgents(filters: ReturnType<typeof useAgentList>) {
           page
         }),
       emptyMessage: 'Không tải được danh sách agent nội bộ.'
+    },
+    filters
+  );
+}
+
+export function useExternalAgents(filters: ReturnType<typeof useAgentList>) {
+  return createAgentListController(
+    {
+      scope: 'external',
+      fetchPage: (page, listFilters) =>
+        getExternalAgents({
+          ...listFilters,
+          page
+        }),
+      emptyMessage: 'Không tải được danh sách agent bên ngoài.'
     },
     filters
   );

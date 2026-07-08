@@ -34,11 +34,13 @@ const emit = defineEmits<{
   <Teleport to="body">
     <div v-if="open" class="dialog-backdrop" role="presentation" @click.self="emit('cancel')">
       <section class="dialog" role="dialog" aria-modal="true" :aria-label="title">
-        <button type="button" class="dialog__close" aria-label="Đóng" @click="emit('cancel')">
-          <IconX :size="24" stroke-width="1.5" aria-hidden="true" />
-        </button>
+        <div class="dialog__header">
+          <h2 class="dialog__title">{{ title }}</h2>
 
-        <h2 class="dialog__title">{{ title }}</h2>
+          <button type="button" class="dialog__close" aria-label="Đóng" @click="emit('cancel')">
+            <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
+          </button>
+        </div>
 
         <p class="dialog__description">
           {{ description }}
@@ -84,15 +86,20 @@ const emit = defineEmits<{
   min-width: 320px;
 }
 
+.dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 .dialog__close {
-  position: absolute;
-  top: 24px;
-  right: 24px;
   width: 40px;
   height: 40px;
   border: 0;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
   color: var(--color-text-subtle);
   cursor: pointer;
@@ -101,12 +108,12 @@ const emit = defineEmits<{
 }
 
 .dialog__close:hover {
-  background: rgba(15, 23, 42, 0.06);
+  background: transparent;
   color: var(--color-text);
 }
 
 .dialog__title {
-  margin: 0 0 16px;
+  margin: 0;
   font-size: var(--font-size-h3);
   line-height: var(--line-height-h3);
   font-weight: 700;

@@ -42,10 +42,10 @@ defineEmits<{
     role="status"
   >
     <div class="inline-notification__icon-wrap" aria-hidden="true">
-      <IconCircleCheck v-if="tone === 'success'" class="inline-notification__icon" :size="24" stroke-width="1.5" />
-      <IconAlertCircle v-else-if="tone === 'error'" class="inline-notification__icon" :size="24" stroke-width="1.5" />
-      <IconAlertTriangle v-else-if="tone === 'warning'" class="inline-notification__icon" :size="24" stroke-width="1.5" />
-      <IconInfoCircle v-else class="inline-notification__icon" :size="24" stroke-width="1.5" />
+      <IconCircleCheck v-if="tone === 'success'" class="inline-notification__icon" :size="20" stroke-width="1.5" />
+      <IconAlertCircle v-else-if="tone === 'error'" class="inline-notification__icon" :size="20" stroke-width="1.5" />
+      <IconAlertTriangle v-else-if="tone === 'warning'" class="inline-notification__icon" :size="20" stroke-width="1.5" />
+      <IconInfoCircle v-else class="inline-notification__icon" :size="20" stroke-width="1.5" />
     </div>
 
     <div class="inline-notification__content">
