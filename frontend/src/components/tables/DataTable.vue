@@ -578,7 +578,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
     <div class="data-table__toolbar">
       <div v-if="!isAllRowsSelected" class="data-table__toolbar-start">
         <label class="data-table__search" aria-label="Tìm kiếm dữ liệu">
-          <IconSearch :size="16" stroke-width="1.5" aria-hidden="true" />
+          <IconSearch :size="20" stroke-width="1.5" aria-hidden="true" />
           <input
             v-model="searchValue"
             type="text"
@@ -609,7 +609,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
               ariaLabel="Thêm thao tác hàng loạt"
               @click="openBulkOverflowMenu"
             >
-              <IconDots :size="16" stroke-width="1.5" aria-hidden="true" />
+              <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
             </IconButton>
           </div>
         </div>
@@ -634,7 +634,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
                   {{ option.label }}
                 </option>
               </select>
-              <IconChevronDown :size="16" stroke-width="1.5" aria-hidden="true" />
+              <IconChevronDown :size="20" stroke-width="1.5" aria-hidden="true" />
             </label>
           </div>
         </template>
@@ -664,7 +664,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
             ariaLabel="Thêm thao tác hàng loạt"
             @click="openBulkOverflowMenu"
           >
-            <IconDots :size="16" stroke-width="1.5" aria-hidden="true" />
+            <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
           </IconButton>
         </div>
       </div>
@@ -680,7 +680,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
             :ariaLabel="action.label"
             @click="handleToolbarAction(action.id)"
           >
-            <component :is="action.icon" :size="16" stroke-width="1.5" aria-hidden="true" />
+            <component :is="action.icon" :size="20" stroke-width="1.5" aria-hidden="true" />
           </IconButton>
         </div>
       </template>
@@ -723,7 +723,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
                     <span class="data-table__header-label">
                       <IconPin
                         v-if="pinnedColumnKeys.includes(column.key)"
-                        :size="14"
+                        :size="20"
                         stroke-width="1.5"
                         aria-hidden="true"
                       />
@@ -732,17 +732,17 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
                     <span class="data-table__header-meta">
                       <IconChevronUp
                         v-if="getColumnSortDirection(column.key) === 'asc'"
-                        :size="14"
+                        :size="20"
                         stroke-width="1.5"
                         aria-hidden="true"
                       />
                       <IconChevronDown
                         v-else-if="getColumnSortDirection(column.key) === 'desc'"
-                        :size="14"
+                        :size="20"
                         stroke-width="1.5"
                         aria-hidden="true"
                       />
-                      <IconChevronDown v-else :size="14" stroke-width="1.5" aria-hidden="true" />
+                      <IconChevronDown v-else :size="20" stroke-width="1.5" aria-hidden="true" />
                     </span>
                   </button>
 
@@ -754,7 +754,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
                     :title="`Lọc cột ${column.label}`"
                     @click.stop="openColumnFilter(column, $event)"
                   >
-                    <IconFilter :size="14" stroke-width="1.5" aria-hidden="true" />
+                    <IconFilter :size="20" stroke-width="1.5" aria-hidden="true" />
                   </button>
                 </div>
               </th>
@@ -798,7 +798,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
                     :title="action.label"
                     @click.stop="handleInlineRowAction(action.id, row)"
                   >
-                    <component :is="action.icon" :size="16" stroke-width="1.5" aria-hidden="true" />
+                    <component :is="action.icon" :size="20" stroke-width="1.5" aria-hidden="true" />
                   </button>
                   <button
                     v-if="getRowActions(row).length > 3"
@@ -807,7 +807,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
                     title="Thêm thao tác"
                     @click.stop="openRowActionMenu(row, $event)"
                   >
-                    <IconDots :size="16" stroke-width="1.5" aria-hidden="true" />
+                    <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
                   </button>
                 </div>
               </td>

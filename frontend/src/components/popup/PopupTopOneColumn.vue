@@ -8,6 +8,11 @@ withDefaults(
     open: boolean;
     title: string;
     description?: string;
+    placement?: 'center' | 'anchored';
+    width?: string;
+    maxWidth?: string;
+    minWidth?: string;
+    panelStyle?: Record<string, string>;
     cancelLabel?: string;
     confirmLabel?: string;
     showCancel?: boolean;
@@ -27,6 +32,11 @@ withDefaults(
   }>(),
   {
     description: '',
+    placement: 'center',
+    width: '',
+    maxWidth: 'calc(100vw - 48px)',
+    minWidth: '',
+    panelStyle: () => ({}),
     cancelLabel: 'Hủy',
     confirmLabel: 'Lưu',
     showCancel: true,
@@ -76,8 +86,28 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="popup-overlay" role="presentation" @click.self="handleBackdropClick">
-      <section class="popup" role="dialog" aria-modal="true" :aria-label="title">
+    <div
+      v-if="open"
+      class="popup-overlay"
+      :class="{ 'popup-overlay--anchored': placement === 'anchored' }"
+      role="presentation"
+      @click.self="handleBackdropClick"
+    >
+      <section
+        class="popup"
+        :class="{ 'popup--anchored': placement === 'anchored' }"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title"
+        :style="[
+          {
+            width: width || undefined,
+            minWidth: minWidth || undefined,
+            maxWidth
+          },
+          panelStyle
+        ]"
+      >
         <header class="popup__header">
           <h2 class="popup__title">{{ title }}</h2>
 
@@ -88,7 +118,7 @@ onBeforeUnmount(() => {
             title="Đóng"
             @click="handleBackdropClick"
           >
-            <IconX :size="18" stroke-width="1.5" aria-hidden="true" />
+            <IconX :size="24" stroke-width="1.5" aria-hidden="true" />
           </button>
         </header>
 
@@ -97,14 +127,16 @@ onBeforeUnmount(() => {
             <slot />
           </div>
 
-          <footer v-if="showCancel || showConfirm" class="popup__footer">
-            <BaseButton v-if="showCancel" variant="secondary" type="button" :disabled="cancelDisabled" @click="handleCancel">
-              {{ cancelLabel }}
-            </BaseButton>
+          <footer v-if="$slots.footer || showCancel || showConfirm" class="popup__footer">
+            <slot name="footer">
+              <BaseButton v-if="showCancel" variant="secondary" type="button" :disabled="cancelDisabled" @click="handleCancel">
+                {{ cancelLabel }}
+              </BaseButton>
 
-            <BaseButton v-if="showConfirm" :variant="confirmVariant" type="submit" :disabled="confirmDisabled">
-              {{ confirmLabel }}
-            </BaseButton>
+              <BaseButton v-if="showConfirm" :variant="confirmVariant" type="submit" :disabled="confirmDisabled">
+                {{ confirmLabel }}
+              </BaseButton>
+            </slot>
           </footer>
         </form>
       </section>
@@ -124,15 +156,25 @@ onBeforeUnmount(() => {
   background: rgba(24, 24, 27, 0.42);
 }
 
+.popup-overlay--anchored {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0;
+  background: transparent;
+}
+
 .popup {
   width: fit-content;
   max-width: calc(100vw - 48px);
-  min-width: 600px;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 12px;
   background: var(--color-surface);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 16px 40px rgba(15, 23, 42, 0.16);
+}
+
+.popup--anchored {
+  box-shadow: var(--shadow-card);
 }
 
 .popup__header {
@@ -185,12 +227,13 @@ onBeforeUnmount(() => {
   height: 56px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   padding: 0 24px;
   border-top: 1px solid var(--color-border);
   border-radius: 0 0 12px 12px;
   background: var(--color-surface-muted);
+  width: 100%;
 }
 
 .popup__body :deep(.popup-form) {

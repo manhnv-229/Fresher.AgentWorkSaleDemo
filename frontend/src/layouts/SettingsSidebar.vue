@@ -7,7 +7,8 @@ import {
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
   IconPasswordUser,
-  IconUserPlus
+  IconUserPlus,
+  IconHistory
 } from '@tabler/icons-vue';
 
 const props = defineProps<{
@@ -39,7 +40,7 @@ const items = computed(() => [
     label: 'Nhật ký hoạt động',
     to: { name: 'settings-audit-log' as const },
     isActive: props.activeRouteName === 'settings-audit-log',
-    icon: IconClock
+    icon: IconHistory
   }
 ]);
 </script>
@@ -54,7 +55,7 @@ const items = computed(() => [
             :class="{ 'scope-link--active': item.isActive }"
             :to="item.to"
           >
-            <component :is="item.icon" :size="16" stroke-width="1.5" aria-hidden="true" />
+            <component :is="item.icon" :size="20" stroke-width="1.5" aria-hidden="true" />
             <span>{{ item.label }}</span>
           </RouterLink>
         </div>
@@ -70,8 +71,8 @@ const items = computed(() => [
         :title="props.isCollapsed ? 'Mở rộng sidebar thiết lập' : 'Thu gọn sidebar thiết lập'"
         @click="emit('toggleSidebar')"
       >
-        <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="16" stroke-width="1.5" aria-hidden="true" />
-        <IconLayoutSidebarLeftCollapse v-else :size="16" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftCollapse v-else :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </aside>

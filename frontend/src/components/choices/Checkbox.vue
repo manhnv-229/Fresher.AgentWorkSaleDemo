@@ -61,13 +61,13 @@ watch(
       <IconMinus
         v-if="isIndeterminate"
         class="choice__icon"
-        :size="12"
+        :size="20"
         stroke-width="1.5"
       />
       <IconCheck
         v-else-if="isSelected"
         class="choice__icon"
-        :size="12"
+        :size="20"
         stroke-width="1.5"
       />
     </span>

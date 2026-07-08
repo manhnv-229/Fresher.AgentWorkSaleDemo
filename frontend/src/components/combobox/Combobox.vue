@@ -10,6 +10,11 @@ export type ComboboxOption = {
   disabled?: boolean;
 };
 
+export type ComboboxLoadResult = {
+  options: ComboboxOption[];
+  hasMore: boolean;
+};
+
 defineOptions({
   inheritAttrs: false
 });
@@ -33,6 +38,9 @@ const props = withDefaults(
     state?: 'normal' | 'hover' | 'focus' | 'disabled' | 'error' | 'loading';
     noResultsText?: string;
     loadingText?: string;
+    loadOnDemand?: boolean;
+    pageSize?: number;
+    loadOptions?: (params: { query: string; page: number; pageSize: number }) => Promise<ComboboxLoadResult>;
   }>(),
   {
     placeholder: 'Chọn giá trị',
@@ -47,7 +55,9 @@ const props = withDefaults(
     ariaLabel: '',
     state: 'normal',
     noResultsText: 'Không có kết quả',
-    loadingText: 'Đang tải...'
+    loadingText: 'Đang tải...',
+    loadOnDemand: false,
+    pageSize: 20
   }
 );
 
@@ -71,6 +81,16 @@ const isHiddenTagsOpen = ref(false);
 const query = ref('');
 const activeIndex = ref(-1);
 const selectionOrder = ref<string[]>([]);
+const menuRef = ref<HTMLElement | null>(null);
+const visibleTagCount = ref(0);
+const remoteOptions = ref<ComboboxOption[]>([]);
+const remotePage = ref(0);
+const remoteHasMore = ref(true);
+const remoteQuery = ref('');
+const remoteLoading = ref(false);
+const remoteRequestToken = ref(0);
+const tagMeasureCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+let resizeObserver: ResizeObserver | null = null;
 
 const inputId = computed(() => props.id || (attrs.id as string | undefined) || props.name || 'combobox');
 const listboxId = computed(() => `${inputId.value}-listbox`);
@@ -79,22 +99,23 @@ const hintId = computed(() => `${inputId.value}-hint`);
 const hasLabel = computed(() => props.labelPosition !== 'none' && Boolean(props.label));
 const wrapperClass = computed(() => attrs.class);
 const isDisabled = computed(() => props.disabled || props.state === 'disabled');
-const isLoading = computed(() => props.loading || props.state === 'loading');
+const isLoading = computed(() => props.loading || props.state === 'loading' || remoteLoading.value);
 const isHoverState = computed(() => props.state === 'hover');
 const isFocusState = computed(() => props.state === 'focus');
 const isInvalidState = computed(() => Boolean(props.error) || props.state === 'error');
 const isVisualFocused = computed(() => isFocused.value || isFocusState.value || isOpen.value);
 const modelValues = computed(() => (Array.isArray(model.value) ? model.value : model.value ? [model.value] : []));
-const selectedOptions = computed(() => props.options.filter((option) => modelValues.value.includes(option.value)));
+const availableOptions = computed(() => (props.loadOnDemand ? remoteOptions.value : props.options));
+const selectedOptions = computed(() => availableOptions.value.filter((option) => modelValues.value.includes(option.value)));
 const selectedOrderedOptions = computed(() =>
   selectionOrder.value
-    .map((value) => props.options.find((option) => option.value === value))
+    .map((value) => availableOptions.value.find((option) => option.value === value))
     .filter((option): option is ComboboxOption => Boolean(option))
 );
-const hiddenTags = computed(() => (props.multiple ? selectedOrderedOptions.value.slice(0, -2) : []));
+const recentTags = computed(() => (props.multiple ? selectedOrderedOptions.value.slice(-2) : []));
 const expandedTags = computed(() => (props.multiple ? selectedOrderedOptions.value : []));
-const visibleTags = computed(() => (props.multiple ? selectedOrderedOptions.value.slice(-2) : []));
-const hiddenTagCount = computed(() => hiddenTags.value.length);
+const visibleTags = computed(() => (props.multiple ? recentTags.value.slice(0, Math.max(1, visibleTagCount.value)) : []));
+const hiddenTagCount = computed(() => (props.multiple ? Math.max(0, selectedOrderedOptions.value.length - visibleTags.value.length) : 0));
 const selectedSingleOption = computed(() => (!props.multiple ? selectedOptions.value[0] : undefined));
 const inputDisplayValue = computed(() => {
   if (props.multiple || isOpen.value || query.value) {
@@ -104,13 +125,17 @@ const inputDisplayValue = computed(() => {
   return selectedSingleOption.value?.label || '';
 });
 const filteredOptions = computed(() => {
+  if (props.loadOnDemand) {
+    return availableOptions.value;
+  }
+
   const normalizedQuery = query.value.trim().toLowerCase();
 
   if (!normalizedQuery) {
-    return props.options;
+    return availableOptions.value;
   }
 
-  return props.options.filter((option) => {
+  return availableOptions.value.filter((option) => {
     const label = option.label.toLowerCase();
     const description = option.description?.toLowerCase() || '';
     return label.includes(normalizedQuery) || description.includes(normalizedQuery);
@@ -145,6 +170,146 @@ const fieldClasses = computed(() => [
 
 function isSelected(value: string) {
   return modelValues.value.includes(value);
+}
+
+function getTagFont() {
+  const tagElement = rootRef.value?.querySelector('.combobox__tag') as HTMLElement | null;
+  const computedStyle = tagElement ? window.getComputedStyle(tagElement) : undefined;
+  const fontStyle = computedStyle?.fontStyle || 'normal';
+  const fontVariant = computedStyle?.fontVariant || 'normal';
+  const fontWeight = computedStyle?.fontWeight || '500';
+  const fontSize = computedStyle?.fontSize || '12px';
+  const fontFamily = computedStyle?.fontFamily || 'inherit';
+  return `${fontStyle} ${fontVariant} ${fontWeight} ${fontSize} ${fontFamily}`;
+}
+
+function measureTagWidth(label: string) {
+  if (!tagMeasureCanvas) {
+    return label.length * 8 + 30;
+  }
+
+  const context = tagMeasureCanvas.getContext('2d');
+  if (!context) {
+    return label.length * 8 + 30;
+  }
+
+  context.font = getTagFont();
+  const textWidth = Math.ceil(context.measureText(label).width);
+  return textWidth + 30;
+}
+
+function updateVisibleTagCount() {
+  if (!props.multiple) {
+    visibleTagCount.value = 0;
+    return;
+  }
+
+  const recent = recentTags.value;
+  if (recent.length === 0) {
+    visibleTagCount.value = 0;
+    return;
+  }
+
+  if (recent.length === 1) {
+    visibleTagCount.value = 1;
+    return;
+  }
+
+  const control = rootRef.value?.querySelector('.combobox__control') as HTMLElement | null;
+  if (!control) {
+    visibleTagCount.value = 1;
+    return;
+  }
+
+  const controlStyle = window.getComputedStyle(control);
+  const paddingLeft = Number.parseFloat(controlStyle.paddingLeft || '0') || 0;
+  const paddingRight = Number.parseFloat(controlStyle.paddingRight || '0') || 0;
+  const columnGap = Number.parseFloat(controlStyle.columnGap || controlStyle.gap || '4') || 4;
+  const innerWidth = control.getBoundingClientRect().width - paddingLeft - paddingRight;
+  const inputMinWidth = 24;
+  const buttonWidth = 16;
+  const buttonGap = props.split ? columnGap + buttonWidth + columnGap + buttonWidth : columnGap + buttonWidth;
+  const reservedWidth = inputMinWidth + buttonGap + columnGap;
+  const availableTagWidth = Math.max(0, innerWidth - reservedWidth);
+
+  const firstWidth = measureTagWidth(recent[0].label);
+  const secondWidth = measureTagWidth(recent[1].label);
+
+  if (firstWidth + columnGap + secondWidth <= availableTagWidth) {
+    visibleTagCount.value = 2;
+    return;
+  }
+
+  visibleTagCount.value = 1;
+}
+
+function scheduleUpdateVisibleTagCount() {
+  if (!props.multiple) {
+    return;
+  }
+
+  void nextTick(updateVisibleTagCount);
+}
+
+function mergeOptions(base: ComboboxOption[], next: ComboboxOption[]) {
+  const seen = new Set(base.map((option) => option.value));
+  return [...base, ...next.filter((option) => !seen.has(option.value))];
+}
+
+async function loadRemoteOptions(nextQuery = remoteQuery.value, nextPage = 1, replace = false) {
+  if (!props.loadOnDemand) {
+    return;
+  }
+
+  if (typeof props.loadOptions !== 'function') {
+    remoteOptions.value = replace ? props.options.slice(0, props.pageSize) : props.options;
+    remotePage.value = replace ? 1 : remotePage.value;
+    remoteHasMore.value = props.options.length >= props.pageSize;
+    return;
+  }
+
+  const token = ++remoteRequestToken.value;
+  remoteLoading.value = true;
+
+  try {
+    const result = await props.loadOptions({
+      query: nextQuery,
+      page: nextPage,
+      pageSize: props.pageSize
+    });
+
+    if (token !== remoteRequestToken.value) {
+      return;
+    }
+
+    remoteQuery.value = nextQuery;
+    remotePage.value = nextPage;
+    remoteHasMore.value = result.hasMore;
+    remoteOptions.value = replace ? result.options : mergeOptions(remoteOptions.value, result.options);
+  } finally {
+    if (token === remoteRequestToken.value) {
+      remoteLoading.value = false;
+    }
+  }
+}
+
+async function refreshRemoteOptions() {
+  if (!props.loadOnDemand) {
+    return;
+  }
+
+  remoteOptions.value = [];
+  remotePage.value = 0;
+  remoteHasMore.value = true;
+  await loadRemoteOptions(query.value.trim(), 1, true);
+}
+
+async function loadMoreRemoteOptions() {
+  if (!props.loadOnDemand || remoteLoading.value || !remoteHasMore.value) {
+    return;
+  }
+
+  await loadRemoteOptions(remoteQuery.value, remotePage.value + 1, false);
 }
 
 function firstEnabledIndex(startIndex = 0) {
@@ -191,6 +356,16 @@ function openCombobox() {
   isOpen.value = true;
   setActiveToSelected();
   emit('open');
+
+  if (
+    props.loadOnDemand &&
+    !remoteLoading.value &&
+    (remoteOptions.value.length === 0 || remoteQuery.value !== query.value.trim())
+  ) {
+    void refreshRemoteOptions();
+  }
+
+  scheduleUpdateVisibleTagCount();
 }
 
 function closeCombobox() {
@@ -245,6 +420,7 @@ function removeValue(value: string) {
   model.value = nextValue;
   emit('change', nextValue);
   isHiddenTagsOpen.value = false;
+  scheduleUpdateVisibleTagCount();
   focusInput();
 }
 
@@ -264,6 +440,10 @@ function handleInput(event: Event) {
   emit('search', query.value);
   openCombobox();
   activeIndex.value = firstEnabledIndex();
+
+  if (props.loadOnDemand) {
+    void refreshRemoteOptions();
+  }
 }
 
 function handleFocus(event: FocusEvent) {
@@ -337,6 +517,22 @@ function handleDocumentPointerDown(event: PointerEvent) {
   isHiddenTagsOpen.value = false;
 }
 
+function handleMenuScroll() {
+  if (!props.loadOnDemand || remoteLoading.value || !remoteHasMore.value) {
+    return;
+  }
+
+  const menu = menuRef.value;
+  if (!menu) {
+    return;
+  }
+
+  const distanceToBottom = menu.scrollHeight - menu.scrollTop - menu.clientHeight;
+  if (distanceToBottom <= 24) {
+    void loadMoreRemoteOptions();
+  }
+}
+
 watch(
   modelValues,
   (values) => {
@@ -348,6 +544,8 @@ watch(
     if (selectionOrder.value.length <= 2) {
       isHiddenTagsOpen.value = false;
     }
+
+    scheduleUpdateVisibleTagCount();
   },
   { immediate: true }
 );
@@ -356,12 +554,41 @@ watch(filteredOptions, () => {
   activeIndex.value = firstEnabledIndex();
 });
 
+watch(
+  () => props.options,
+  (nextOptions) => {
+    if (!props.loadOnDemand) {
+      remoteOptions.value = nextOptions;
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+watch(
+  () => [selectedOrderedOptions.value.map((option) => option.value).join('|'), props.split, props.multiple].join('|'),
+  () => {
+    scheduleUpdateVisibleTagCount();
+  },
+  { immediate: true }
+);
+
 onMounted(() => {
   document.addEventListener('pointerdown', handleDocumentPointerDown);
+  window.addEventListener('resize', scheduleUpdateVisibleTagCount);
+  if (typeof ResizeObserver !== 'undefined' && rootRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      scheduleUpdateVisibleTagCount();
+    });
+    resizeObserver.observe(rootRef.value);
+  }
+  scheduleUpdateVisibleTagCount();
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown);
+  window.removeEventListener('resize', scheduleUpdateVisibleTagCount);
+  resizeObserver?.disconnect();
+  resizeObserver = null;
 });
 </script>
 
@@ -406,7 +633,7 @@ onBeforeUnmount(() => {
                 @keydown.enter.stop.prevent="removeValue(option.value)"
                 @keydown.space.stop.prevent="removeValue(option.value)"
               >
-                <IconX :size="12" stroke-width="1.8" aria-hidden="true" />
+                <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
             </span>
           </div>
@@ -459,12 +686,12 @@ onBeforeUnmount(() => {
             @keydown.enter.stop.prevent="handleToggleClick"
             @keydown.space.stop.prevent="handleToggleClick"
           >
-            <IconLoader2 v-if="isLoading" :size="16" stroke="1.5" class="spin" aria-hidden="true" />
+            <IconLoader2 v-if="isLoading" :size="20" stroke="1.5" class="spin" aria-hidden="true" />
             <IconChevronDown
               v-else
               class="combobox__chevron"
               :class="{ 'combobox__chevron--open': isOpen }"
-              :size="16"
+              :size="20"
               stroke-width="1.5"
               aria-hidden="true"
             />
@@ -483,17 +710,19 @@ onBeforeUnmount(() => {
             @keydown.space.stop.prevent="removeValue(option.value)"
           >
             <span>{{ option.label }}</span>
-            <IconX :size="12" stroke-width="1.8" aria-hidden="true" />
+            <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
         </div>
 
         <ul
           v-if="isOpen"
+          ref="menuRef"
           :id="listboxId"
           class="combobox__menu"
           role="listbox"
           :aria-labelledby="inputId"
           :aria-multiselectable="multiple ? 'true' : undefined"
+          @scroll.passive="handleMenuScroll"
         >
           <li v-if="isLoading" class="combobox__empty">{{ loadingText }}</li>
           <li v-else-if="!filteredOptions.length" class="combobox__empty">{{ noResultsText }}</li>
@@ -522,7 +751,7 @@ onBeforeUnmount(() => {
             <IconCheck
               v-if="isSelected(option.value)"
               class="combobox__option-check"
-              :size="16"
+              :size="20"
               stroke="1.5"
               aria-hidden="true"
             />
@@ -656,7 +885,6 @@ onBeforeUnmount(() => {
   display: inline-flex;
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 120px;
   height: 24px;
   align-items: center;
   gap: 4px;

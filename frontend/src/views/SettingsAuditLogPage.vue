@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/buttons/BaseButton.vue';
+import ComboboxMultiple from '../components/combobox/ComboboxMultiple.vue';
+import ComboboxSingle from '../components/combobox/ComboboxSingle.vue';
+import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
 import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
 import PaginationFooter from '../components/tables/PaginationFooter.vue';
 import { getAuditLogs, type AuditLogEntry, type AuditLogFilters } from '../api';
@@ -9,7 +12,8 @@ import type { PagedResult } from '../api/agents';
 import { ApiError } from '../api/http';
 import { formatDate } from '../utils/formatDate';
 import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
-import { IconFilter, IconLoader2, IconRefresh, IconX } from '@tabler/icons-vue';
+import type { ComboboxOption } from '../components/combobox/Combobox.vue';
+import { IconFilter, IconLoader2, IconRefresh } from '@tabler/icons-vue';
 
 const router = useRouter();
 const entries = ref<PagedResult<AuditLogEntry>>({ items: [], page: 1, pageSize: PAGE_SIZE_OPTIONS[0], totalCount: 0, totalPages: 0 });
@@ -18,80 +22,48 @@ const error = ref('');
 
 const searchText = ref('');
 const isMenuOpen = ref(false);
-const isActionComboOpen = ref(false);
-const isTargetComboOpen = ref(false);
-const menuRef = ref<HTMLElement | null>(null);
-const actionComboRef = ref<HTMLElement | null>(null);
-const targetComboRef = ref<HTMLElement | null>(null);
-
-const TIME_PRESETS = [
-  { value: 'today', label: 'Hôm nay' },
-  { value: 'yesterday', label: 'Hôm qua' },
-  { value: 'this_week', label: 'Tuần này' },
-  { value: 'last_week', label: 'Tuần trước' },
-  { value: 'this_month', label: 'Tháng này' },
-  { value: 'last_month', label: 'Tháng trước' },
-  { value: 'this_year', label: 'Năm nay' },
-  { value: 'last_year', label: 'Năm trước' }
-];
-
-const AVAILABLE_ACTIONS = [
-  'login',
-  'password_change',
-  'user.lock',
-  'user.unlock',
-  'agent.create',
-  'agent.update',
-  'agent.delete'
-];
-
-const AVAILABLE_TARGET_TYPES = [
-  'User',
-  'Agent'
-];
+const filterButtonRef = ref<HTMLElement | null>(null);
+const filterPopupStyle = ref<Record<string, string>>({});
 
 const selectedTimePreset = ref('');
 const selectedActions = ref<string[]>([]);
-const selectedTargetTypes = ref<string[]>([]);
+const selectedTargetType = ref('');
 const currentPage = ref(1);
 const pageSize = ref<number>(PAGE_SIZE_OPTIONS[0]);
+const auditActionOptions = ref<ComboboxOption[]>([]);
+const auditTargetOptions = ref<ComboboxOption[]>([]);
 
 const hasActiveMenuFilters = computed(() =>
-  selectedTimePreset.value !== '' || selectedActions.value.length > 0 || selectedTargetTypes.value.length > 0
+  selectedTimePreset.value !== '' || selectedActions.value.length > 0 || selectedTargetType.value !== ''
 );
 
 const activeFilterCount = computed(() => {
   let count = 0;
   if (selectedTimePreset.value) count++;
   count += selectedActions.value.length;
-  count += selectedTargetTypes.value.length;
+  if (selectedTargetType.value) count++;
   return count;
 });
 
 onMounted(() => {
-  void loadEntries();
-  document.addEventListener('click', handleClickOutside);
+  void loadAuditLogData();
+  window.addEventListener('resize', handleWindowResize);
+  window.addEventListener('scroll', handleWindowResize, true);
 });
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('resize', handleWindowResize);
+  window.removeEventListener('scroll', handleWindowResize, true);
 });
 
-function handleClickOutside(e: MouseEvent) {
-  const target = e.target as Node;
-  if (menuRef.value && !menuRef.value.contains(target)) {
-    isMenuOpen.value = false;
-    isActionComboOpen.value = false;
-    isTargetComboOpen.value = false;
-  } else {
-    if (actionComboRef.value && !actionComboRef.value.contains(target)) {
-      isActionComboOpen.value = false;
-    }
-    if (targetComboRef.value && !targetComboRef.value.contains(target)) {
-      isTargetComboOpen.value = false;
-    }
+watch(isMenuOpen, async (open) => {
+  if (!open) {
+    return;
   }
-}
+
+  await nextTick();
+  updatePopupPosition();
+});
 
 async function loadEntries(filters?: AuditLogFilters) {
   isLoading.value = true;
@@ -120,6 +92,13 @@ async function loadEntries(filters?: AuditLogFilters) {
   }
 }
 
+async function loadAuditLogData() {
+  await Promise.all([
+    loadEntries(),
+    loadAuditLogFilterOptions()
+  ]);
+}
+
 function applySearch() {
   currentPage.value = 1;
   const filters = buildFilters();
@@ -128,23 +107,19 @@ function applySearch() {
 
 function applyMenuFilters() {
   currentPage.value = 1;
-  isMenuOpen.value = false;
-  isActionComboOpen.value = false;
-  isTargetComboOpen.value = false;
   const filters = buildFilters();
   void loadEntries(filters);
+  closeMenu();
 }
 
 function resetMenuFilters() {
   currentPage.value = 1;
   selectedTimePreset.value = '';
   selectedActions.value = [];
-  selectedTargetTypes.value = [];
-  isMenuOpen.value = false;
-  isActionComboOpen.value = false;
-  isTargetComboOpen.value = false;
+  selectedTargetType.value = '';
   const filters = buildFilters();
   void loadEntries(filters);
+  closeMenu();
 }
 
 watch(pageSize, () => {
@@ -166,51 +141,98 @@ function buildFilters(): AuditLogFilters | undefined {
   if (searchText.value.trim()) filters.search = searchText.value.trim();
   if (selectedTimePreset.value) filters.timePreset = selectedTimePreset.value;
   if (selectedActions.value.length > 0) filters.actions = [...selectedActions.value];
-  if (selectedTargetTypes.value.length > 0) filters.targetTypes = [...selectedTargetTypes.value];
+  if (selectedTargetType.value) filters.targetTypes = [selectedTargetType.value];
   return Object.keys(filters).length > 0 ? filters : undefined;
-}
-
-function toggleAction(action: string) {
-  const idx = selectedActions.value.indexOf(action);
-  if (idx === -1) {
-    selectedActions.value.push(action);
-  } else {
-    selectedActions.value.splice(idx, 1);
-  }
-}
-
-function toggleTargetType(targetType: string) {
-  const idx = selectedTargetTypes.value.indexOf(targetType);
-  if (idx === -1) {
-    selectedTargetTypes.value.push(targetType);
-  } else {
-    selectedTargetTypes.value.splice(idx, 1);
-  }
-}
-
-function getPresetLabel(value: string): string {
-  return TIME_PRESETS.find(p => p.value === value)?.label ?? value;
-}
-
-function getActionLabel(value: string): string {
-  const labels: Record<string, string> = {
-    login: 'Đăng nhập',
-    password_change: 'Đổi mật khẩu',
-    'user.lock': 'Khóa tài khoản',
-    'user.unlock': 'Mở khóa tài khoản',
-    'agent.create': 'Tạo agent',
-    'agent.update': 'Sửa agent',
-    'agent.delete': 'Xóa agent'
-  };
-  return labels[value] ?? value;
-}
-
-function getTargetTypeLabel(value: string): string {
-  return value;
 }
 
 function toggleMenu() {
   isMenuOpen.value = !isMenuOpen.value;
+  if (isMenuOpen.value) {
+    void nextTick(() => updatePopupPosition());
+  }
+}
+
+function closeMenu() {
+  isMenuOpen.value = false;
+  filterPopupStyle.value = {};
+}
+
+function handleWindowResize() {
+  if (!isMenuOpen.value) {
+    return;
+  }
+
+  updatePopupPosition();
+}
+
+function updatePopupPosition() {
+  const button = filterButtonRef.value;
+  if (!button) return;
+
+  const rect = button.getBoundingClientRect();
+  const top = Math.round(rect.bottom + 6);
+  const left = Math.round(rect.right - 260);
+
+  filterPopupStyle.value = {
+    position: 'fixed',
+    top: `${top}px`,
+    left: `${Math.max(16, left)}px`,
+    width: '260px',
+    maxWidth: '260px',
+    zIndex: '1000'
+  };
+}
+
+async function loadAuditLogFilterOptions() {
+  try {
+    const pageSizeForCatalog = 200;
+    const actionMap = new Map<string, string>();
+    const targetMap = new Map<string, string>();
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+      const result = await getAuditLogs({
+        page,
+        pageSize: pageSizeForCatalog
+      });
+
+      totalPages = result.totalPages || 1;
+
+      for (const entry of result.items) {
+        if (entry.action && !actionMap.has(entry.action)) {
+          actionMap.set(entry.action, formatAuditLogOptionLabel(entry.action));
+        }
+
+        if (entry.targetType && !targetMap.has(entry.targetType)) {
+          targetMap.set(entry.targetType, formatAuditLogOptionLabel(entry.targetType));
+        }
+      }
+
+      page += 1;
+    } while (page <= totalPages);
+
+    auditActionOptions.value = [...actionMap.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+
+    auditTargetOptions.value = [...targetMap.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      router.push({ name: 'login' });
+    }
+  }
+}
+
+function formatAuditLogOptionLabel(value: string) {
+  return value
+    .split('.').join(' ')
+    .split('_').join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^./, (char: string) => char.toUpperCase());
 }
 </script>
 
@@ -226,116 +248,29 @@ function toggleMenu() {
         clearable
         @keydown.enter="applySearch"
       />
-      <div class="filter-trigger" ref="menuRef">
+      <div class="filter-trigger">
         <button
+          ref="filterButtonRef"
           class="filter-button"
           :class="{ 'filter-button--active': hasActiveMenuFilters }"
           type="button"
           :disabled="isLoading"
           @click.stop="toggleMenu"
-        >
-          <IconFilter :size="20" stroke-width="1.5" aria-hidden="true" />
-          <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
-        </button>
-
-        <div v-if="isMenuOpen" class="filter-menu">
-          <div class="filter-menu__section">
-            <p class="filter-menu__label">Thời gian</p>
-            <select v-model="selectedTimePreset" class="filter-select">
-              <option value="">Tất cả</option>
-              <option v-for="preset in TIME_PRESETS" :key="preset.value" :value="preset.value">
-                {{ preset.label }}
-              </option>
-            </select>
-          </div>
-
-          <div class="filter-menu__divider"></div>
-
-          <div class="filter-menu__section">
-            <p class="filter-menu__label">Hành động</p>
-            <div class="filter-combo" ref="actionComboRef">
-              <button
-                class="filter-combo__trigger"
-                type="button"
-                @click.stop="isActionComboOpen = !isActionComboOpen"
-              >
-                <span class="filter-combo__value">
-                  {{ selectedActions.length === 0 ? 'Tất cả' : `${selectedActions.length} đã chọn` }}
-                </span>
-                <span class="filter-combo__arrow">▾</span>
-              </button>
-              <div v-if="isActionComboOpen" class="filter-combo__dropdown">
-                <label
-                  v-for="action in AVAILABLE_ACTIONS"
-                  :key="action"
-                  class="filter-combo__option"
-                >
-                  <input
-                    type="checkbox"
-                    :checked="selectedActions.includes(action)"
-                    @change="toggleAction(action)"
-                  />
-                  <span>{{ getActionLabel(action) }}</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div class="filter-menu__divider"></div>
-
-          <div class="filter-menu__section">
-            <p class="filter-menu__label">Đối tượng</p>
-            <div class="filter-combo" ref="targetComboRef">
-              <button
-                class="filter-combo__trigger"
-                type="button"
-                @click.stop="isTargetComboOpen = !isTargetComboOpen"
-              >
-                <span class="filter-combo__value">
-                  {{ selectedTargetTypes.length === 0 ? 'Tất cả' : `${selectedTargetTypes.length} đã chọn` }}
-                </span>
-                <span class="filter-combo__arrow">▾</span>
-              </button>
-              <div v-if="isTargetComboOpen" class="filter-combo__dropdown">
-                <label
-                  v-for="targetType in AVAILABLE_TARGET_TYPES"
-                  :key="targetType"
-                  class="filter-combo__option"
-                >
-                  <input
-                    type="checkbox"
-                    :checked="selectedTargetTypes.includes(targetType)"
-                    @change="toggleTargetType(targetType)"
-                  />
-                  <span>{{ getTargetTypeLabel(targetType) }}</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div class="filter-menu__divider"></div>
-
-          <div class="filter-menu__actions">
-            <BaseButton variant="primary" type="button" @click="applyMenuFilters">
-              Áp dụng
-            </BaseButton>
-            <BaseButton variant="secondary" type="button" @click="resetMenuFilters">
-              <IconX :size="16" stroke-width="1.5" aria-hidden="true" />
-              Đặt lại
-            </BaseButton>
-          </div>
-        </div>
+          >
+            <IconFilter :size="24" stroke-width="1.5" aria-hidden="true" />
+            <span v-if="activeFilterCount > 0" class="filter-badge">{{ activeFilterCount }}</span>
+          </button>
       </div>
       <div class="audit-log-toolbar__actions">
         <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
-          <IconRefresh :size="20" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
+          <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </BaseButton>
       </div>
     </div>
 
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && entries.items.length === 0" class="loading-row">
-      <IconLoader2 :size="20" class="spin" stroke-width="1.5" aria-hidden="true" />
+      <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải nhật ký hoạt động...</span>
     </div>
     <div v-else-if="entries.items.length === 0" class="empty-card empty-card--tight">
@@ -358,7 +293,7 @@ function toggleMenu() {
           <td>{{ formatDate(entry.createdAt) }}</td>
           <td>{{ entry.userName }}</td>
           <td><span class="status-chip">{{ entry.action }}</span></td>
-          <td>{{ entry.targetType ? getTargetTypeLabel(entry.targetType) : '—' }}</td>
+          <td>{{ entry.targetType || '—' }}</td>
           <td>{{ entry.description }}</td>
         </tr>
       </tbody>
@@ -374,6 +309,80 @@ function toggleMenu() {
       @update:pageSize="updatePageSize"
     />
   </div>
+
+  <PopupTopOneColumn
+    :open="isMenuOpen"
+    title="Bộ lọc nhật ký"
+    placement="anchored"
+    :panel-style="filterPopupStyle"
+    width="480px"
+    max-width="480px"
+    min-width="480px"
+    :show-cancel="false"
+    :show-confirm="false"
+    @cancel="closeMenu"
+    @close="closeMenu"
+  >
+    <div class="audit-log-filter-popup">
+      <div class="filter-menu__section">
+        <p class="filter-menu__label">Thời gian</p>
+        <select v-model="selectedTimePreset" class="filter-select">
+          <option value="">Tất cả</option>
+          <option value="today">Hôm nay</option>
+          <option value="yesterday">Hôm qua</option>
+          <option value="this_week">Tuần này</option>
+          <option value="last_week">Tuần trước</option>
+          <option value="this_month">Tháng này</option>
+          <option value="last_month">Tháng trước</option>
+          <option value="this_year">Năm nay</option>
+          <option value="last_year">Năm trước</option>
+        </select>
+      </div>
+
+      <div class="filter-menu__section">
+        <p class="filter-menu__label">Hành động</p>
+        <ComboboxMultiple
+          v-model="selectedActions"
+          class="audit-log-filter-popup__combobox"
+          label="Hành động"
+          label-position="hidden"
+          placeholder="Chọn hành động"
+          aria-label="Hành động"
+          :options="auditActionOptions"
+        />
+      </div>
+
+      <div class="filter-menu__section">
+        <p class="filter-menu__label">Đối tượng</p>
+        <ComboboxSingle
+          v-model="selectedTargetType"
+          class="audit-log-filter-popup__combobox"
+          label="Đối tượng"
+          label-position="hidden"
+          placeholder="Chọn đối tượng"
+          aria-label="Đối tượng"
+          :options="auditTargetOptions"
+        />
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="audit-log-filter-popup__footer-left">
+        <BaseButton class="audit-log-filter-popup__reset" variant="secondary" type="button" @click="resetMenuFilters">
+          Đặt lại
+        </BaseButton>
+      </div>
+
+      <div class="audit-log-filter-popup__footer-right">
+        <BaseButton variant="secondary" type="button" @click="closeMenu">
+          Hủy
+        </BaseButton>
+        <BaseButton variant="primary" type="button" @click="applyMenuFilters">
+          Áp dụng
+        </BaseButton>
+      </div>
+    </template>
+  </PopupTopOneColumn>
 </template>
 
 <style scoped>
@@ -438,19 +447,6 @@ function toggleMenu() {
   text-align: center;
 }
 
-.filter-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  width: 260px;
-  padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
-  z-index: 100;
-}
-
 .filter-menu__section {
   display: flex;
   flex-direction: column;
@@ -464,23 +460,6 @@ function toggleMenu() {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 0.25rem;
-}
-
-.filter-menu__divider {
-  height: 1px;
-  background: var(--color-border);
-  margin: 0.5rem 0;
-}
-
-.filter-menu__actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.filter-menu__actions .button {
-  flex: 1;
-  height: 32px;
-  font-size: 13px;
 }
 
 .filter-select {
@@ -501,66 +480,38 @@ function toggleMenu() {
   box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
 }
 
-.filter-combo {
-  position: relative;
+.audit-log-filter-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
 
-.filter-combo__trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.audit-log-filter-popup__combobox {
   width: 100%;
-  height: var(--field-height);
-  padding: 0 var(--field-padding-x);
-  border: 1px solid var(--color-border);
-  border-radius: var(--field-radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 13px;
-  cursor: pointer;
 }
 
-.filter-combo__trigger:hover {
-  background: var(--color-surface-muted);
-}
-
-.filter-combo__arrow {
-  font-size: 12px;
-  color: var(--color-text-subtle);
-}
-
-.filter-combo__dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  max-height: 180px;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--field-radius);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
-  z-index: 10;
-}
-
-.filter-combo__option {
+.audit-log-filter-popup__footer-left {
   display: flex;
-  align-items: center;
+  justify-content: flex-start;
+}
+
+.audit-log-filter-popup__footer-right {
+  display: flex;
+  justify-content: flex-end;
   gap: 8px;
-  min-height: 32px;
-  padding: 0 12px;
-  font-size: 13px;
-  color: var(--color-text);
-  cursor: pointer;
 }
 
-.filter-combo__option:hover {
+.audit-log-filter-popup__reset {
+  border-color: var(--color-brand);
+  background: var(--color-surface);
+  color: var(--color-brand);
+}
+
+.audit-log-filter-popup__reset:hover {
+  border-color: var(--color-brand);
   background: var(--color-brand-soft);
-}
-
-.filter-combo__option input {
-  margin: 0;
-  accent-color: var(--color-brand);
+  color: var(--color-brand);
 }
 
 </style>

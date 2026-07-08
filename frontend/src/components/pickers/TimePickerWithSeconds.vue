@@ -233,7 +233,7 @@ onBeforeUnmount(() => {
             @mousedown.prevent
             @click="togglePopover"
           >
-            <IconClockHour4 :size="17" stroke-width="1.5" aria-hidden="true" />
+            <IconClockHour4 :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
           <div v-if="showTooltip" class="field__tooltip" role="tooltip">
             {{ error }}
