@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { Eye, EyeOff } from '@lucide/vue';
 import { ref } from 'vue';
-import BaseButton from '../components/BaseButton.vue';
-import BaseInput from '../components/BaseInput.vue';
-import ContentPanel from '../components/ContentPanel.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { useAuth } from '../composables/useAuth';
 import { hasMaxLength, hasMinLength, isRequired } from '../utils/validators';
+import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 
 const { changePassword: submitPasswordChange } = useAuth();
 
@@ -81,15 +80,22 @@ async function submit() {
 </script>
 
 <template>
-  <div class="settings-content-card">
-    <ContentPanel class="settings-form-panel">
+  <section class="settings-password-page">
+    <div class="content-panel settings-password-card">
+      <header class="settings-password-header">
+        <h2 class="settings-password-title">Đổi mật khẩu</h2>
+        <!-- <p class="settings-password-description">Cập nhật mật khẩu đăng nhập cho tài khoản của bạn.</p> -->
+      </header>
+
       <p v-if="notice" class="message">{{ notice }}</p>
-      <form class="create-agent" @submit.prevent="submit">
+
+      <form id="settings-password-form" class="settings-password-form" @submit.prevent="submit">
         <div class="create-agent__group">
           <label class="create-agent__label" for="current-password">Mật khẩu hiện tại</label>
-          <BaseInput
+          <TextBoxTopLabel
             id="current-password"
             v-model="currentPassword"
+            label-position="hidden"
             :type="showCurrentPassword ? 'text' : 'password'"
             autocomplete="current-password"
             placeholder="Nhập mật khẩu hiện tại"
@@ -98,18 +104,26 @@ async function submit() {
             @input="clearFieldError('currentPassword')"
           >
             <template #action>
-              <button class="field__action" type="button" @click="showCurrentPassword = !showCurrentPassword">
-                <EyeOff v-if="showCurrentPassword" :size="16" aria-hidden="true" />
-                <Eye v-else :size="16" aria-hidden="true" />
+              <button
+                class="field__action field__action--plain"
+                type="button"
+                :aria-label="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
+                :title="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
+                @click="showCurrentPassword = !showCurrentPassword"
+              >
+                <IconEyeOff v-if="showCurrentPassword" :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconEye v-else :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
-          </BaseInput>
+          </TextBoxTopLabel>
         </div>
+
         <div class="create-agent__group">
           <label class="create-agent__label" for="new-password">Mật khẩu mới</label>
-          <BaseInput
+          <TextBoxTopLabel
             id="new-password"
             v-model="newPassword"
+            label-position="hidden"
             :type="showNewPassword ? 'text' : 'password'"
             autocomplete="new-password"
             placeholder="Nhập mật khẩu mới"
@@ -118,21 +132,72 @@ async function submit() {
             @input="clearFieldError('newPassword')"
           >
             <template #action>
-              <button class="field__action" type="button" @click="showNewPassword = !showNewPassword">
-                <EyeOff v-if="showNewPassword" :size="16" aria-hidden="true" />
-                <Eye v-else :size="16" aria-hidden="true" />
+              <button
+                class="field__action field__action--plain"
+                type="button"
+                :aria-label="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
+                :title="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
+                @click="showNewPassword = !showNewPassword"
+              >
+                <IconEyeOff v-if="showNewPassword" :size="20" stroke-width="1.5" aria-hidden="true" />
+                <IconEye v-else :size="20" stroke-width="1.5" aria-hidden="true" />
               </button>
             </template>
-          </BaseInput>
-        </div>
-        <p v-if="formError" class="message message--error">{{ formError }}</p>
-        <div class="action-bar">
-          <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">Xóa</BaseButton>
-          <BaseButton type="submit" :disabled="isLoading">
-            {{ isLoading ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
-          </BaseButton>
+          </TextBoxTopLabel>
         </div>
       </form>
-    </ContentPanel>
-  </div>
+
+      <p v-if="formError" class="message message--error">{{ formError }}</p>
+
+      <div class="action-bar">
+        <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">Xóa</BaseButton>
+        <BaseButton type="submit" form="settings-password-form" :disabled="isLoading">
+          {{ isLoading ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
+        </BaseButton>
+      </div>
+    </div>
+  </section>
 </template>
+
+<style scoped>
+.settings-password-page {
+  display: grid;
+  gap: 24px;
+}
+
+.settings-password-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-password-header {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-password-title {
+  margin: 0;
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-h2);
+  font-weight: 700;
+}
+
+.settings-password-description {
+  margin: 0;
+  color: var(--color-text-subtle);
+}
+
+.settings-password-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+</style>

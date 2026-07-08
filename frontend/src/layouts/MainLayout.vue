@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { LoaderCircle, RefreshCw } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import AgentFooter from './AgentFooter.vue';
@@ -23,6 +22,8 @@ const { beginEdit, cancelEdit, saveDraft, saveAndPublish, toggleActivation, isEd
 const sidebarError = ref('');
 const isLoadingTenants = ref(false);
 const isAgentMenuOpen = ref(false);
+const isSidebarCollapsed = ref(false);
+const isSettingsSidebarCollapsed = ref(false);
 
 const isSettingsRoute = computed(() => route.path.startsWith('/settings'));
 const isAgentRoute = computed(() => route.name === 'agent-detail' || route.name === 'agent-knowledge');
@@ -156,6 +157,14 @@ function handlePointerDown(event: PointerEvent) {
   if (target.closest('.agent-header__menu')) return;
   isAgentMenuOpen.value = false;
 }
+
+function toggleSidebar() {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+}
+
+function toggleSettingsSidebar() {
+  isSettingsSidebarCollapsed.value = !isSettingsSidebarCollapsed.value;
+}
 </script>
 
 <template>
@@ -167,7 +176,17 @@ function handlePointerDown(event: PointerEvent) {
     <p class="message">Đang chuyển tới trang đăng nhập...</p>
   </main>
 
-  <section v-else class="workspace" :class="{ 'workspace--settings': isSettingsRoute, 'workspace--agent': isAgentRoute }" aria-labelledby="workspace-title">
+  <section
+    v-else
+    class="workspace"
+    :class="{
+      'workspace--settings': isSettingsRoute,
+      'workspace--agent': isAgentRoute,
+      'workspace--main-sidebar-collapsed': isSidebarCollapsed,
+      'workspace--settings-sidebar-collapsed': isSettingsSidebarCollapsed
+    }"
+    aria-labelledby="workspace-title"
+  >
     <AppHeader
       :is-agent-route="isAgentRoute"
       :is-agent-detail-route="isAgentDetailRoute"
@@ -192,11 +211,18 @@ function handlePointerDown(event: PointerEvent) {
       :tenants="tenants"
       :sidebar-error="sidebarError"
       :is-loading-tenants="isLoadingTenants"
+      :is-collapsed="isSidebarCollapsed"
       @select-tenant="selectTenant"
       @logout="handleLogout"
+      @toggle-sidebar="toggleSidebar"
     />
 
-    <SettingsSidebar v-if="isSettingsRoute" :active-route-name="route.name" />
+    <SettingsSidebar
+      v-if="isSettingsRoute"
+      :active-route-name="route.name"
+      :is-collapsed="isSettingsSidebarCollapsed"
+      @toggle-sidebar="toggleSettingsSidebar"
+    />
 
     <AgentSidebar
       v-if="isAgentRoute"

@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { LoaderCircle, MoreVertical, Plus } from '@lucide/vue';
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import BaseButton from '../components/BaseButton.vue';
-import BaseInput from '../components/BaseInput.vue';
-import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
-import ContentPanel from '../components/ContentPanel.vue';
-import ListToolbar from '../components/ListToolbar.vue';
-import ModalActionShell from '../components/ModalActionShell.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import Dialog from '../components/dialog/Dialog.vue';
+import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import {
   createInternalAgent,
@@ -19,12 +16,14 @@ import { ApiError } from '../api/http';
 import { useAgentList, useInternalAgents } from '../composables/useAgentList';
 import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
 import { hasMaxLength, isRequired } from '../utils/validators';
+import { IconLoader2, IconDotsVertical, IconPlus } from '@tabler/icons-vue';
 
 const router = useRouter();
 const filters = useAgentList();
 const { agents, isLoading, error, loadMore, refresh } = useInternalAgents(filters);
 
 const isCreateModalOpen = ref(false);
+const isUnsavedCreateDialogOpen = ref(false);
 const createName = ref('');
 const createRole = ref('');
 const createDescription = ref('');
@@ -93,6 +92,12 @@ const avatarOptions = [
   { id: 'ocean', label: 'Ocean', accent: 'linear-gradient(135deg, #74c0fc, #1c7ed6)' },
   { id: 'violet', label: 'Violet', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
+const isCreateDirty = computed(() =>
+  createName.value.trim() !== ''
+  || createRole.value.trim() !== ''
+  || createDescription.value.trim() !== ''
+  || createIcon.value !== 'mint'
+);
 
 watch(
   loadMoreTrigger,
@@ -162,6 +167,15 @@ function closeCreateModal() {
   clearCreateErrors();
 }
 
+function requestCloseCreateModal() {
+  if (isCreateDirty.value && !isSaving.value) {
+    isUnsavedCreateDialogOpen.value = true;
+    return;
+  }
+
+  closeCreateModal();
+}
+
 async function submitCreate() {
   clearCreateErrors();
   if (!validateCreateForm()) {
@@ -222,9 +236,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <ListToolbar class="filter-bar">
-    <BaseInput
+  <div class="list-toolbar filter-bar">
+    <TextBoxTopLabel
       v-model="filters.searchText.value"
+      label-position="hidden"
       placeholder="Tìm theo tên, mô tả hoặc vai trò"
       label="Tìm kiếm agent"
       clearable
@@ -239,73 +254,72 @@ onBeforeUnmount(() => {
     </label>
     <div class="filter-bar__actions">
       <BaseButton type="button" :disabled="Boolean(error)" @click="openCreateModal">
-        <Plus :size="18" aria-hidden="true" />
+        <IconPlus :size="24" stroke-width="1.5" aria-hidden="true" />
         Thêm mới
       </BaseButton>
     </div>
-  </ListToolbar>
+  </div>
 
-  <ContentPanel with-pagination>
-    <p v-if="error" class="message message--error">{{ error }}</p>
-    <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
-      <span>Đang tải agent nội bộ...</span>
-    </div>
-    <div v-else-if="agents.items.length === 0" class="empty-card">
-      <h3>{{ filters.hasActiveFilters.value ? 'Không có agent phù hợp' : 'Chưa có agent nội bộ' }}</h3>
-      <p>{{ filters.hasActiveFilters.value ? 'Hãy thử đổi bộ lọc.' : 'Tạo agent đầu tiên để admin dùng riêng.' }}</p>
-    </div>
-    <div v-else class="agent-grid">
-      <article v-for="agent in agents.items" :key="agent.id" class="agent-card" @click="openDetail(agent)">
-        <div class="agent-card__avatar" :style="avatarStyle(agent.icon)" aria-hidden="true"></div>
-        <div class="agent-card__body">
-          <div class="agent-card__top">
-            <div>
-              <h3>{{ agent.name }}</h3>
-              <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
-            </div>
-            <div class="agent-card__actions" @click.stop>
-              <div class="card-menu-wrapper">
-                <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
-                  <MoreVertical :size="16" aria-hidden="true" />
+  <p v-if="error" class="message message--error">{{ error }}</p>
+  <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
+    <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
+    <span>Đang tải agent nội bộ...</span>
+  </div>
+  <div v-else-if="agents.items.length === 0" class="empty-card">
+    <h3>{{ filters.hasActiveFilters.value ? 'Không có agent phù hợp' : 'Chưa có agent nội bộ' }}</h3>
+    <p>{{ filters.hasActiveFilters.value ? 'Hãy thử đổi bộ lọc.' : 'Tạo agent đầu tiên để admin dùng riêng.' }}</p>
+  </div>
+  <div v-else class="agent-grid">
+    <article v-for="agent in agents.items" :key="agent.id" class="agent-card" @click="openDetail(agent)">
+      <div class="agent-card__avatar" :style="avatarStyle(agent.icon)" aria-hidden="true"></div>
+      <div class="agent-card__body">
+        <div class="agent-card__top">
+          <div>
+            <h3>{{ agent.name }}</h3>
+            <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
+          </div>
+          <div class="agent-card__actions" @click.stop>
+            <div class="card-menu-wrapper">
+              <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
+                <IconDotsVertical :size="20" stroke-width="1.5" aria-hidden="true" />
+              </button>
+              <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
+                <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">
+                  Xem chi tiết
                 </button>
-                <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
-                  <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">
-                    Xem chi tiết
-                  </button>
-                  <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'edit', $event)">
-                    Sửa
-                  </button>
-                  <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardAction(agent, 'delete', $event)">
-                    Xóa
-                  </button>
-                </div>
+                <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'edit', $event)">
+                  Sửa
+                </button>
+                <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardAction(agent, 'delete', $event)">
+                  Xóa
+                </button>
               </div>
             </div>
           </div>
-          <dl class="agent-meta">
-            <div class="agent-meta__row">
-              <dt>Vai trò</dt>
-              <dd>{{ agent.role }}</dd>
-            </div>
-            <div class="agent-meta__row">
-              <dt>Trạng thái</dt>
-              <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
-            </div>
-          </dl>
         </div>
-      </article>
-    </div>
-    <div ref="loadMoreTrigger" class="agent-list-sentinel" aria-hidden="true"></div>
-  </ContentPanel>
+        <dl class="agent-meta">
+          <div class="agent-meta__row">
+            <dt>Vai trò</dt>
+            <dd>{{ agent.role }}</dd>
+          </div>
+          <div class="agent-meta__row">
+            <dt>Trạng thái</dt>
+            <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
+          </div>
+        </dl>
+      </div>
+    </article>
+  </div>
+  <div ref="loadMoreTrigger" class="agent-list-sentinel" aria-hidden="true"></div>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isCreateModalOpen"
     title="Tạo agent nội bộ"
-    :busy="isSaving"
     confirm-label="Lưu"
-    busy-label="Đang lưu..."
-    @close="closeCreateModal"
+    cancel-label="Hủy"
+    :confirm-disabled="isSaving"
+    :cancel-disabled="isSaving"
+    @cancel="requestCloseCreateModal"
     @confirm="submitCreate"
   >
     <div class="create-agent">
@@ -327,9 +341,10 @@ onBeforeUnmount(() => {
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="create-name">Tên</label>
-        <BaseInput
+        <TextBoxTopLabel
           id="create-name"
           v-model="createName"
+          label-position="hidden"
           placeholder="Nhập tên"
           :error="createErrors.name"
           @input="clearCreateFieldError('name')"
@@ -361,16 +376,29 @@ onBeforeUnmount(() => {
       </div>
       <p v-if="createFormError" class="message message--error">{{ createFormError }}</p>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 
-  <DeleteConfirmModal
+  <Dialog
     :open="isDeleteModalOpen"
+    title="Xác nhận xóa"
+    description=""
     :busy="isDeleting"
     confirm-label="Xác nhận xóa"
-    @close="closeDeleteModal"
+    confirm-variant="danger"
+    @cancel="closeDeleteModal"
     @confirm="confirmDelete"
   >
     <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
     <p>Hành động này không thể hoàn tác.</p>
-  </DeleteConfirmModal>
+  </Dialog>
+  <Dialog
+    :open="isUnsavedCreateDialogOpen"
+    title="Thoát và không lưu?"
+    description="Nếu bạn thoát, các dữ liệu đang nhập liệu sẽ không được lưu lại."
+    cancel-label="Ở lại"
+    confirm-label="Thoát, không lưu"
+    confirm-variant="danger"
+    @cancel="isUnsavedCreateDialogOpen = false"
+    @confirm="isUnsavedCreateDialogOpen = false; closeCreateModal()"
+  />
 </template>

@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import {
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Download,
-  Eye,
-  FileText,
-  Folder,
-  FolderPlus,
-  LoaderCircle,
-  Move,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Upload
-} from '@lucide/vue';
+  IconArrowLeft,
+  IconArrowRight,
+  IconArrowUp,
+  IconDownload,
+  IconEye,
+  IconFileText,
+  IconFolder,
+  IconFolderPlus,
+  IconLoader2,
+  IconArrowsMove,
+  IconDots,
+  IconEdit,
+  IconTrash,
+  IconUpload
+} from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -39,12 +39,10 @@ import {
   type KnowledgeSearchResponse
 } from '../api';
 import { ApiError } from '../api/http';
-import BaseButton from '../components/BaseButton.vue';
-import BaseInput from '../components/BaseInput.vue';
-import DeleteConfirmModal from '../components/DeleteConfirmModal.vue';
-import ContentPanel from '../components/ContentPanel.vue';
-import ListToolbar from '../components/ListToolbar.vue';
-import ModalActionShell from '../components/ModalActionShell.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import Dialog from '../components/dialog/Dialog.vue';
+import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import KnowledgeTreeNode from '../components/knowledge/KnowledgeTreeNode.vue';
 import { getKnowledgeSearchTextSegments, normalizeKnowledgeSearchText } from '../utils/knowledge-search';
@@ -804,18 +802,19 @@ function ensureItemOwner(item: ActiveItem): boolean {
     </div>
   </header>
 
-  <ContentPanel class="knowledge-panel">
+  <div class="content-panel knowledge-panel">
     <div v-if="isLoading" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+      <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải tri thức agent...</span>
     </div>
     <template v-else>
       <p v-if="error" class="message message--error">{{ error }}</p>
       <p v-if="message" class="message message--success">{{ message }}</p>
 
-      <ListToolbar class="knowledge-toolbar">
-        <BaseInput
+      <div class="list-toolbar knowledge-toolbar">
+        <TextBoxTopLabel
           v-model="searchText"
+          label-position="hidden"
           type="search"
           placeholder="Tìm kiếm tài liệu hoặc thư mục"
           class="knowledge-search"
@@ -824,11 +823,11 @@ function ensureItemOwner(item: ActiveItem): boolean {
         />
         <div class="knowledge-toolbar__actions">
           <BaseButton variant="secondary" type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="openCreateFolder">
-            <FolderPlus :size="16" aria-hidden="true" />
+          <IconFolderPlus :size="24" stroke-width="1.5" aria-hidden="true" />
             Thư mục
           </BaseButton>
           <BaseButton type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="triggerUpload">
-            <Upload :size="16" aria-hidden="true" />
+          <IconUpload :size="24" stroke-width="1.5" aria-hidden="true" />
             Upload
           </BaseButton>
           <input
@@ -839,7 +838,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
             @change="onFileSelected"
           />
         </div>
-      </ListToolbar>
+      </div>
       <div class="knowledge-breadcrumb" v-if="breadcrumb.length">
         <template v-for="(crumb, idx) in breadcrumb" :key="crumb.id">
           <span v-if="idx > 0" class="knowledge-breadcrumb__sep">&gt;</span>
@@ -849,19 +848,19 @@ function ensureItemOwner(item: ActiveItem): boolean {
 
       <div class="knowledge-layout" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
         <div v-if="isDragOver" class="knowledge-dropzone">
-          <Upload :size="32" aria-hidden="true" />
+          <IconUpload :size="32" stroke-width="1.5" aria-hidden="true" />
           <p>Thả file vào đây để upload vào thư mục hiện tại</p>
         </div>
         <aside class="knowledge-tree">
           <div class="knowledge-tree__nav">
             <button class="knowledge-tree__nav-btn" type="button" title="Lên trên (↑)" :disabled="!canGoUp" @click="goUp">
-              <ArrowUp :size="16" aria-hidden="true" />
+              <IconArrowUp :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="knowledge-tree__nav-btn" type="button" title="Quay lại (←)" :disabled="!canGoBack" @click="goBack">
-              <ArrowLeft :size="16" aria-hidden="true" />
+              <IconArrowLeft :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="knowledge-tree__nav-btn" type="button" title="Đi tiếp (→)" :disabled="!canGoForward" @click="goForward">
-              <ArrowRight :size="16" aria-hidden="true" />
+              <IconArrowRight :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
           <p class="knowledge-section-title">Thư mục</p>
@@ -879,7 +878,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
 
           <div v-for="folder in displayedFolders" :key="folder.id" class="knowledge-row knowledge-row--folder" @dblclick="openFolder(folder.id)" @contextmenu="onContextMenu($event, { type: 'folder', item: folder })">
             <span class="knowledge-name">
-              <Folder :size="17" aria-hidden="true" />
+              <IconFolder :size="24" stroke-width="1.5" aria-hidden="true" />
               <span class="knowledge-name__text">
                 <template v-for="(segment, segmentIndex) in getKnowledgeNameSegments(folder.name)" :key="folder.id + '-folder-' + segmentIndex">
                   <mark v-if="segment.highlighted" class="knowledge-search-highlight">{{ segment.text }}</mark>
@@ -893,17 +892,17 @@ function ensureItemOwner(item: ActiveItem): boolean {
             <span class="knowledge-actions">
               <span class="knowledge-overflow-wrap">
                 <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('folder-' + folder.id, $event)">
-                  <MoreHorizontal :size="16" aria-hidden="true" />
+                  <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
                 </button>
                 <div v-if="openOverflowMenuId === 'folder-' + folder.id" class="knowledge-overflow-menu" @click.stop>
                   <button type="button" :disabled="!isFolderOwner(folder)" @click="openRename({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                    <Pencil :size="14" aria-hidden="true" /> Đổi tên
+                  <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
                   </button>
                   <button type="button" :disabled="!isFolderOwner(folder)" @click="openMove({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                    <Move :size="14" aria-hidden="true" /> Di chuyển
+                  <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
                   </button>
                   <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFolderOwner(folder)" @click="openDelete({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                    <Trash2 :size="14" aria-hidden="true" /> Xóa
+                  <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
                   </button>
                 </div>
               </span>
@@ -912,7 +911,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
 
           <div v-for="file in displayedFiles" :key="file.id" class="knowledge-row" @contextmenu="onContextMenu($event, { type: 'file', item: file })">
             <span class="knowledge-name">
-              <FileText :size="17" aria-hidden="true" />
+              <IconFileText :size="24" stroke-width="1.5" aria-hidden="true" />
               <span class="knowledge-name__text">
                 <template v-for="(segment, segmentIndex) in getKnowledgeNameSegments(file.name)" :key="file.id + '-file-' + segmentIndex">
                   <mark v-if="segment.highlighted" class="knowledge-search-highlight">{{ segment.text }}</mark>
@@ -926,23 +925,23 @@ function ensureItemOwner(item: ActiveItem): boolean {
             <span class="knowledge-actions">
               <span class="knowledge-overflow-wrap">
                 <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('file-' + file.id, $event)">
-                  <MoreHorizontal :size="16" aria-hidden="true" />
+                  <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
                 </button>
                 <div v-if="openOverflowMenuId === 'file-' + file.id" class="knowledge-overflow-menu" @click.stop>
                   <button type="button" :disabled="!isFileOwner(file)" @click="downloadFile(file); openOverflowMenuId = null">
-                    <Download :size="14" aria-hidden="true" /> Tải xuống
+                  <IconDownload :size="20" stroke-width="1.5" aria-hidden="true" /> Tải xuống
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openContentView(file); openOverflowMenuId = null">
-                    <Eye :size="14" aria-hidden="true" /> Xem nội dung
+                  <IconEye :size="20" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openRename({ type: 'file', item: file }); openOverflowMenuId = null">
-                    <Pencil :size="14" aria-hidden="true" /> Đổi tên
+                  <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openMove({ type: 'file', item: file }); openOverflowMenuId = null">
-                    <Move :size="14" aria-hidden="true" /> Di chuyển
+                  <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
                   </button>
                   <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFileOwner(file)" @click="openDelete({ type: 'file', item: file }); openOverflowMenuId = null">
-                    <Trash2 :size="14" aria-hidden="true" /> Xóa
+                  <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
                   </button>
                 </div>
               </span>
@@ -950,7 +949,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
           </div>
 
           <div v-if="displayedFolders.length === 0 && displayedFiles.length === 0" class="knowledge-empty">
-            <Folder :size="28" aria-hidden="true" />
+            <IconFolder :size="32" stroke-width="1.5" aria-hidden="true" />
             <template v-if="isSearchActive">
               <p>Không có file phù hợp.</p>
             </template>
@@ -964,7 +963,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
         </section>
       </div>
     </template>
-  </ContentPanel>
+  </div>
 
   <Teleport to="body">
     <div
@@ -975,82 +974,87 @@ function ensureItemOwner(item: ActiveItem): boolean {
     >
       <template v-if="contextMenu.item.type === 'file'">
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="downloadFile(contextMenu.item.item); closeContextMenu()">
-          <Download :size="14" aria-hidden="true" /> Tải xuống
+          <IconDownload :size="20" stroke-width="1.5" aria-hidden="true" /> Tải xuống
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openContentView(contextMenu.item.item); closeContextMenu()">
-          <Eye :size="14" aria-hidden="true" /> Xem nội dung
+          <IconEye :size="20" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
-          <Pencil :size="14" aria-hidden="true" /> Đổi tên
+          <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
-          <Move :size="14" aria-hidden="true" /> Di chuyển
+          <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
         </button>
         <button type="button" class="knowledge-context-menu--danger" :disabled="!isFileOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
-          <Trash2 :size="14" aria-hidden="true" /> Xóa
+          <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
         </button>
       </template>
       <template v-else>
         <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
-          <Pencil :size="14" aria-hidden="true" /> Đổi tên
+          <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
         </button>
         <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
-          <Move :size="14" aria-hidden="true" /> Di chuyển
+          <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
         </button>
         <button type="button" class="knowledge-context-menu--danger" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
-          <Trash2 :size="14" aria-hidden="true" /> Xóa
+          <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
         </button>
       </template>
     </div>
   </Teleport>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isCreateFolderOpen"
     title="Tạo thư mục"
-    :busy="isBusy"
     confirm-label="Tạo"
-    busy-label="Đang xử lý..."
-    @close="closeCreateFolder"
+    cancel-label="Hủy"
+    :confirm-disabled="isBusy"
+    :cancel-disabled="isBusy"
+    @cancel="closeCreateFolder"
     @confirm="submitCreateFolder"
   >
     <div class="knowledge-modal">
-      <BaseInput
+      <TextBoxTopLabel
         v-model="folderName"
+        label-position="hidden"
         placeholder="Tên thư mục"
         :error="createFolderErrors.name"
         @input="clearCreateFolderFieldError('name')"
       />
       <p v-if="createFolderFormError" class="message message--error">{{ createFolderFormError }}</p>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isRenameOpen"
     title="Đổi tên"
-    :busy="isBusy"
     confirm-label="Lưu"
-    busy-label="Đang xử lý..."
-    @close="closeRename"
+    cancel-label="Hủy"
+    :confirm-disabled="isBusy"
+    :cancel-disabled="isBusy"
+    @cancel="closeRename"
     @confirm="submitRename"
   >
     <div class="knowledge-modal">
-      <BaseInput
+      <TextBoxTopLabel
         v-model="renameValue"
+        label-position="hidden"
         placeholder="Tên mới"
         :error="renameErrors.name"
         @input="clearRenameFieldError('name')"
       />
       <p v-if="renameFormError" class="message message--error">{{ renameFormError }}</p>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isMoveOpen"
     title="Di chuyển"
-    :busy="isBusy"
     confirm-label="Di chuyển"
-    busy-label="Đang xử lý..."
-    @close="closeMove"
+    cancel-label="Hủy"
+    :confirm-disabled="isBusy"
+    :cancel-disabled="isBusy"
+    @cancel="closeMove"
     @confirm="submitMove"
   >
     <div class="knowledge-modal">
@@ -1062,26 +1066,28 @@ function ensureItemOwner(item: ActiveItem): boolean {
       </select>
       <p v-if="moveFormError" class="message message--error">{{ moveFormError }}</p>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 
-  <DeleteConfirmModal
+  <Dialog
     :open="isDeleteOpen"
+    title="Xác nhận xóa"
+    description=""
     :busy="isBusy"
     confirm-label="Xóa"
-    @close="isDeleteOpen = false"
+    confirm-variant="danger"
+    @cancel="isDeleteOpen = false"
     @confirm="submitDelete"
   >
     <p>Bạn có chắc chắn muốn xóa <strong>{{ activeItem?.item.name }}</strong>?</p>
-  </DeleteConfirmModal>
+  </Dialog>
 
-  <ModalActionShell
+  <PopupTopOneColumn
     :open="isContentViewOpen"
     title="Xem nội dung"
     confirm-label="Tải xuống"
     cancel-label="Đóng"
-    :busy="false"
     :confirm-disabled="!contentViewFile"
-    @close="closeContentView"
+    @cancel="closeContentView"
     @confirm="contentViewFile ? downloadFile(contentViewFile) : undefined"
   >
     <div class="knowledge-modal knowledge-content-view">
@@ -1091,7 +1097,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
       </div>
       <template v-if="isContentViewLoading">
         <div class="knowledge-content-view__loading">
-          <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+          <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
           <span>Đang tải nội dung...</span>
         </div>
       </template>
@@ -1113,13 +1119,13 @@ function ensureItemOwner(item: ActiveItem): boolean {
       </template>
       <template v-else>
         <div class="knowledge-content-view__fallback">
-          <FileText :size="28" aria-hidden="true" />
+          <IconFileText :size="32" stroke-width="1.5" aria-hidden="true" />
           <p>Loại file này chưa được hỗ trợ xem trước.</p>
           <p>Vui lòng tải xuống để xem nội dung.</p>
         </div>
       </template>
     </div>
-  </ModalActionShell>
+  </PopupTopOneColumn>
 </template>
 
 <style scoped>

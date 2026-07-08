@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Eye, EyeOff } from '@lucide/vue';
-import BaseButton from '../BaseButton.vue';
-import BaseInput from '../BaseInput.vue';
+import BaseButton from '../buttons/BaseButton.vue';
+import TextBoxTopLabel from '../forms/TextBoxTopLabel.vue';
 import { FORM_ERROR, useFormValidation } from '../../composables/useFormValidation';
 import { useAuth } from '../../composables/useAuth';
 import { isEmail, isRequired } from '../../utils/validators';
+import { IconEye, IconEyeOff } from '@tabler/icons-vue';
 
 const email = ref('');
 const password = ref('');
@@ -71,9 +71,10 @@ async function submitLogin() {
     <h1 id="login-title" class="sr-only">Đăng nhập</h1>
 
     <form class="login-form" novalidate @submit.prevent="submitLogin">
-      <BaseInput
+      <TextBoxTopLabel
         v-model="email"
         id="login-email"
+        label-position="hidden"
         name="email"
         autocomplete="username"
         placeholder="Email"
@@ -83,9 +84,10 @@ async function submitLogin() {
         @input="clearFieldError('email')"
       />
 
-      <BaseInput
+      <TextBoxTopLabel
         v-model="password"
         id="login-password"
+        label-position="hidden"
         :type="showPassword ? 'text' : 'password'"
         name="password"
         autocomplete="current-password"
@@ -98,18 +100,18 @@ async function submitLogin() {
       >
         <template #action>
           <button
-            class="field__action"
+            class="field__action field__action--plain"
             type="button"
             :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
             :title="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
             :disabled="isLoading"
             @click="showPassword = !showPassword"
           >
-            <EyeOff v-if="showPassword" :size="18" aria-hidden="true" />
-            <Eye v-else :size="18" aria-hidden="true" />
+            <IconEyeOff v-if="showPassword" :size="24" stroke-width="1.5" aria-hidden="true" />
+            <IconEye v-else :size="24" stroke-width="1.5" aria-hidden="true" />
           </button>
         </template>
-      </BaseInput>
+      </TextBoxTopLabel>
 
       <p v-if="formError" class="message message--error" role="alert">{{ formError }}</p>
 

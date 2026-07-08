@@ -25,7 +25,12 @@ public sealed class TenantCatalogService(
     {
         if (await TryBuildTenantListCacheKeyAsync(cancellationToken) is { } cacheKey)
         {
-            var cachedTenants = await TryGetCachedValueAsync<List<TenantListItem>>(cacheKey, "tenant list", cancellationToken);
+            var cachedTenants = await ApplicationCacheOperations.TryGetAsync<List<TenantListItem>>(
+                distributedCacheService,
+                logger,
+                cacheKey,
+                "tenant list",
+                cancellationToken);
             if (cachedTenants is not null)
             {
                 return ServiceResult<IReadOnlyList<TenantListItem>>.Success(cachedTenants);
@@ -36,7 +41,14 @@ public sealed class TenantCatalogService(
         var result = tenants.Select(tenant => mapper.Map<TenantListItem>(tenant)).ToList();
         if (await TryBuildTenantListCacheKeyAsync(cancellationToken) is { } tenantListCacheKey)
         {
-            await TrySetCachedValueAsync(tenantListCacheKey, result, cachePolicyProvider.TenantListTimeToLive, "tenant list", cancellationToken);
+            await ApplicationCacheOperations.TrySetAsync(
+                distributedCacheService,
+                logger,
+                tenantListCacheKey,
+                result,
+                cachePolicyProvider.TenantListTimeToLive,
+                "tenant list",
+                cancellationToken);
         }
 
         return ServiceResult<IReadOnlyList<TenantListItem>>.Success(result);
@@ -48,7 +60,12 @@ public sealed class TenantCatalogService(
     {
         if (await TryBuildTenantDetailCacheKeyAsync(tenantId, cancellationToken) is { } cacheKey)
         {
-            var cachedTenant = await TryGetCachedValueAsync<TenantDetailItem>(cacheKey, "tenant detail", cancellationToken);
+            var cachedTenant = await ApplicationCacheOperations.TryGetAsync<TenantDetailItem>(
+                distributedCacheService,
+                logger,
+                cacheKey,
+                "tenant detail",
+                cancellationToken);
             if (cachedTenant is not null)
             {
                 return ServiceResult<TenantDetailItem>.Success(cachedTenant);
@@ -66,7 +83,14 @@ public sealed class TenantCatalogService(
         var result = mapper.Map<TenantDetailItem>(tenant);
         if (await TryBuildTenantDetailCacheKeyAsync(tenantId, cancellationToken) is { } tenantDetailCacheKey)
         {
-            await TrySetCachedValueAsync(tenantDetailCacheKey, result, cachePolicyProvider.TenantDetailTimeToLive, "tenant detail", cancellationToken);
+            await ApplicationCacheOperations.TrySetAsync(
+                distributedCacheService,
+                logger,
+                tenantDetailCacheKey,
+                result,
+                cachePolicyProvider.TenantDetailTimeToLive,
+                "tenant detail",
+                cancellationToken);
         }
 
         return ServiceResult<TenantDetailItem>.Success(result);
@@ -167,16 +191,13 @@ public sealed class TenantCatalogService(
     private async Task<string?> TryBuildTenantListCacheKeyAsync(CancellationToken cancellationToken)
     {
         var namespaceKey = ApplicationCacheKeys.TenantListNamespace();
-        try
-        {
-            var version = await cacheVersionService.GetVersionAsync(namespaceKey, cancellationToken);
-            return ApplicationCacheKeys.TenantList(version);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(exception, "Không thể lấy tenant-list cache version.");
-            return null;
-        }
+        var version = await ApplicationCacheOperations.TryGetVersionAsync(
+            cacheVersionService,
+            logger,
+            namespaceKey,
+            "tenant-list",
+            cancellationToken);
+        return version is null ? null : ApplicationCacheKeys.TenantList(version);
     }
 
     /// <summary>
@@ -185,16 +206,13 @@ public sealed class TenantCatalogService(
     private async Task<string?> TryBuildTenantDetailCacheKeyAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         var namespaceKey = ApplicationCacheKeys.TenantDetailNamespace(tenantId);
-        try
-        {
-            var version = await cacheVersionService.GetVersionAsync(namespaceKey, cancellationToken);
-            return ApplicationCacheKeys.TenantDetail(tenantId, version);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(exception, "Không thể lấy tenant-detail cache version cho tenant {TenantId}.", tenantId);
-            return null;
-        }
+        var version = await ApplicationCacheOperations.TryGetVersionAsync(
+            cacheVersionService,
+            logger,
+            namespaceKey,
+            $"tenant-detail cho tenant {tenantId}",
+            cancellationToken);
+        return version is null ? null : ApplicationCacheKeys.TenantDetail(tenantId, version);
     }
 
     /// <summary>
@@ -202,64 +220,17 @@ public sealed class TenantCatalogService(
     /// </summary>
     private async Task InvalidateTenantReadCacheAsync(Guid tenantId, CancellationToken cancellationToken)
     {
-        await TryRefreshCacheVersionAsync(ApplicationCacheKeys.TenantListNamespace(), "tenant list", cancellationToken);
-        await TryRefreshCacheVersionAsync(ApplicationCacheKeys.TenantDetailNamespace(tenantId), "tenant detail", cancellationToken);
-    }
-
-    /// <summary>
-    /// Đọc cache typed và fallback khi Redis lỗi.
-    /// </summary>
-    private async Task<TValue?> TryGetCachedValueAsync<TValue>(
-        string cacheKey,
-        string cacheLabel,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await distributedCacheService.GetAsync<TValue>(cacheKey, cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(exception, "Không thể đọc {CacheLabel} cache.", cacheLabel);
-            return default;
-        }
-    }
-
-    /// <summary>
-    /// Ghi cache typed mà không làm gián đoạn luồng hiện tại khi Redis lỗi.
-    /// </summary>
-    private async Task TrySetCachedValueAsync<TValue>(
-        string cacheKey,
-        TValue value,
-        TimeSpan timeToLive,
-        string cacheLabel,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await distributedCacheService.SetAsync(cacheKey, value, timeToLive, cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(exception, "Không thể ghi {CacheLabel} cache.", cacheLabel);
-        }
-    }
-
-    /// <summary>
-    /// Làm mới version token của namespace cache.
-    /// </summary>
-    private async Task TryRefreshCacheVersionAsync(
-        string namespaceKey,
-        string cacheLabel,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await cacheVersionService.RefreshVersionAsync(namespaceKey, cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(exception, "Không thể invalidate {CacheLabel} cache.", cacheLabel);
-        }
+        await ApplicationCacheOperations.TryRefreshVersionAsync(
+            cacheVersionService,
+            logger,
+            ApplicationCacheKeys.TenantListNamespace(),
+            "tenant list",
+            cancellationToken);
+        await ApplicationCacheOperations.TryRefreshVersionAsync(
+            cacheVersionService,
+            logger,
+            ApplicationCacheKeys.TenantDetailNamespace(tenantId),
+            "tenant detail",
+            cancellationToken);
     }
 }

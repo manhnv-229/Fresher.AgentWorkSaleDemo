@@ -5,6 +5,8 @@ import MainLayout from '../layouts/MainLayout.vue';
 import { canAccessPermissions } from './guards';
 import { useAuthStore } from '../stores/useAuthStore';
 import LoginPage from '../views/LoginPage.vue';
+import DashboardPage from '../views/DashboardPage.vue';
+import TestPage from '../views/TestPage.vue';
 import InternalAgentsPage from '../views/InternalAgentsPage.vue';
 import TenantAgentsPage from '../views/TenantAgentsPage.vue';
 import AgentDetailPage from '../views/AgentDetailPage.vue';
@@ -13,7 +15,6 @@ import SettingsAuditLogPage from '../views/SettingsAuditLogPage.vue';
 import SettingsMembersPage from '../views/SettingsMembersPage.vue';
 import SettingsPasswordPage from '../views/SettingsPasswordPage.vue';
 import ErrorView from '../views/ErrorView.vue';
-import NotFoundView from '../views/NotFoundView.vue';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -37,7 +38,17 @@ export const router = createRouter({
       children: [
         {
           path: '',
-          redirect: { name: 'agents-internal' }
+          redirect: { name: 'dashboard' }
+        },
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: DashboardPage
+        },
+        {
+          path: 'test',
+          name: 'test',
+          component: TestPage
         },
         {
           path: 'agents/internal',
@@ -68,7 +79,9 @@ export const router = createRouter({
         },
         {
           path: 'settings',
-          redirect: { name: 'settings-members' }
+          name: 'settings',
+          component: SettingsMembersPage,
+          meta: { requiredPermissions: ['user.view'] }
         },
         {
           path: 'settings/members',
@@ -98,7 +111,7 @@ export const router = createRouter({
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
-      component: NotFoundView
+      redirect: { name: 'dashboard' }
     }
   ]
 });

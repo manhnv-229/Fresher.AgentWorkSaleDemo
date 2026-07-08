@@ -23,7 +23,7 @@ watch(isAuthenticated, (authenticated) => {
       return;
     }
 
-    router.replace({ name: 'agents-internal' });
+    router.replace({ name: 'dashboard' });
   }
 }, { immediate: true });
 </script>

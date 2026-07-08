@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@lucide/vue": "^1.17.0",
+    "@tabler/icons-vue": "^3.44.0",
     "@vitejs/plugin-vue": "^5.2.4",
     "axios": "^1.18.1",
     "pinia": "^3.0.4",

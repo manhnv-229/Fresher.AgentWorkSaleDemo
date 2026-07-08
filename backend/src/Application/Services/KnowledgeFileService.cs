@@ -445,9 +445,13 @@ public sealed class KnowledgeFileService(
             {
                 await storageService.DeleteAsync(file.StorageObject.StorageBucket, file.StorageObject.StorageObjectKey, cancellationToken);
             }
-            catch
+            catch (Exception exception)
             {
-                // Soft-delete metadata remains the source of truth even if physical cleanup is delayed.
+                logger.LogWarning(
+                    exception,
+                    "Không thể xóa storage object {ObjectKey} sau khi soft-delete file {FileId}.",
+                    file.StorageObject.StorageObjectKey,
+                    file.Id);
             }
         }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import BaseButton from '../components/BaseButton.vue';
+import BaseButton from '../components/buttons/BaseButton.vue';
 
 defineProps<{
   isEditing: boolean;

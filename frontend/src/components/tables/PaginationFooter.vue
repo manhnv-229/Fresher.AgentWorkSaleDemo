@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChevronLeft, ChevronRight } from '@lucide/vue';
-import BaseButton from './BaseButton.vue';
+import BaseButton from '../buttons/BaseButton.vue';
+import { IconChevronLeft, IconChevronRight, IconChevronLeftPipe, IconChevronRightPipe } from '@tabler/icons-vue';
 
 const props = withDefaults(
   defineProps<{
@@ -57,11 +57,22 @@ function handlePageSizeChange(event: Event) {
         type="button"
         class="pagination__icon-button"
         :disabled="currentPage <= 1"
+        aria-label="Trang đầu"
+        title="Trang đầu"
+        @click="emit('update:currentPage', 1)"
+      >
+        <IconChevronLeftPipe :size="24" stroke-width="1.5" aria-hidden="true" />
+      </BaseButton>
+      <BaseButton
+        variant="secondary"
+        type="button"
+        class="pagination__icon-button"
+        :disabled="currentPage <= 1"
         :aria-label="previousLabel"
         :title="previousLabel"
         @click="emit('update:currentPage', currentPage - 1)"
       >
-        <ChevronLeft :size="18" aria-hidden="true" />
+        <IconChevronLeft :size="24" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
       <span class="pagination__range">{{ rangeStart }} - {{ rangeEnd }}</span>
       <BaseButton
@@ -73,7 +84,18 @@ function handlePageSizeChange(event: Event) {
         :title="nextLabel"
         @click="emit('update:currentPage', currentPage + 1)"
       >
-        <ChevronRight :size="18" aria-hidden="true" />
+        <IconChevronRight :size="24" stroke-width="1.5" aria-hidden="true" />
+      </BaseButton>
+      <BaseButton
+        variant="secondary"
+        type="button"
+        class="pagination__icon-button"
+        :disabled="currentPage >= totalPages"
+        aria-label="Trang cuối"
+        title="Trang cuối"
+        @click="emit('update:currentPage', totalPages)"
+      >
+        <IconChevronRightPipe :size="24" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </div>

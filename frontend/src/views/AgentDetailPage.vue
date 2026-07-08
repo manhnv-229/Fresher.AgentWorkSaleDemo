@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { LoaderCircle } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import BaseInput from '../components/BaseInput.vue';
+import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import Dialog from '../components/dialog/Dialog.vue';
 import type { AgentDetail, UpdateAgentPayload } from '../api';
 import { ApiError } from '../api/http';
 import { useAgentDetail } from '../composables/useAgentDetail';
 import { useAgentDetailEditor } from '../composables/useAgentDetailEditor';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
+import { useUnsavedChangesGuard } from '../composables/useUnsavedChangesGuard';
 import { hasMaxLength, isRequired } from '../utils/validators';
+import { IconLoader2 } from '@tabler/icons-vue';
 
 const props = defineProps<{ agentId: string }>();
 const route = useRoute();
@@ -87,6 +89,20 @@ const avatarOptions = [
 
 const currentStatus = computed(() => persistedAgent.value?.status ?? agent.value?.status ?? 'Draft');
 const canEdit = computed(() => Boolean(agent.value) && !isLoading.value);
+const isDirty = computed(() => {
+  if (!isEditing.value || !persistedAgent.value) {
+    return false;
+  }
+
+  return editName.value.trim() !== persistedAgent.value.name
+    || editRole.value.trim() !== persistedAgent.value.role
+    || editDescription.value.trim() !== (persistedAgent.value.description ?? '')
+    || editIcon.value !== (persistedAgent.value.icon ?? 'mint');
+});
+const { isDialogOpen, discardChanges, stayOnPage } = useUnsavedChangesGuard({
+  isDirty,
+  isSubmitting: isSaving
+});
 
 onMounted(() => {
   editor.registerHandlers({
@@ -212,7 +228,7 @@ async function submitSaveWithStatus(status: string) {
 <template>
   <div class="content-panel agent-detail-panel">
     <div v-if="isLoading" class="loading-row">
-      <LoaderCircle :size="18" class="spin" aria-hidden="true" />
+      <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
       <span>Đang tải chi tiết agent...</span>
     </div>
     <div v-else-if="error" class="message message--error">{{ error }}</div>
@@ -243,9 +259,10 @@ async function submitSaveWithStatus(status: string) {
         </div>
         <div class="create-agent__group">
           <label class="create-agent__label" for="edit-name">Tên</label>
-          <BaseInput
+          <TextBoxTopLabel
             id="edit-name"
             v-model="editName"
+            label-position="hidden"
             placeholder="Nhập tên"
             :disabled="!isEditing"
             :error="editErrors.name"
@@ -282,6 +299,16 @@ async function submitSaveWithStatus(status: string) {
       </div>
     </template>
   </div>
+  <Dialog
+    :open="isDialogOpen"
+    title="Thoát và không lưu?"
+    description="Nếu bạn thoát, các dữ liệu đang nhập liệu sẽ không được lưu lại."
+    cancel-label="Ở lại"
+    confirm-label="Thoát, không lưu"
+    confirm-variant="danger"
+    @cancel="stayOnPage"
+    @confirm="discardChanges"
+  />
 </template>
 
 <style scoped>
