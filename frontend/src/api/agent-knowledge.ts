@@ -1,11 +1,13 @@
 import { apiRequest } from './http';
 
+// Ngữ cảnh tối thiểu để xác định agent knowledge đang thao tác thuộc scope nào.
 export interface KnowledgeAgentContext {
   agentId: string;
   scope?: 'internal' | 'tenant';
   tenantId?: string;
 }
 
+// Node cây thư mục cho sidebar/explorer.
 export interface KnowledgeFolderTreeItem {
   id: string;
   parentFolderId?: string | null;
@@ -14,11 +16,13 @@ export interface KnowledgeFolderTreeItem {
   children: KnowledgeFolderTreeItem[];
 }
 
+// Breadcrumb cho điều hướng thư mục hiện tại.
 export interface KnowledgeBreadcrumbItem {
   id: string;
   name: string;
 }
 
+// Metadata thư mục trả về từ explorer và các thao tác CRUD.
 export interface KnowledgeFolderItem {
   id: string;
   parentFolderId?: string | null;
@@ -30,6 +34,7 @@ export interface KnowledgeFolderItem {
   modifiedAt?: string | null;
 }
 
+// Metadata file tri thức hiển thị trong explorer hoặc kết quả tìm kiếm.
 export interface KnowledgeFileItem {
   id: string;
   folderId?: string | null;
@@ -45,6 +50,7 @@ export interface KnowledgeFileItem {
   modifiedAt?: string | null;
 }
 
+// Snapshot đầy đủ của explorer tại một thư mục đang chọn.
 export interface KnowledgeExplorerResponse {
   agentId: string;
   selectedFolderId?: string | null;
@@ -54,12 +60,14 @@ export interface KnowledgeExplorerResponse {
   files: KnowledgeFileItem[];
 }
 
+// Kết quả tìm kiếm knowledge không cần kèm tree đầy đủ.
 export interface KnowledgeSearchResponse {
   agentId: string;
   folders: KnowledgeFolderItem[];
   files: KnowledgeFileItem[];
 }
 
+// Bộ lọc tìm kiếm theo tên, thư mục và người tạo.
 export interface KnowledgeSearchFilters {
   name?: string;
   folderId?: string | null;
@@ -68,24 +76,29 @@ export interface KnowledgeSearchFilters {
   createdTo?: string;
 }
 
+// Payload tạo thư mục mới trong cây knowledge.
 export interface CreateKnowledgeFolderPayload {
   name: string;
   parentFolderId?: string | null;
 }
 
+// Payload dùng chung cho thao tác đổi tên folder/file.
 export interface RenameKnowledgeItemPayload {
   name: string;
 }
 
+// Payload dùng chung cho thao tác di chuyển folder/file.
 export interface MoveKnowledgeItemPayload {
   targetFolderId?: string | null;
 }
 
+// Chuẩn hóa base path giữa internal agent và tenant agent để các hàm phía dưới không lặp route.
 const basePath = ({ tenantId, agentId, scope = 'internal' }: KnowledgeAgentContext) =>
   scope === 'tenant'
     ? `/api/tenants/${tenantId}/agents/${agentId}/knowledge`
     : `/api/admin/agents/internal/${agentId}/knowledge`;
 
+// Lấy dữ liệu explorer của knowledge, có thể kèm folder đang mở.
 export function getKnowledgeExplorer(
   context: KnowledgeAgentContext,
   folderId?: string | null
@@ -102,6 +115,7 @@ export function getKnowledgeExplorer(
   });
 }
 
+// Tìm kiếm folder/file knowledge theo bộ lọc phía UI.
 export function searchKnowledgeItems(
   context: KnowledgeAgentContext,
   filters: KnowledgeSearchFilters
@@ -120,6 +134,7 @@ export function searchKnowledgeItems(
   });
 }
 
+// Tạo thư mục knowledge mới.
 export function createKnowledgeFolder(
   context: KnowledgeAgentContext,
   payload: CreateKnowledgeFolderPayload
@@ -132,6 +147,7 @@ export function createKnowledgeFolder(
   });
 }
 
+// Đổi tên thư mục knowledge.
 export function renameKnowledgeFolder(
   context: KnowledgeAgentContext,
   folderId: string,
@@ -145,6 +161,7 @@ export function renameKnowledgeFolder(
   });
 }
 
+// Di chuyển thư mục knowledge sang thư mục cha khác.
 export function moveKnowledgeFolder(
   context: KnowledgeAgentContext,
   folderId: string,
@@ -158,6 +175,7 @@ export function moveKnowledgeFolder(
   });
 }
 
+// Xóa thư mục knowledge.
 export function deleteKnowledgeFolder(context: KnowledgeAgentContext, folderId: string): Promise<void> {
   return apiRequest<void>({
     url: `${basePath(context)}/folders/${folderId}`,
@@ -166,6 +184,7 @@ export function deleteKnowledgeFolder(context: KnowledgeAgentContext, folderId: 
   });
 }
 
+// Upload file knowledge bằng multipart/form-data.
 export function uploadKnowledgeFile(
   context: KnowledgeAgentContext,
   file: File,
@@ -185,6 +204,7 @@ export function uploadKnowledgeFile(
   });
 }
 
+// Đổi tên file knowledge.
 export function renameKnowledgeFile(
   context: KnowledgeAgentContext,
   fileId: string,
@@ -198,6 +218,7 @@ export function renameKnowledgeFile(
   });
 }
 
+// Di chuyển file knowledge giữa các thư mục.
 export function moveKnowledgeFile(
   context: KnowledgeAgentContext,
   fileId: string,
@@ -211,6 +232,7 @@ export function moveKnowledgeFile(
   });
 }
 
+// Xóa file knowledge.
 export function deleteKnowledgeFile(context: KnowledgeAgentContext, fileId: string): Promise<void> {
   return apiRequest<void>({
     url: `${basePath(context)}/files/${fileId}`,
@@ -219,8 +241,8 @@ export function deleteKnowledgeFile(context: KnowledgeAgentContext, fileId: stri
   });
 }
 
-// Tải file về dưới dạng blob và trigger download qua temporary link element.
-// Không dùng window.open vì browser có thể block popup.
+// Tải file về dưới dạng blob rồi trigger download bằng temporary link element.
+// Không dùng window.open vì popup có thể bị chặn và khó kiểm soát tên file.
 export async function downloadKnowledgeFile(context: KnowledgeAgentContext, file: KnowledgeFileItem): Promise<void> {
   const fileBlob = await apiRequest<Blob>({
     url: `${basePath(context)}/files/${file.id}/download`,

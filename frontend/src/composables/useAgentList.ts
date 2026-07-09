@@ -10,10 +10,12 @@ import {
 } from '../api';
 import { ApiError } from '../api/http';
 
+// Các lựa chọn page size dùng chung cho mọi màn danh sách agent.
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 type AgentListScope = 'internal' | 'tenant' | 'external';
 
+// Bản ghi cache cục bộ cho một tổ hợp scope + filter + pageSize.
 interface AgentListCacheEntry {
   items: AgentSummary[];
   page: number;
@@ -23,6 +25,7 @@ interface AgentListCacheEntry {
   loadedPages: Set<number>;
 }
 
+// Contract tối thiểu để tái sử dụng cùng một controller list cho nhiều scope agent.
 interface AgentListControllerOptions {
   scope: AgentListScope;
   getTenantId?: () => string;
@@ -32,6 +35,7 @@ interface AgentListControllerOptions {
 
 const agentListCache = new Map<string, AgentListCacheEntry>();
 
+// Xóa cache list liên quan khi mutation xảy ra từ trang detail hoặc modal CRUD.
 export function invalidateAgentListCache(scope: AgentListScope, tenantId = '') {
   for (const key of agentListCache.keys()) {
     try {
@@ -45,6 +49,7 @@ export function invalidateAgentListCache(scope: AgentListScope, tenantId = '') {
   }
 }
 
+// Trả về kết quả rỗng đồng nhất để UI không phải tự dựng fallback object.
 function createEmptyResult(pageSize: number): PagedResult<AgentSummary> {
   return {
     items: [],
@@ -55,10 +60,12 @@ function createEmptyResult(pageSize: number): PagedResult<AgentSummary> {
   };
 }
 
+// Chuẩn hóa search text trước khi đưa vào cache key hoặc query string.
 function normalizeSearch(search: string | undefined) {
   return search?.trim() ?? '';
 }
 
+// Mỗi tổ hợp scope/filter/pageSize có một key riêng trong cache in-memory.
 function buildCacheKey(scope: AgentListScope, tenantId: string, filters: AgentListFilters): string {
   return JSON.stringify({
     scope,
@@ -69,6 +76,7 @@ function buildCacheKey(scope: AgentListScope, tenantId: string, filters: AgentLi
   });
 }
 
+// Clone entry để tránh view vô tình giữ reference tới Set trong cache gốc.
 function cloneEntry(entry: AgentListCacheEntry): AgentListCacheEntry {
   return {
     items: [...entry.items],
@@ -80,6 +88,7 @@ function cloneEntry(entry: AgentListCacheEntry): AgentListCacheEntry {
   };
 }
 
+// Gộp kết quả trang mới vào cache hiện có để hỗ trợ infinite scroll.
 function mergeResult(
   existing: AgentListCacheEntry | undefined,
   result: PagedResult<AgentSummary>,
@@ -108,6 +117,7 @@ function mergeResult(
   };
 }
 
+// Frontend bỏ các agent đã soft-delete để UI không phải xử lý riêng ở từng màn.
 function filterVisibleAgents(result: PagedResult<AgentSummary>): PagedResult<AgentSummary> {
   const visibleItems = result.items.filter(agent => agent.status !== 'Deleted');
   return {
@@ -116,6 +126,7 @@ function filterVisibleAgents(result: PagedResult<AgentSummary>): PagedResult<Age
   };
 }
 
+// Factory dùng chung cho internal/tenant/external list, gom cache, load-more và error handling.
 function createAgentListController(options: AgentListControllerOptions, filters: ReturnType<typeof useAgentList>) {
   const agents = ref<PagedResult<AgentSummary>>(createEmptyResult(filters.pageSize.value));
   const isLoading = ref(false);
@@ -128,10 +139,12 @@ function createAgentListController(options: AgentListControllerOptions, filters:
 
   const hasMore = computed(() => agents.value.totalPages > 0 && agents.value.page < agents.value.totalPages);
 
+  // Tenant id chỉ áp dụng cho scope tenant; các scope khác trả chuỗi rỗng để key ổn định.
   function resolveTenantId() {
     return options.getTenantId?.() || '';
   }
 
+  // Cache key luôn phản ánh đúng filter đang hiển thị trên UI.
   function resolveCacheKey() {
     return buildCacheKey(options.scope, resolveTenantId(), {
       status: filters.statusFilter.value,
@@ -140,6 +153,7 @@ function createAgentListController(options: AgentListControllerOptions, filters:
     });
   }
 
+  // Ưu tiên render từ cache cục bộ để giảm nhấp nháy khi đổi qua lại giữa các filter hoặc route.
   function hydrateFromCache(key: string) {
     const cached = agentListCache.get(key);
     if (!cached) {
@@ -158,6 +172,7 @@ function createAgentListController(options: AgentListControllerOptions, filters:
     return true;
   }
 
+  // Đồng bộ cache gốc và reactive state đang bind lên UI.
   function syncCache(key: string, entry: AgentListCacheEntry) {
     agentListCache.set(key, entry);
     agents.value = {
@@ -169,6 +184,7 @@ function createAgentListController(options: AgentListControllerOptions, filters:
     };
   }
 
+  // Reset state trước một lượt load mới hoàn toàn.
   function clearCurrentState() {
     agents.value = createEmptyResult(filters.pageSize.value);
     error.value = '';
@@ -176,6 +192,7 @@ function createAgentListController(options: AgentListControllerOptions, filters:
     activeCacheKey = '';
   }
 
+  // Một token tăng dần được dùng để bỏ kết quả response cũ khi filter đổi nhanh liên tiếp.
   async function loadPage(page: number, mode: 'replace' | 'append') {
     const cacheKey = resolveCacheKey();
     const cached = agentListCache.get(cacheKey);
@@ -195,6 +212,7 @@ function createAgentListController(options: AgentListControllerOptions, filters:
       return;
     }
 
+    // Không gửi request append thừa khi đã ở cuối danh sách hoặc đang load.
     if (mode === 'append' && (isLoading.value || isLoadingMore.value || !hasMore.value)) {
       return;
     }
@@ -242,11 +260,13 @@ function createAgentListController(options: AgentListControllerOptions, filters:
     }
   }
 
+  // Luôn bắt đầu lại từ trang đầu khi filter hoặc page size thay đổi.
   async function loadInitial() {
     clearCurrentState();
     await loadPage(1, 'replace');
   }
 
+  // Tải thêm trang kế tiếp cho infinite scroll.
   async function loadMore() {
     if (!isReady.value || isLoading.value || isLoadingMore.value || !hasMore.value) {
       return;
@@ -255,12 +275,14 @@ function createAgentListController(options: AgentListControllerOptions, filters:
     await loadPage(agents.value.page + 1, 'append');
   }
 
+  // Bỏ cache hiện tại rồi tải lại từ API.
   async function refresh() {
     const cacheKey = resolveCacheKey();
     agentListCache.delete(cacheKey);
     await loadInitial();
   }
 
+  // Khi cache key thay đổi nghĩa là filter hiển thị đã đổi, cần tải lại từ đầu.
   watch(
     () => resolveCacheKey(),
     () => {
@@ -281,6 +303,7 @@ function createAgentListController(options: AgentListControllerOptions, filters:
   };
 }
 
+// State filter cơ bản dùng chung cho các màn agent list.
 export function useAgentList() {
   const searchText = ref('');
   const statusFilter = ref<'' | AgentStatusFilter>('');
@@ -302,6 +325,7 @@ export function useAgentList() {
   };
 }
 
+// List controller cho agent nội bộ.
 export function useInternalAgents(filters: ReturnType<typeof useAgentList>) {
   return createAgentListController(
     {
@@ -317,6 +341,7 @@ export function useInternalAgents(filters: ReturnType<typeof useAgentList>) {
   );
 }
 
+// List controller cho danh sách external agent trong hub quản trị.
 export function useExternalAgents(filters: ReturnType<typeof useAgentList>) {
   return createAgentListController(
     {
@@ -332,6 +357,7 @@ export function useExternalAgents(filters: ReturnType<typeof useAgentList>) {
   );
 }
 
+// List controller cho agent thuộc một tenant cụ thể.
 export function useTenantAgents(filters: ReturnType<typeof useAgentList>, getTenantId: () => string) {
   return createAgentListController(
     {

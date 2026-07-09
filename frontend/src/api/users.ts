@@ -2,6 +2,7 @@ import { apiRequest } from './http';
 import type { AdminUserSummary } from './auth.types';
 import type { PagedResult } from './agents';
 
+// Bộ lọc cho màn quản trị thành viên/người dùng.
 export interface MemberListFilters {
   search?: string;
   status?: string;
@@ -9,6 +10,7 @@ export interface MemberListFilters {
   pageSize?: number;
 }
 
+// Lấy danh sách người dùng quản trị với bộ lọc và phân trang.
 export async function getUsers(filters?: MemberListFilters): Promise<PagedResult<AdminUserSummary>> {
   const params = new URLSearchParams();
   if (filters?.search) params.set('search', filters.search);
@@ -21,6 +23,7 @@ export async function getUsers(filters?: MemberListFilters): Promise<PagedResult
   return apiRequest<PagedResult<AdminUserSummary>>({ url, requiresAuth: true });
 }
 
+// Khóa tài khoản người dùng.
 export async function lockUser(userId: string): Promise<AdminUserSummary> {
   return apiRequest<AdminUserSummary>({
     url: `/api/admin/users/${userId}/lock`,
@@ -29,6 +32,7 @@ export async function lockUser(userId: string): Promise<AdminUserSummary> {
   });
 }
 
+// Mở khóa tài khoản người dùng.
 export async function unlockUser(userId: string): Promise<AdminUserSummary> {
   return apiRequest<AdminUserSummary>({
     url: `/api/admin/users/${userId}/unlock`,
@@ -37,6 +41,7 @@ export async function unlockUser(userId: string): Promise<AdminUserSummary> {
   });
 }
 
+// Cập nhật chức danh hiển thị của người dùng.
 export async function updateJobPosition(userId: string, jobPosition: string | null): Promise<AdminUserSummary> {
   return apiRequest<AdminUserSummary>({
     url: `/api/admin/users/${userId}/job-position`,

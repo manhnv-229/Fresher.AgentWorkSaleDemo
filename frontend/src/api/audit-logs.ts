@@ -1,6 +1,7 @@
 import { apiRequest } from './http';
 import type { PagedResult } from './agents';
 
+// Một dòng log rút gọn cho màn hình audit log.
 export interface AuditLogEntry {
   id: string;
   action: string;
@@ -10,6 +11,7 @@ export interface AuditLogEntry {
   description: string;
 }
 
+// Bộ lọc audit log theo text, thời gian và nhóm hành động.
 export interface AuditLogFilters {
   search?: string;
   timePreset?: string;
@@ -19,6 +21,7 @@ export interface AuditLogFilters {
   pageSize?: number;
 }
 
+// Lấy danh sách audit log có phân trang để phục vụ bảng quản trị.
 export async function getAuditLogs(filters?: AuditLogFilters): Promise<PagedResult<AuditLogEntry>> {
   const params = new URLSearchParams();
   if (filters?.search) params.set('search', filters.search);
