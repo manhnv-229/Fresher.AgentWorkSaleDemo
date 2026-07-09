@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@tabler/icons-vue": "^3.44.0",
@@ -18,7 +20,9 @@
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "jsdom": "^25.0.1",
     "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
     "vue-tsc": "^2.2.0"
   }
 }
