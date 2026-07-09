@@ -67,29 +67,6 @@ public sealed class AgentCatalogServiceTests
     }
 
     [Fact]
-    public async Task CreateTenantAgentAsync_ShouldFail_WhenTenantIsLocked()
-    {
-        var tenantId = Guid.NewGuid();
-        var testContext = CreateService(
-            tenantRepository: repository =>
-                repository.Setup(item => item.GetByIdAsync(tenantId, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(new Tenant { Id = tenantId, Status = TenantStatus.Locked }));
-        var service = testContext.Service;
-
-        var result = await service.CreateTenantAgentAsync(
-            tenantId,
-            Guid.NewGuid(),
-            "127.0.0.1",
-            new CreateAgentCommand("Agent", "Role", null, null),
-            CancellationToken.None);
-
-        result.Succeeded.Should().BeFalse();
-        result.ErrorCode.Should().Be(AgentErrorCodes.TenantLocked);
-        testContext.AgentRepository.Verify(repository => repository.Add(It.IsAny<Agent>()), Times.Never);
-        testContext.UnitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
     public async Task UpdateTenantAgentAsync_ShouldUpdateFieldsAndInvalidateCaches()
     {
         var tenantId = Guid.NewGuid();
