@@ -7,6 +7,8 @@ import { useAuthStore } from '../stores/useAuthStore';
 import LoginPage from '../views/LoginPage.vue';
 import DashboardPage from '../views/DashboardPage.vue';
 import TestPage from '../views/TestPage.vue';
+import AgentsPage from '../views/AgentsPage.vue';
+import ExternalAgentsPage from '../views/ExternalAgentsPage.vue';
 import InternalAgentsPage from '../views/InternalAgentsPage.vue';
 import TenantAgentsPage from '../views/TenantAgentsPage.vue';
 import AgentDetailPage from '../views/AgentDetailPage.vue';
@@ -51,10 +53,25 @@ export const router = createRouter({
           component: TestPage
         },
         {
+          path: 'agents',
+          component: AgentsPage,
+          meta: { requiredPermissions: ['agent.view'] },
+          children: [
+            {
+              path: '',
+              name: 'agents',
+              component: InternalAgentsPage
+            },
+            {
+              path: 'external',
+              name: 'agents-external',
+              component: ExternalAgentsPage
+            }
+          ]
+        },
+        {
           path: 'agents/internal',
-          name: 'agents-internal',
-          component: InternalAgentsPage,
-          meta: { requiredPermissions: ['agent.view'] }
+          redirect: { name: 'agents' }
         },
         {
           path: 'agents/tenant/:tenantId',

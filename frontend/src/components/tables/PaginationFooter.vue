@@ -61,7 +61,7 @@ function handlePageSizeChange(event: Event) {
         title="Trang đầu"
         @click="emit('update:currentPage', 1)"
       >
-        <IconChevronLeftPipe :size="24" stroke-width="1.5" aria-hidden="true" />
+        <IconChevronLeftPipe :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
       <BaseButton
         variant="secondary"
@@ -72,7 +72,7 @@ function handlePageSizeChange(event: Event) {
         :title="previousLabel"
         @click="emit('update:currentPage', currentPage - 1)"
       >
-        <IconChevronLeft :size="24" stroke-width="1.5" aria-hidden="true" />
+        <IconChevronLeft :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
       <span class="pagination__range">{{ rangeStart }} - {{ rangeEnd }}</span>
       <BaseButton
@@ -84,7 +84,7 @@ function handlePageSizeChange(event: Event) {
         :title="nextLabel"
         @click="emit('update:currentPage', currentPage + 1)"
       >
-        <IconChevronRight :size="24" stroke-width="1.5" aria-hidden="true" />
+        <IconChevronRight :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
       <BaseButton
         variant="secondary"
@@ -95,7 +95,7 @@ function handlePageSizeChange(event: Event) {
         title="Trang cuối"
         @click="emit('update:currentPage', totalPages)"
       >
-        <IconChevronRightPipe :size="24" stroke-width="1.5" aria-hidden="true" />
+        <IconChevronRightPipe :size="20" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </div>

@@ -20,6 +20,13 @@ public interface IKnowledgeFileService
         Guid userId,
         CancellationToken cancellationToken);
 
+    Task<ServiceResult<KnowledgePreviewResult>> PreviewFileAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid fileId,
+        Guid userId,
+        CancellationToken cancellationToken);
+
     Task<ServiceResult<KnowledgeFileDetail>> GetFileDetailAsync(
         Guid tenantId,
         Guid agentId,

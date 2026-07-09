@@ -28,19 +28,21 @@ const isSettingsSidebarCollapsed = ref(false);
 const isSettingsRoute = computed(() => route.path.startsWith('/settings'));
 const isAgentRoute = computed(() => route.name === 'agent-detail' || route.name === 'agent-knowledge');
 const isAgentDetailRoute = computed(() => route.name === 'agent-detail');
+const isAgentsHubRoute = computed(() => route.name === 'agents' || route.name === 'agents-external');
 const canToggleAgentStatus = computed(() => {
   const status = agent.value?.status;
   return status === 'Active' || status === 'Published' || status === 'Inactive' || status === 'Draft';
 });
 const agentStatusActionLabel = computed(() => {
   const status = agent.value?.status;
-  return status === 'Active' || status === 'Published' ? 'Ngừng hoạt động' : 'Kích hoạt';
+  return status === 'Active' || status === 'Published' ? 'Dừng' : 'Kích hoạt';
 });
 
 const { agent, isLoading: isLoadingAgent, loadInternal, loadTenant, clear: clearAgent } = useAgentDetail();
 
 const agentScope = computed(() => (route.query.scope as string) || 'internal');
 const agentTenantId = computed(() => (route.query.tenantId as string) || '');
+const agentSource = computed(() => (route.query.source as string) || '');
 
 function buildAgentSectionLink(section: string) {
   const name = section === 'knowledge' ? 'agent-knowledge' : 'agent-detail';
@@ -109,12 +111,18 @@ async function loadHeaderAgent() {
 }
 
 function goBackFromAgent() {
+  const source = (route.query.source as string) || '';
   const scope = (route.query.scope as string) || 'internal';
   const tenantId = (route.query.tenantId as string) || '';
+  if (source === 'external') {
+    router.push({ name: 'agents-external' });
+    return;
+  }
+
   if (scope === 'tenant' && tenantId) {
     router.push({ name: 'agents-tenant', params: { tenantId } });
   } else {
-    router.push({ name: 'agents-internal' });
+    router.push({ name: 'agents' });
   }
 }
 
@@ -145,6 +153,9 @@ async function handleSaveAndPublish() {
 function invalidateCurrentAgentListCache() {
   if (agentScope.value === 'tenant') {
     invalidateAgentListCache('tenant', agentTenantId.value);
+    if (agentSource.value === 'external') {
+      invalidateAgentListCache('external');
+    }
     return;
   }
 
@@ -232,7 +243,8 @@ function toggleSettingsSidebar() {
     />
 
     <section class="workspace__content">
-      <div class="workspace__page">
+      <RouterView v-if="isAgentsHubRoute" />
+      <div v-else class="workspace__page">
         <RouterView />
       </div>
     </section>

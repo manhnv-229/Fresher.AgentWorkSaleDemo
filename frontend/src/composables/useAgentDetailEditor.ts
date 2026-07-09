@@ -3,6 +3,7 @@ import { ref } from 'vue';
 type AsyncHandler = () => Promise<void>;
 type SyncHandler = () => void;
 
+// Shared editor state giữa page detail và layout/footer/header.
 const isEditing = ref(false);
 const isSaving = ref(false);
 
@@ -12,7 +13,9 @@ let saveDraftHandler: AsyncHandler = async () => {};
 let saveAndPublishHandler: AsyncHandler = async () => {};
 let toggleActivationHandler: AsyncHandler = async () => {};
 
+// Cung cấp một command bus rất mỏng để layout có thể kích hoạt hành động của detail page hiện tại.
 export function useAgentDetailEditor() {
+  // Đăng ký tập handler do page detail hiện tại sở hữu.
   function registerHandlers(handlers: {
     beginEdit: SyncHandler;
     cancelEdit: SyncHandler;
@@ -27,6 +30,7 @@ export function useAgentDetailEditor() {
     toggleActivationHandler = handlers.toggleActivation;
   }
 
+  // Dọn handler khi rời trang để tránh layout gọi nhầm logic của page cũ.
   function clearHandlers() {
     beginEditHandler = () => {};
     cancelEditHandler = () => {};
@@ -37,6 +41,7 @@ export function useAgentDetailEditor() {
     isSaving.value = false;
   }
 
+  // Các hàm dưới đây chỉ delegate sang page đã đăng ký handler tương ứng.
   function beginEdit() {
     beginEditHandler();
   }

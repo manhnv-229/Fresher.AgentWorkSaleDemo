@@ -15,6 +15,11 @@ export default defineConfig(({ mode }) => {
       host: 'localhost',
       port: 4173
     },
+    test: {
+      environment: 'jsdom',
+      include: ['tests/**/*.test.ts'],
+      setupFiles: ['tests/setup.ts']
+    },
     define: {
       __API_BASE_URL__: JSON.stringify(apiBaseUrl)
     }

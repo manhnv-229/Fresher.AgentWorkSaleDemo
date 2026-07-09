@@ -9,10 +9,12 @@ withDefaults(
     title: string;
     description?: string;
     placement?: 'center' | 'anchored';
+    fullscreen?: boolean;
     width?: string;
     maxWidth?: string;
     minWidth?: string;
     panelStyle?: Record<string, string>;
+    showClose?: boolean;
     cancelLabel?: string;
     confirmLabel?: string;
     showCancel?: boolean;
@@ -33,10 +35,12 @@ withDefaults(
   {
     description: '',
     placement: 'center',
+    fullscreen: false,
     width: '',
     maxWidth: 'calc(100vw - 48px)',
     minWidth: '',
     panelStyle: () => ({}),
+    showClose: true,
     cancelLabel: 'Hủy',
     confirmLabel: 'Lưu',
     showCancel: true,
@@ -95,15 +99,18 @@ onBeforeUnmount(() => {
     >
       <section
         class="popup"
-        :class="{ 'popup--anchored': placement === 'anchored' }"
+        :class="{
+          'popup--anchored': placement === 'anchored',
+          'popup--fullscreen': fullscreen
+        }"
         role="dialog"
         aria-modal="true"
         :aria-label="title"
         :style="[
           {
-            width: width || undefined,
-            minWidth: minWidth || undefined,
-            maxWidth
+            width: fullscreen ? '100vw' : (width || undefined),
+            minWidth: fullscreen ? '100vw' : (minWidth || undefined),
+            maxWidth: fullscreen ? '100vw' : maxWidth
           },
           panelStyle
         ]"
@@ -111,14 +118,19 @@ onBeforeUnmount(() => {
         <header class="popup__header">
           <h2 class="popup__title">{{ title }}</h2>
 
+          <div v-if="$slots.headerActions" class="popup__header-actions">
+            <slot name="headerActions" />
+          </div>
+
           <button
+            v-if="showClose"
             type="button"
             class="popup__close"
             aria-label="Đóng popup"
             title="Đóng"
             @click="handleBackdropClick"
           >
-            <IconX :size="24" stroke-width="1.5" aria-hidden="true" />
+            <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
         </header>
 
@@ -177,6 +189,18 @@ onBeforeUnmount(() => {
   box-shadow: var(--shadow-card);
 }
 
+.popup--fullscreen {
+  width: 100vw;
+  min-width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+}
+
 .popup__header {
   height: 60px;
   display: flex;
@@ -196,6 +220,13 @@ onBeforeUnmount(() => {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.popup__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .popup__close {
@@ -221,6 +252,25 @@ onBeforeUnmount(() => {
 .popup__body {
   padding: 0 24px 16px;
   overflow: visible;
+}
+
+.popup--fullscreen .popup__form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.popup--fullscreen .popup__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+}
+
+.popup--fullscreen .popup__footer {
+  flex: 0 0 auto;
+  border-radius: 0;
 }
 
 .popup__footer {
@@ -280,6 +330,13 @@ onBeforeUnmount(() => {
     max-height: calc(100vh - 24px);
     overflow-y: auto;
     min-width: 0;
+  }
+
+  .popup--fullscreen {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
   }
 
   .popup__header,

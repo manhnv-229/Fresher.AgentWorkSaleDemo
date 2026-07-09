@@ -71,8 +71,8 @@ const items = computed(() => [
         :title="props.isCollapsed ? 'Mở rộng sidebar thiết lập' : 'Thu gọn sidebar thiết lập'"
         @click="emit('toggleSidebar')"
       >
-        <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="20" stroke-width="1.5" aria-hidden="true" />
-        <IconLayoutSidebarLeftCollapse v-else :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="24" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftCollapse v-else :size="24" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </aside>

@@ -39,10 +39,10 @@ const mainItems = computed(() => [
     icon: IconSmartHome
   },
   {
-    key: 'agents-internal',
+    key: 'agents',
     label: 'Nhân viên AI',
-    to: { name: 'agents-internal' as const },
-    isActive: props.activeRouteName === 'agents-internal',
+    to: { name: 'agents' as const },
+    isActive: props.activeRouteName === 'agents' || props.activeRouteName === 'agents-external',
     icon: IconUserStar
   },
   {
@@ -98,7 +98,7 @@ const mainItems = computed(() => [
             :to="{ name: 'agents-tenant', params: { tenantId: tenant.id } }"
             @click="emit('selectTenant', tenant.id)"
           >
-            <IconBuildingStore :size="20" stroke-width="1.5" aria-hidden="true" />
+            <IconBuildingStore :size="24" stroke-width="1.5" aria-hidden="true" />
             <span>{{ tenant.name }}</span>
           </RouterLink>
           <p v-if="props.tenants.length === 0" class="message">Chưa có đơn vị nào.</p>
@@ -108,7 +108,7 @@ const mainItems = computed(() => [
 
     <div class="workspace__sidebar-action">
       <BaseButton class="workspace__sidebar-action-button" variant="secondary" type="button" @click="emit('logout')">
-        <IconLogout :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconLogout :size="24" stroke-width="1.5" aria-hidden="true" />
         <span class="workspace__sidebar-action-label">Đăng xuất</span>
       </BaseButton>
     </div>
@@ -122,8 +122,8 @@ const mainItems = computed(() => [
         :title="props.isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'"
         @click="emit('toggleSidebar')"
       >
-        <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="20" stroke-width="1.5" aria-hidden="true" />
-        <IconLayoutSidebarLeftCollapse v-else :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="24" stroke-width="1.5" aria-hidden="true" />
+        <IconLayoutSidebarLeftCollapse v-else :size="24" stroke-width="1.5" aria-hidden="true" />
       </BaseButton>
     </div>
   </aside>

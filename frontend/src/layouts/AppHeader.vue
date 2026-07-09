@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BaseButton from '../components/buttons/BaseButton.vue';
+import IconButton from '../components/buttons/IconButton.vue';
 import type { AgentDetail } from '../api';
 import {
   IconBell,
@@ -7,7 +8,8 @@ import {
   IconGridDots,
   IconHelpCircle,
   IconMessageCircle,
-  IconEdit
+  IconEdit,
+  IconX
 } from '@tabler/icons-vue';
 
 defineProps<{
@@ -81,7 +83,7 @@ const emit = defineEmits<{
         :disabled="isLoadingAgent"
         @click="emit('beginEdit')"
       >
-        <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" />
+        <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" />
         Sửa
       </BaseButton>
       <div v-if="isAgentDetailRoute" class="agent-header__menu">
@@ -93,7 +95,7 @@ const emit = defineEmits<{
           aria-haspopup="menu"
           @click="emit('toggleAgentMenu')"
         >
-          <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
+          <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
         </button>
         <div v-if="isAgentMenuOpen && canToggleAgentStatus" class="agent-header__menu-panel" role="menu">
           <button
@@ -107,7 +109,16 @@ const emit = defineEmits<{
           </button>
         </div>
       </div>
-      <button type="button" class="agent-header__close" @click="emit('closeAgent')">&times;</button>
+      <IconButton
+        class="agent-header__close"
+        ariaLabel="Đóng agent"
+        title="Đóng agent"
+        variant="secondary"
+        type="button"
+        @click="emit('closeAgent')"
+      >
+        <IconX :size="28" stroke-width="1.5" aria-hidden="true" />
+      </IconButton>
     </div>
   </header>
 </template>

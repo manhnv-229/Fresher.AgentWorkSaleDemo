@@ -8,7 +8,9 @@ public sealed record AgentListItem(
     string? Icon,
     string Role,
     string Scope,
-    string Status);
+    string Status,
+    Guid? TenantId = null,
+    string? TenantName = null);
 
 public sealed record AgentDetailItem(
     Guid Id,

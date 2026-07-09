@@ -24,10 +24,10 @@ defineEmits<{
 <template>
   <article class="toast" :class="`toast--${tone}`" role="status">
     <div class="toast__icon" aria-hidden="true">
-      <IconCircleCheck v-if="tone === 'success'" :size="24" stroke-width="1.5" />
-      <IconAlertCircle v-else-if="tone === 'error'" :size="24" stroke-width="1.5" />
-      <IconAlertTriangle v-else-if="tone === 'warning'" :size="24" stroke-width="1.5" />
-      <IconInfoCircle v-else :size="24" stroke-width="1.5" />
+      <IconCircleCheck v-if="tone === 'success'" :size="20" stroke-width="1.5" />
+      <IconAlertCircle v-else-if="tone === 'error'" :size="20" stroke-width="1.5" />
+      <IconAlertTriangle v-else-if="tone === 'warning'" :size="20" stroke-width="1.5" />
+      <IconInfoCircle v-else :size="20" stroke-width="1.5" />
     </div>
 
     <div class="toast__body">

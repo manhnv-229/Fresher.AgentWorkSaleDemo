@@ -49,6 +49,8 @@ public sealed class AgentListRow
     public string Role { get; set; } = string.Empty;
     public string Scope { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public Guid? TenantId { get; set; }
+    public string? TenantName { get; set; }
 }
 
 public sealed class AgentDetailRow

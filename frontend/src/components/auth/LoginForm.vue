@@ -107,8 +107,8 @@ async function submitLogin() {
             :disabled="isLoading"
             @click="showPassword = !showPassword"
           >
-            <IconEyeOff v-if="showPassword" :size="24" stroke-width="1.5" aria-hidden="true" />
-            <IconEye v-else :size="24" stroke-width="1.5" aria-hidden="true" />
+            <IconEyeOff v-if="showPassword" :size="20" stroke-width="1.5" aria-hidden="true" />
+            <IconEye v-else :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
         </template>
       </TextBoxTopLabel>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import DOMPurify from 'dompurify';
+import mammoth from 'mammoth';
 import {
   IconArrowLeft,
   IconArrowRight,
@@ -15,6 +17,7 @@ import {
   IconTrash,
   IconUpload
 } from '@tabler/icons-vue';
+import * as XLSX from 'xlsx';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -27,6 +30,7 @@ import {
   getKnowledgeExplorer,
   moveKnowledgeFile,
   moveKnowledgeFolder,
+  previewKnowledgeFile,
   renameKnowledgeFile,
   renameKnowledgeFolder,
   searchKnowledgeItems,
@@ -40,6 +44,8 @@ import {
 } from '../api';
 import { ApiError } from '../api/http';
 import BaseButton from '../components/buttons/BaseButton.vue';
+import IconButton from '../components/buttons/IconButton.vue';
+import PopupFilePreview from '../components/popup/PopupFilePreview.vue';
 import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
 import Dialog from '../components/dialog/Dialog.vue';
 import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
@@ -75,7 +81,9 @@ const isMoveOpen = ref(false);
 const isDeleteOpen = ref(false);
 const isContentViewOpen = ref(false);
 const contentViewFile = ref<KnowledgeFileItem | null>(null);
+const contentViewKind = ref<'text' | 'image' | 'pdf' | 'html' | 'unsupported'>('unsupported');
 const contentViewContent = ref('');
+const contentViewHtml = ref('');
 const contentViewObjectUrl = ref('');
 const isContentViewLoading = ref(false);
 const contentViewError = ref('');
@@ -235,6 +243,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearContentViewObjectUrl();
+  cancelSearchDebounce();
   document.removeEventListener('click', onDocumentClick);
 });
 
@@ -244,9 +253,26 @@ watch(() => [props.agentId, scope.value, tenantId.value], () => {
   void loadExplorer();
 });
 
-// Auto-search khi search text thay đổi (debounce không cần vì API nhanh)
+const searchDebounceMs = 200;
+let searchDebounceTimer: number | undefined;
+
+function cancelSearchDebounce() {
+  if (searchDebounceTimer !== undefined) {
+    window.clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = undefined;
+  }
+}
+
+function scheduleSearch() {
+  cancelSearchDebounce();
+  searchDebounceTimer = window.setTimeout(() => {
+    void runSearch();
+  }, searchDebounceMs);
+}
+
+// Auto-search khi search text thay đổi với debounce ngắn để giảm request thừa.
 watch(searchText, () => {
-  void runSearch();
+  scheduleSearch();
 });
 
 // Tải explorer state: tree, breadcrumb, folders, files. Gọi khi mount, khi chọn folder, và sau mỗi mutation.
@@ -460,7 +486,7 @@ function getFileExtension(file: KnowledgeFileItem | null): string {
   return file.extension.startsWith('.') ? file.extension.toLowerCase() : `.${file.extension.toLowerCase()}`;
 }
 
-function isPreviewable(file: KnowledgeFileItem | null): boolean {
+function isTextPreviewable(file: KnowledgeFileItem | null): boolean {
   if (!file) return false;
   const ext = getFileExtension(file);
   return previewableExtensions.has(ext.toLowerCase()) || file.contentType.startsWith('text/');
@@ -477,6 +503,21 @@ function isPdfPreviewable(file: KnowledgeFileItem | null): boolean {
   return getFileExtension(file) === '.pdf' || file.contentType === 'application/pdf';
 }
 
+function isDocxPreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  return getFileExtension(file) === '.docx' || file.contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+}
+
+function isXlsxPreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  return getFileExtension(file) === '.xlsx' || file.contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+}
+
+function isPptxPreviewable(file: KnowledgeFileItem | null): boolean {
+  if (!file) return false;
+  return getFileExtension(file) === '.pptx' || file.contentType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+}
+
 function clearContentViewObjectUrl() {
   if (!contentViewObjectUrl.value) return;
   URL.revokeObjectURL(contentViewObjectUrl.value);
@@ -486,10 +527,73 @@ function clearContentViewObjectUrl() {
 function closeContentView() {
   isContentViewOpen.value = false;
   contentViewFile.value = null;
+  contentViewKind.value = 'unsupported';
   contentViewContent.value = '';
+  contentViewHtml.value = '';
   contentViewError.value = '';
   isContentViewLoading.value = false;
   clearContentViewObjectUrl();
+}
+
+async function getFilePreviewBlob(file: KnowledgeFileItem): Promise<Blob> {
+  if (isPptxPreviewable(file)) {
+    return previewKnowledgeFile(knowledgeContext.value, file.id);
+  }
+
+  return previewKnowledgeFileContent(file);
+}
+
+async function previewKnowledgeFileContent(file: KnowledgeFileItem): Promise<Blob> {
+  return downloadKnowledgeFileBlob(file);
+}
+
+async function downloadKnowledgeFileBlob(file: KnowledgeFileItem): Promise<Blob> {
+  return fetchKnowledgeFileBlob(file, 'download');
+}
+
+async function fetchKnowledgeFileBlob(file: KnowledgeFileItem, mode: 'download' | 'preview'): Promise<Blob> {
+  const endpoint = mode === 'preview' ? 'preview' : 'download';
+  return apiRequest<Blob>({
+    url: `${knowledgeContext.value.scope === 'tenant'
+      ? `/api/tenants/${tenantId.value}/agents/${props.agentId}/knowledge`
+      : `/api/admin/agents/internal/${props.agentId}/knowledge`}/files/${file.id}/${endpoint}`,
+    method: 'GET',
+    responseType: 'blob',
+    requiresAuth: true
+  });
+}
+
+function setObjectPreview(fileBlob: Blob, kind: 'image' | 'pdf') {
+  contentViewKind.value = kind;
+  contentViewObjectUrl.value = URL.createObjectURL(fileBlob);
+}
+
+async function setDocxPreview(fileBlob: Blob) {
+  const arrayBuffer = await fileBlob.arrayBuffer();
+  const result = await mammoth.convertToHtml({ arrayBuffer });
+  contentViewHtml.value = DOMPurify.sanitize(result.value);
+  contentViewKind.value = 'html';
+}
+
+async function setXlsxPreview(fileBlob: Blob) {
+  const arrayBuffer = await fileBlob.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) {
+    throw new Error('Workbook không có sheet để xem trước.');
+  }
+
+  const sheet = workbook.Sheets[firstSheetName];
+  const tableHtml = XLSX.utils.sheet_to_html(sheet);
+  const previewHtml = [
+    `<div class="knowledge-content-view__sheet-name">Sheet: ${firstSheetName}</div>`,
+    '<div class="knowledge-content-view__table-wrap">',
+    tableHtml,
+    '</div>'
+  ].join('');
+
+  contentViewHtml.value = DOMPurify.sanitize(previewHtml);
+  contentViewKind.value = 'html';
 }
 
 async function openContentView(file: KnowledgeFileItem) {
@@ -497,22 +601,24 @@ async function openContentView(file: KnowledgeFileItem) {
   clearContentViewObjectUrl();
   isContentViewOpen.value = true;
   contentViewFile.value = file;
+  contentViewKind.value = 'unsupported';
   contentViewContent.value = '';
+  contentViewHtml.value = '';
   contentViewError.value = '';
   isContentViewLoading.value = true;
   try {
-    const fileBlob = await apiRequest<Blob>({
-      url: `${knowledgeContext.value.scope === 'tenant'
-        ? `/api/tenants/${tenantId.value}/agents/${props.agentId}/knowledge`
-        : `/api/admin/agents/internal/${props.agentId}/knowledge`}/files/${file.id}/download`,
-      method: 'GET',
-      responseType: 'blob',
-      requiresAuth: true
-    });
-    if (isPreviewable(file)) {
+    const fileBlob = await getFilePreviewBlob(file);
+    if (isTextPreviewable(file)) {
       contentViewContent.value = await fileBlob.text();
-    } else if (isImagePreviewable(file) || isPdfPreviewable(file)) {
-      contentViewObjectUrl.value = URL.createObjectURL(fileBlob);
+      contentViewKind.value = 'text';
+    } else if (isImagePreviewable(file)) {
+      setObjectPreview(fileBlob, 'image');
+    } else if (isPdfPreviewable(file) || isPptxPreviewable(file)) {
+      setObjectPreview(fileBlob, 'pdf');
+    } else if (isDocxPreviewable(file)) {
+      await setDocxPreview(fileBlob);
+    } else if (isXlsxPreviewable(file)) {
+      await setXlsxPreview(fileBlob);
     }
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
@@ -796,7 +902,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
 <template>
   <header class="content-header knowledge-header">
     <div>
-      <p class="content-header__eyebrow">Tri thức</p>
+      <!-- <p class="content-header__eyebrow">Tri thức</p> -->
       <h2>Tri thức agent</h2>
       <p class="content-header__copy">Quản lý thư mục, tài liệu và file nguồn cho agent hiện tại.</p>
     </div>
@@ -854,13 +960,13 @@ function ensureItemOwner(item: ActiveItem): boolean {
         <aside class="knowledge-tree">
           <div class="knowledge-tree__nav">
             <button class="knowledge-tree__nav-btn" type="button" title="Lên trên (↑)" :disabled="!canGoUp" @click="goUp">
-              <IconArrowUp :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconArrowUp :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="knowledge-tree__nav-btn" type="button" title="Quay lại (←)" :disabled="!canGoBack" @click="goBack">
-              <IconArrowLeft :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconArrowLeft :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
             <button class="knowledge-tree__nav-btn" type="button" title="Đi tiếp (→)" :disabled="!canGoForward" @click="goForward">
-              <IconArrowRight :size="20" stroke-width="1.5" aria-hidden="true" />
+              <IconArrowRight :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
           <p class="knowledge-section-title">Thư mục</p>
@@ -892,17 +998,17 @@ function ensureItemOwner(item: ActiveItem): boolean {
             <span class="knowledge-actions">
               <span class="knowledge-overflow-wrap">
                 <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('folder-' + folder.id, $event)">
-                  <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
+                  <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
                 </button>
                 <div v-if="openOverflowMenuId === 'folder-' + folder.id" class="knowledge-overflow-menu" @click.stop>
                   <button type="button" :disabled="!isFolderOwner(folder)" @click="openRename({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+                  <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
                   </button>
                   <button type="button" :disabled="!isFolderOwner(folder)" @click="openMove({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+                  <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
                   </button>
                   <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFolderOwner(folder)" @click="openDelete({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
+                  <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
                   </button>
                 </div>
               </span>
@@ -925,23 +1031,23 @@ function ensureItemOwner(item: ActiveItem): boolean {
             <span class="knowledge-actions">
               <span class="knowledge-overflow-wrap">
                 <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('file-' + file.id, $event)">
-                  <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
+                  <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
                 </button>
                 <div v-if="openOverflowMenuId === 'file-' + file.id" class="knowledge-overflow-menu" @click.stop>
                   <button type="button" :disabled="!isFileOwner(file)" @click="downloadFile(file); openOverflowMenuId = null">
-                  <IconDownload :size="20" stroke-width="1.5" aria-hidden="true" /> Tải xuống
+                  <IconDownload :size="24" stroke-width="1.5" aria-hidden="true" /> Tải xuống
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openContentView(file); openOverflowMenuId = null">
-                  <IconEye :size="20" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
+                  <IconEye :size="24" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openRename({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+                  <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openMove({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+                  <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
                   </button>
                   <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFileOwner(file)" @click="openDelete({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
+                  <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
                   </button>
                 </div>
               </span>
@@ -974,30 +1080,30 @@ function ensureItemOwner(item: ActiveItem): boolean {
     >
       <template v-if="contextMenu.item.type === 'file'">
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="downloadFile(contextMenu.item.item); closeContextMenu()">
-          <IconDownload :size="20" stroke-width="1.5" aria-hidden="true" /> Tải xuống
+          <IconDownload :size="24" stroke-width="1.5" aria-hidden="true" /> Tải xuống
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openContentView(contextMenu.item.item); closeContextMenu()">
-          <IconEye :size="20" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
+          <IconEye :size="24" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
-          <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+          <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
-          <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+          <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
         </button>
         <button type="button" class="knowledge-context-menu--danger" :disabled="!isFileOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
-          <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
+          <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
         </button>
       </template>
       <template v-else>
         <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
-          <IconEdit :size="20" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+          <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
         </button>
         <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
-          <IconArrowsMove :size="20" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+          <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
         </button>
         <button type="button" class="knowledge-context-menu--danger" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
-          <IconTrash :size="20" stroke-width="1.5" aria-hidden="true" /> Xóa
+          <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
         </button>
       </template>
     </div>
@@ -1081,51 +1187,18 @@ function ensureItemOwner(item: ActiveItem): boolean {
     <p>Bạn có chắc chắn muốn xóa <strong>{{ activeItem?.item.name }}</strong>?</p>
   </Dialog>
 
-  <PopupTopOneColumn
+  <PopupFilePreview
     :open="isContentViewOpen"
-    title="Xem nội dung"
-    confirm-label="Tải xuống"
-    cancel-label="Đóng"
-    :confirm-disabled="!contentViewFile"
-    @cancel="closeContentView"
-    @confirm="contentViewFile ? downloadFile(contentViewFile) : undefined"
-  >
-    <div class="knowledge-modal knowledge-content-view">
-      <div class="knowledge-content-view__header">
-        <span class="knowledge-content-view__name">{{ contentViewFile?.name }}</span>
-        <span class="knowledge-content-view__type">{{ contentViewFile?.contentType }}</span>
-      </div>
-      <template v-if="isContentViewLoading">
-        <div class="knowledge-content-view__loading">
-          <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
-          <span>Đang tải nội dung...</span>
-        </div>
-      </template>
-      <template v-else-if="contentViewError">
-        <p class="message message--error">{{ contentViewError }}</p>
-      </template>
-      <template v-else-if="isImagePreviewable(contentViewFile) && contentViewObjectUrl">
-        <img class="knowledge-content-view__image" :src="contentViewObjectUrl" :alt="contentViewFile?.name ?? 'Image preview'" />
-      </template>
-      <template v-else-if="isPdfPreviewable(contentViewFile) && contentViewObjectUrl">
-        <iframe
-          class="knowledge-content-view__frame"
-          :src="contentViewObjectUrl"
-          :title="contentViewFile?.name ?? 'PDF preview'"
-        />
-      </template>
-      <template v-else-if="contentViewContent">
-        <pre class="knowledge-content-view__pre">{{ contentViewContent }}</pre>
-      </template>
-      <template v-else>
-        <div class="knowledge-content-view__fallback">
-          <IconFileText :size="32" stroke-width="1.5" aria-hidden="true" />
-          <p>Loại file này chưa được hỗ trợ xem trước.</p>
-          <p>Vui lòng tải xuống để xem nội dung.</p>
-        </div>
-      </template>
-    </div>
-  </PopupTopOneColumn>
+    :file="contentViewFile"
+    :loading="isContentViewLoading"
+    :error="contentViewError"
+    :preview-kind="contentViewKind"
+    :preview-content="contentViewContent"
+    :preview-html="contentViewHtml"
+    :preview-object-url="contentViewObjectUrl"
+    @close="closeContentView"
+    @download="contentViewFile ? downloadFile(contentViewFile) : undefined"
+  />
 </template>
 
 <style scoped>
@@ -1481,89 +1554,6 @@ function ensureItemOwner(item: ActiveItem): boolean {
 }
 
 .knowledge-empty p {
-  margin: 0;
-}
-
-.knowledge-modal {
-  display: grid;
-  gap: 14px;
-}
-
-.knowledge-content-view {
-  gap: 12px;
-}
-
-.knowledge-content-view__header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
-
-.knowledge-content-view__name {
-  font-weight: 600;
-  color: #1f2937;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.knowledge-content-view__type {
-  color: #667085;
-  font-size: 13px;
-}
-
-.knowledge-content-view__loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-  padding: 32px;
-  color: #667085;
-}
-
-.knowledge-content-view__pre {
-  max-height: 400px;
-  overflow: auto;
-  margin: 0;
-  padding: 12px;
-  background: #f7f9fd;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.knowledge-content-view__image,
-.knowledge-content-view__frame {
-  width: 100%;
-  max-height: 70vh;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: #f7f9fd;
-}
-
-.knowledge-content-view__image {
-  display: block;
-  object-fit: contain;
-}
-
-.knowledge-content-view__frame {
-  min-height: 70vh;
-}
-
-.knowledge-content-view__fallback {
-  display: grid;
-  gap: 8px;
-  place-items: center;
-  padding: 32px;
-  color: #667085;
-  text-align: center;
-}
-
-.knowledge-content-view__fallback p {
   margin: 0;
 }
 
