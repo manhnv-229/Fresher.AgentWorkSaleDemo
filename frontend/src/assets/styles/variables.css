@@ -88,6 +88,7 @@
 
   --content-gap: 16px;
   --card-padding: 16px;
+  --agent-card-min-width: 360px;
 
   --table-toolbar-control-height: 32px;
   --table-toolbar-gap: 8px;
