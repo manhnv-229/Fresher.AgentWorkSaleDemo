@@ -731,7 +731,7 @@
 .workspace__settings-sidebar-footer,
 .workspace__agent-sidebar-footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
   padding-top: 12px;
@@ -782,7 +782,7 @@
 }
 
 .workspace__sidebar--collapsed:not(:hover) .workspace__sidebar-footer {
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .workspace__settings-sidebar--collapsed {
@@ -816,7 +816,7 @@
 }
 
 .workspace__settings-sidebar--collapsed:not(:hover) .workspace__settings-sidebar-footer {
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .workspace__settings-sidebar-footer-button {
@@ -1218,14 +1218,14 @@
 .list-toolbar {
   flex-wrap: nowrap;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .filter-bar {
   display: flex;
   align-items: center;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .filter-bar > :first-child {
@@ -1237,6 +1237,7 @@
   flex: 0 0 220px;
   width: 220px;
   min-width: 220px;
+  overflow: visible;
 }
 
 .filter-bar__actions {
@@ -1245,13 +1246,13 @@
   gap: clamp(0px, 0.8vw, 8px);
   min-width: 0;
   flex-wrap: nowrap;
-  overflow: hidden;
+  overflow: visible;
   margin-left: auto;
 }
 
 .filter-select {
   display: block;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .filter-bar__actions > * {
@@ -1353,67 +1354,8 @@
   gap: 4px;
 }
 
-.table-shell {
-  overflow: auto;
-}
-
-.table-shell table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.table-shell th,
-.table-shell td {
-  height: var(--table-row-height);
-  padding: 0 12px;
-  border-bottom: 1px solid var(--color-border);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.table-shell th {
-  height: var(--table-header-height);
-  color: var(--color-text-subtle);
-  font-size: var(--font-size-body);
-  font-weight: 500;
-}
-
-.table-shell th:first-child,
-.table-shell td:first-child {
-  padding-left: 0;
-}
-
-.table-shell th:last-child,
-.table-shell td:last-child {
-  padding-right: 0;
-}
-
-.table-shell tbody tr:hover {
-  background: var(--color-brand-soft);
-}
-
-.table-shell tbody tr:last-child td {
-  border-bottom: 0;
-}
-
 .table-actions {
   text-align: right;
-}
-
-.user-cell {
-  display: grid;
-  gap: 2px;
-}
-
-.user-cell strong {
-  color: var(--color-text);
-  font-size: var(--font-size-body);
-  font-weight: 600;
-}
-
-.user-cell span {
-  color: var(--color-text-subtle);
 }
 
 .status-chip {
@@ -1449,8 +1391,10 @@
   margin-top: auto;
   justify-content: flex-end;
   gap: 12px;
+  align-items: center;
   min-height: var(--table-pagination-height);
-  padding: 12px 0 0;
+  height: var(--table-pagination-height);
+  padding: 0;
   border-top: 1px solid var(--color-border);
 }
 
@@ -1519,7 +1463,7 @@
   gap: 16px;
   min-width: 0;
   min-inline-size: var(--agent-card-min-width);
-  overflow: hidden;
+  overflow: visible;
   padding: 16px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -1553,7 +1497,7 @@
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .agent-card__top > :first-child,

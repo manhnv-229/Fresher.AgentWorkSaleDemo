@@ -81,13 +81,16 @@ public static class DependencyInjection
         services.AddScoped<IKnowledgeExplorerService, KnowledgeExplorerService>();
         services.AddScoped<IKnowledgeFolderService, KnowledgeFolderService>();
         services.AddScoped<IKnowledgeFileService, KnowledgeFileService>();
+        services.AddScoped<IKnowledgePreviewConverter, KnowledgePreviewConverter>();
         services.AddScoped<IAgentQueryRepository, AgentQueryRepository>();
         services.AddScoped<ITenantCatalogQueryRepository, TenantCatalogQueryRepository>();
         services.AddScoped<IUserQueryRepository, UserQueryRepository>();
         services.AddScoped<IAuditLogQueryRepository, AuditLogQueryRepository>();
         services.AddScoped<IAgentKnowledgeRepository, AgentKnowledgeRepository>();
         var knowledgeStorageOptions = CreateKnowledgeStorageOptions();
+        var knowledgePreviewOptions = CreateKnowledgePreviewOptions();
         services.AddSingleton(Microsoft.Extensions.Options.Options.Create(knowledgeStorageOptions));
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(knowledgePreviewOptions));
         services.AddSingleton<HttpClient>(_ => CreateKnowledgeStorageHttpClient(knowledgeStorageOptions));
         services.AddScoped<IKnowledgeStorageService, MinioKnowledgeStorageService>();
         services.AddScoped<DatabaseSeeder>();
@@ -110,6 +113,15 @@ public static class DependencyInjection
             MaxUploadBytes = GetLong("S3_MAX_UPLOAD_BYTES", 25 * 1024 * 1024),
             RequestTimeoutSeconds = GetInt("S3_REQUEST_TIMEOUT_SECONDS", 15),
             ConnectTimeoutSeconds = GetInt("S3_CONNECT_TIMEOUT_SECONDS", 5)
+        };
+    }
+
+    private static KnowledgePreviewOptions CreateKnowledgePreviewOptions()
+    {
+        return new KnowledgePreviewOptions
+        {
+            OfficeCommandPath = GetString("KNOWLEDGE_PREVIEW_OFFICE_COMMAND", "soffice"),
+            ConversionTimeoutSeconds = GetInt("KNOWLEDGE_PREVIEW_TIMEOUT_SECONDS", 30)
         };
     }
 

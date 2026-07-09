@@ -208,6 +208,28 @@ public sealed class InternalAgentKnowledgeController(
         return File(result.Value.Content, result.Value.ContentType, result.Value.FileName);
     }
 
+    [HttpGet("files/{fileId:guid}/preview")]
+    [HasPermission(PermissionCodes.DocumentView)]
+    public async Task<IActionResult> PreviewFile(
+        Guid agentId,
+        Guid fileId,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized(new ApiErrorResponse("invalid_token", "Access token does not contain a valid user id."));
+        }
+
+        var result = await fileService.PreviewFileAsync(Guid.Empty, agentId, fileId, userId.Value, cancellationToken);
+        if (!result.Succeeded || result.Value is null)
+        {
+            return ToErrorResult(result.ErrorCode, result.ErrorMessage);
+        }
+
+        return File(result.Value.Content, result.Value.ContentType);
+    }
+
     [HttpPut("files/{fileId:guid}/rename")]
     [HasPermission(PermissionCodes.DocumentUpdate)]
     public async Task<ActionResult<KnowledgeFileItem>> RenameFile(
@@ -306,6 +328,7 @@ public sealed class InternalAgentKnowledgeController(
             KnowledgeErrorCodes.AgentNotFound or KnowledgeErrorCodes.FolderNotFound or KnowledgeErrorCodes.FileNotFound => NotFound(response),
             KnowledgeErrorCodes.FileOwnerRequired or KnowledgeErrorCodes.FolderOwnerRequired => StatusCode(StatusCodes.Status403Forbidden, response),
             KnowledgeErrorCodes.StorageUnavailable or KnowledgeErrorCodes.StorageUnreachable or KnowledgeErrorCodes.StorageTimedOut or KnowledgeErrorCodes.StorageRejected
+                or KnowledgeErrorCodes.PreviewUnavailable or KnowledgeErrorCodes.PreviewTimedOut
                 => StatusCode(StatusCodes.Status503ServiceUnavailable, response),
             _ => BadRequest(response)
         };

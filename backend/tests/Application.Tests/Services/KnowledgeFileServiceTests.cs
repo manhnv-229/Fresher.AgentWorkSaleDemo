@@ -296,6 +296,7 @@ public sealed class KnowledgeFileServiceTests
         var tenantRepository = new Mock<ITenantRepository>();
         var knowledgeRepository = new Mock<IAgentKnowledgeRepository>();
         var storageService = new Mock<IKnowledgeStorageService>();
+        var previewConverter = new Mock<IKnowledgePreviewConverter>();
         var authUserRepository = new Mock<IAuthUserRepository>();
         var auditLogService = new Mock<IAuditLogService>();
         var cacheVersionService = new Mock<ICacheVersionService>();
@@ -320,6 +321,7 @@ public sealed class KnowledgeFileServiceTests
                 tenantRepository.Object,
                 knowledgeRepository.Object,
                 storageService.Object,
+                previewConverter.Object,
                 authUserRepository.Object,
                 auditLogService.Object,
                 cacheVersionService.Object,

@@ -1,66 +1,19 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
-import {
-  IconChevronDown,
-  IconChevronUp,
-  IconDots,
-  IconFilter,
-  IconPin,
-  IconSearch
-} from '@tabler/icons-vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
+import { IconChevronDown, IconChevronUp, IconDots, IconPin, IconSearch } from '@tabler/icons-vue';
 import BaseButton from '../buttons/BaseButton.vue';
 import IconButton from '../buttons/IconButton.vue';
 import Checkbox from '../choices/Checkbox.vue';
 import ContextMenu, { type ContextMenuItem } from '../menus/ContextMenu.vue';
+import DataTableHeader from './DataTableHeader.vue';
 import PaginationFooter from './PaginationFooter.vue';
-
-export type DataTableColumn = {
-  key: string;
-  label: string;
-  tooltip?: string;
-  align?: 'left' | 'center' | 'right';
-  width?: string;
-  minWidth?: string;
-  sortable?: boolean;
-  filterable?: boolean;
-  pinned?: boolean;
-  wrap?: boolean;
-  formatter?: (value: unknown, row: DataTableRow) => string | number;
-};
-
-export type DataTableRow = {
-  id: string | number;
-  [key: string]: unknown;
-};
-
-export type DataTableToolbarAction = {
-  id: string;
-  label: string;
-  icon: Component;
-  disabled?: boolean;
-};
-
-export type DataTableQuickFilter = {
-  id: string;
-  label: string;
-  value: string;
-  predicate?: (row: DataTableRow) => boolean;
-};
-
-export type DataTableDropdownFilter = {
-  id: string;
-  label: string;
-  placeholder?: string;
-  options: DataTableQuickFilter[];
-};
-
-export type DataTableRowAction = {
-  id: string;
-  label: string;
-  icon: Component;
-  danger?: boolean;
-  disabled?: boolean;
-};
+import type {
+  DataTableColumn,
+  DataTableDropdownFilter,
+  DataTableRow,
+  DataTableRowAction,
+  DataTableToolbarAction
+} from './dataTableTypes';
 
 const props = withDefaults(
   defineProps<{
@@ -77,6 +30,10 @@ const props = withDefaults(
     initialPageSize?: number;
     emptyLabel?: string;
     selectable?: boolean;
+    rowClickable?: boolean;
+    showToolbar?: boolean;
+    showFooter?: boolean;
+    paginate?: boolean;
   }>(),
   {
     title: '',
@@ -89,7 +46,11 @@ const props = withDefaults(
     pageSizeOptions: () => [10, 20, 50],
     initialPageSize: 10,
     emptyLabel: 'Không có dữ liệu.',
-    selectable: true
+    selectable: true,
+    rowClickable: false,
+    showToolbar: true,
+    showFooter: true,
+    paginate: true
   }
 );
 
@@ -97,6 +58,7 @@ const emit = defineEmits<{
   tableAction: [actionId: string];
   bulkAction: [actionId: string, rowIds: Array<string | number>];
   rowAction: [actionId: string, row: DataTableRow];
+  rowClick: [row: DataTableRow];
 }>();
 
 const searchValue = ref('');
@@ -127,8 +89,13 @@ const columnFilterInputRef = ref<HTMLInputElement | null>(null);
 const columnFilterValues = ref<Record<string, string>>({});
 const hiddenColumnKeys = ref<string[]>([]);
 const pinnedColumnKeys = ref(props.columns.filter((column) => column.pinned).map((column) => column.key));
-const multilineColumnKeys = ref(props.columns.filter((column) => column.wrap).map((column) => column.key));
+const expandedRowIds = ref<Array<string | number>>([]);
 const selectedDropdownValues = ref<Record<string, string>>({});
+const columnWidths = ref<Record<string, number>>({});
+const wrapCellRefs = ref<Record<string, HTMLElement | null>>({});
+const wrapCellOverflowMap = ref<Record<string, boolean>>({});
+const resizeState = ref<{ columnKey: string; startX: number; startWidth: number; minWidth: number } | null>(null);
+let removeResizeListeners: (() => void) | null = null;
 
 function getRowId(row: DataTableRow): string | number {
   return row.id;
@@ -150,7 +117,7 @@ function toggleRowSelection(rowId: string | number, value: boolean) {
 }
 
 function handleSelectAllCurrentPage(value: boolean) {
-  const pageIds = pagedRows.value.map((row) => getRowId(row));
+  const pageIds = displayedRows.value.map((row) => getRowId(row));
   if (value) {
     const mergedIds = new Set([...selectedRowIds.value, ...pageIds]);
     selectedRowIds.value = Array.from(mergedIds);
@@ -179,6 +146,15 @@ function formatCell(column: DataTableColumn, row: DataTableRow): string | number
   }
 
   return String(value);
+}
+
+function parseColumnWidth(value?: string): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function matchesSearch(row: DataTableRow): boolean {
@@ -220,6 +196,52 @@ function compareValues(left: unknown, right: unknown): number {
   return String(left ?? '').localeCompare(String(right ?? ''), 'vi');
 }
 
+function getResolvedColumnWidth(column: DataTableColumn): string | undefined {
+  const width = columnWidths.value[column.key];
+  if (typeof width === 'number') {
+    return `${width}px`;
+  }
+
+  return column.width;
+}
+
+function getResolvedColumnMinWidth(column: DataTableColumn): string | undefined {
+  return column.minWidth || column.width;
+}
+
+function getWrapCellKey(rowId: string | number, columnKey: string) {
+  return `${rowId}-${columnKey}`;
+}
+
+function setWrapCellRef(rowId: string | number, columnKey: string) {
+  const key = getWrapCellKey(rowId, columnKey);
+
+  return (element: Element | ComponentPublicInstance | null) => {
+    wrapCellRefs.value[key] = element instanceof HTMLElement ? element : null;
+  };
+}
+
+function measureWrapCellOverflow() {
+  const nextOverflowMap: Record<string, boolean> = {};
+
+  for (const [key, element] of Object.entries(wrapCellRefs.value)) {
+    if (!element) {
+      continue;
+    }
+
+    nextOverflowMap[key] =
+      element.scrollHeight > element.clientHeight + 1 || element.scrollWidth > element.clientWidth + 1;
+  }
+
+  wrapCellOverflowMap.value = nextOverflowMap;
+}
+
+function scheduleMeasureWrapCellOverflow() {
+  nextTick(() => {
+    measureWrapCellOverflow();
+  });
+}
+
 const orderedColumns = computed(() => {
   const visibleColumns = orderedColumnKeys.value
     .map((key) => props.columns.find((column) => column.key === key))
@@ -247,7 +269,11 @@ const filteredRows = computed(() => {
 });
 
 const totalCount = computed(() => filteredRows.value.length);
-const pagedRows = computed(() => {
+const displayedRows = computed(() => {
+  if (!props.paginate) {
+    return filteredRows.value;
+  }
+
   const start = (currentPage.value - 1) * pageSize.value;
   return filteredRows.value.slice(start, start + pageSize.value);
 });
@@ -255,24 +281,24 @@ const pagedRows = computed(() => {
 const selectedCount = computed(() => selectedRowIds.value.length);
 const isAllRowsSelected = computed(() => totalCount.value > 0 && selectedCount.value === totalCount.value);
 const allCurrentPageSelected = computed(() => {
-  if (!pagedRows.value.length) {
+  if (!displayedRows.value.length) {
     return false;
   }
 
-  return pagedRows.value.every((row) => isSelectedRow(getRowId(row)));
+  return displayedRows.value.every((row) => isSelectedRow(getRowId(row)));
 });
 
 const someCurrentPageSelected = computed(() => {
-  if (!pagedRows.value.length) {
+  if (!displayedRows.value.length) {
     return false;
   }
 
-  return pagedRows.value.some((row) => isSelectedRow(getRowId(row))) && !allCurrentPageSelected.value;
+  return displayedRows.value.some((row) => isSelectedRow(getRowId(row))) && !allCurrentPageSelected.value;
 });
 
 const visibleBulkActions = computed(() => props.bulkActions.slice(0, 5));
 const overflowBulkActions = computed(() => props.bulkActions.slice(5));
-const hasRowActions = computed(() => pagedRows.value.some((row) => getRowActions(row).length > 0));
+const hasRowActions = computed(() => displayedRows.value.some((row) => getRowActions(row).length > 0));
 
 watch(
   () => [searchValue.value, JSON.stringify(selectedDropdownValues.value), JSON.stringify(columnFilterValues.value), pageSize.value],
@@ -288,6 +314,18 @@ watch(
     selectedRowIds.value = selectedRowIds.value.filter((id) => availableIds.has(id));
   },
   { immediate: true }
+);
+
+watch(
+  () => [
+    displayedRows.value.map((row) => getRowId(row)).join('|'),
+    orderedColumns.value.map((column) => column.key).join('|'),
+    JSON.stringify(columnWidths.value),
+    JSON.stringify(expandedRowIds.value)
+  ],
+  () => {
+    scheduleMeasureWrapCellOverflow();
+  }
 );
 
 function handlePageSizeChange(value: number) {
@@ -339,7 +377,6 @@ function openHeaderMenu(column: DataTableColumn, event: MouseEvent) {
 
   const isPinned = pinnedColumnKeys.value.includes(column.key);
   const isHidden = hiddenColumnKeys.value.includes(column.key);
-  const isMultiline = multilineColumnKeys.value.includes(column.key);
   const direction = sortState.value?.key === column.key ? sortState.value.direction : null;
 
   activeHeaderColumnKey.value = column.key;
@@ -349,8 +386,7 @@ function openHeaderMenu(column: DataTableColumn, event: MouseEvent) {
     { id: 'sort-desc', label: 'Giảm dần', icon: IconChevronDown },
     { id: isPinned ? 'unpin' : 'pin', label: isPinned ? 'Bỏ ghim cột' : 'Ghim cột', icon: IconPin, separatorBefore: true },
     { id: 'move-first', label: 'Đặt làm cột đầu tiên' },
-    { id: isHidden ? 'show' : 'hide', label: isHidden ? 'Hiện cột' : 'Ẩn cột' },
-    { id: isMultiline ? 'single-line' : 'multi-line', label: isMultiline ? 'Hiển thị 1 dòng' : 'Hiển thị nhiều dòng', separatorBefore: true }
+    { id: isHidden ? 'show' : 'hide', label: isHidden ? 'Hiện cột' : 'Ẩn cột' }
   ].map((item) => ({
     ...item,
     label:
@@ -417,14 +453,6 @@ function handleHeaderMenuSelect(item: ContextMenuItem) {
     return;
   }
 
-  if (item.id === 'multi-line') {
-    multilineColumnKeys.value = [...multilineColumnKeys.value, columnKey];
-    return;
-  }
-
-  if (item.id === 'single-line') {
-    multilineColumnKeys.value = multilineColumnKeys.value.filter((key) => key !== columnKey);
-  }
 }
 
 function openColumnFilter(column: DataTableColumn, event: MouseEvent) {
@@ -508,6 +536,13 @@ watch(
 
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown);
+  removeResizeListeners?.();
+  removeResizeListeners = null;
+  resizeState.value = null;
+});
+
+onMounted(() => {
+  scheduleMeasureWrapCellOverflow();
 });
 
 function getColumnSortDirection(columnKey: string): 'asc' | 'desc' | null {
@@ -551,6 +586,14 @@ function handleInlineRowAction(actionId: string, row: DataTableRow) {
   emit('rowAction', actionId, row);
 }
 
+function handleRowClick(row: DataTableRow) {
+  if (!props.rowClickable) {
+    return;
+  }
+
+  emit('rowClick', row);
+}
+
 function resolveCellAlign(column: DataTableColumn, row?: DataTableRow): 'left' | 'center' | 'right' {
   if (column.align) {
     return column.align;
@@ -567,15 +610,85 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   return [
     `data-table__cell--${resolveCellAlign(column, row)}`,
     {
-      'data-table__cell--multiline': multilineColumnKeys.value.includes(column.key)
+      'data-table__cell--wrap': Boolean(column.wrap),
+      'data-table__cell--expanded': row ? isRowExpanded(getRowId(row)) : false
     }
   ];
+}
+
+function isRowExpanded(rowId: string | number) {
+  return expandedRowIds.value.includes(rowId);
+}
+
+function shouldShowWrapToggle(rowId: string | number, column: DataTableColumn) {
+  if (!column.wrap) {
+    return false;
+  }
+
+  return Boolean(wrapCellOverflowMap.value[getWrapCellKey(rowId, column.key)] || isRowExpanded(rowId));
+}
+
+function toggleRowExpansion(rowId: string | number) {
+  if (isRowExpanded(rowId)) {
+    expandedRowIds.value = expandedRowIds.value.filter((id) => id !== rowId);
+    return;
+  }
+
+  expandedRowIds.value = [...expandedRowIds.value, rowId];
+}
+
+function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
+  const currentWidth = columnWidths.value[column.key] ?? parseColumnWidth(column.width);
+  const minWidth = Math.max(
+    parseColumnWidth(column.minWidth) ?? 120,
+    80
+  );
+  const headerCell = (event.currentTarget as HTMLElement | null)?.closest('th');
+  const measuredWidth = headerCell?.getBoundingClientRect().width;
+  const startWidth = Math.max(measuredWidth ?? currentWidth ?? minWidth, minWidth);
+
+  columnWidths.value = {
+    ...columnWidths.value,
+    [column.key]: startWidth
+  };
+
+  resizeState.value = {
+    columnKey: column.key,
+    startX: event.clientX,
+    startWidth,
+    minWidth
+  };
+
+  const handlePointerMove = (moveEvent: MouseEvent) => {
+    if (!resizeState.value || resizeState.value.columnKey !== column.key) {
+      return;
+    }
+
+    const delta = moveEvent.clientX - resizeState.value.startX;
+    const nextWidth = Math.max(resizeState.value.minWidth, resizeState.value.startWidth + delta);
+    columnWidths.value = {
+      ...columnWidths.value,
+      [column.key]: nextWidth
+    };
+  };
+
+  const handlePointerUp = () => {
+    removeResizeListeners?.();
+    removeResizeListeners = null;
+    resizeState.value = null;
+  };
+
+  window.addEventListener('mousemove', handlePointerMove);
+  window.addEventListener('mouseup', handlePointerUp, { once: true });
+  removeResizeListeners = () => {
+    window.removeEventListener('mousemove', handlePointerMove);
+  };
 }
 </script>
 
 <template>
   <section class="data-table">
-    <div class="data-table__toolbar">
+    <div v-if="showToolbar" class="data-table__toolbar">
       <div v-if="!isAllRowsSelected" class="data-table__toolbar-start">
         <label class="data-table__search" aria-label="Tìm kiếm dữ liệu">
           <IconSearch :size="20" stroke-width="1.5" aria-hidden="true" />
@@ -691,83 +804,38 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
         <table class="data-table__table">
           <colgroup>
             <col v-if="selectable" style="width: 40px">
-            <col
+          <col
               v-for="column in orderedColumns"
               :key="column.key"
-              :style="{ width: column.width, minWidth: column.minWidth }"
+              :style="{ width: getResolvedColumnWidth(column), minWidth: getResolvedColumnMinWidth(column) }"
             >
             <col v-if="hasRowActions" style="width: 112px">
           </colgroup>
 
-          <thead>
-            <tr>
-              <th v-if="selectable" class="data-table__checkbox-cell">
-                <Checkbox
-                  :model-value="allCurrentPageSelected"
-                  :indeterminate="someCurrentPageSelected"
-                  @update:model-value="handleSelectAllCurrentPage"
-                />
-              </th>
-              <th
-                v-for="column in orderedColumns"
-                :key="column.key"
-                :class="[getCellClass(column), { 'data-table__header-cell--pinned': pinnedColumnKeys.includes(column.key) }]"
-              >
-                <div class="data-table__header-content">
-                  <button
-                    type="button"
-                    class="data-table__header-button"
-                    :title="column.tooltip || column.label"
-                    @click="openHeaderMenu(column, $event)"
-                  >
-                    <span class="data-table__header-label">
-                      <IconPin
-                        v-if="pinnedColumnKeys.includes(column.key)"
-                        :size="20"
-                        stroke-width="1.5"
-                        aria-hidden="true"
-                      />
-                      <span>{{ column.label }}</span>
-                    </span>
-                    <span class="data-table__header-meta">
-                      <IconChevronUp
-                        v-if="getColumnSortDirection(column.key) === 'asc'"
-                        :size="20"
-                        stroke-width="1.5"
-                        aria-hidden="true"
-                      />
-                      <IconChevronDown
-                        v-else-if="getColumnSortDirection(column.key) === 'desc'"
-                        :size="20"
-                        stroke-width="1.5"
-                        aria-hidden="true"
-                      />
-                      <IconChevronDown v-else :size="20" stroke-width="1.5" aria-hidden="true" />
-                    </span>
-                  </button>
+          <DataTableHeader
+            :columns="orderedColumns"
+            :selectable="selectable"
+            :has-row-actions="hasRowActions"
+            :pinned-column-keys="pinnedColumnKeys"
+            :all-current-page-selected="allCurrentPageSelected"
+            :some-current-page-selected="someCurrentPageSelected"
+            :get-column-sort-direction="getColumnSortDirection"
+            :is-column-filtered="isColumnFiltered"
+            :get-cell-class="getCellClass"
+            :get-column-width="getResolvedColumnWidth"
+            @toggle-select-all-current-page="handleSelectAllCurrentPage"
+            @open-header-menu="openHeaderMenu"
+            @open-column-filter="openColumnFilter"
+            @open-column-resize="handleOpenColumnResize"
+          />
 
-                  <button
-                    v-if="column.filterable"
-                    type="button"
-                    class="data-table__column-filter-trigger"
-                    :class="{ 'data-table__column-filter-trigger--active': isColumnFiltered(column.key) }"
-                    :title="`Lọc cột ${column.label}`"
-                    @click.stop="openColumnFilter(column, $event)"
-                  >
-                    <IconFilter :size="20" stroke-width="1.5" aria-hidden="true" />
-                  </button>
-                </div>
-              </th>
-              <th v-if="hasRowActions" class="data-table__action-header"></th>
-            </tr>
-          </thead>
-
-          <tbody v-if="pagedRows.length">
+          <tbody v-if="displayedRows.length">
             <tr
-              v-for="row in pagedRows"
+              v-for="row in displayedRows"
               :key="getRowId(row)"
               class="data-table__row"
               :class="{ 'data-table__row--selected': isSelectedRow(getRowId(row)) }"
+              @click="handleRowClick(row)"
             >
               <td v-if="selectable" class="data-table__checkbox-cell">
                 <Checkbox
@@ -780,10 +848,53 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
                 :key="`${getRowId(row)}-${column.key}`"
                 :class="getCellClass(column, row)"
               >
-                <div class="data-table__cell-content">
-                  <span class="data-table__cell-text" :title="String(formatCell(column, row))">
-                    {{ formatCell(column, row) }}
-                  </span>
+                <div
+                  class="data-table__cell-content"
+                  :class="{ 'data-table__cell-content--wrap': column.wrap, 'data-table__cell-content--expanded': column.wrap && isRowExpanded(getRowId(row)) }"
+                >
+                  <div
+                    v-if="column.wrap"
+                    class="data-table__cell-main"
+                    :class="{ 'data-table__cell-main--expanded': isRowExpanded(getRowId(row)) }"
+                  >
+                    <div
+                      class="data-table__cell-slot"
+                      :ref="setWrapCellRef(getRowId(row), column.key)"
+                    >
+                      <slot
+                        :name="`cell-${column.key}`"
+                        :row="row"
+                        :column="column"
+                        :value="formatCell(column, row)"
+                      >
+                        <span class="data-table__cell-text" :title="String(formatCell(column, row))">
+                          {{ formatCell(column, row) }}
+                        </span>
+                      </slot>
+                    </div>
+                  </div>
+                  <div v-else class="data-table__cell-main">
+                    <div class="data-table__cell-slot">
+                      <slot
+                        :name="`cell-${column.key}`"
+                        :row="row"
+                        :column="column"
+                        :value="formatCell(column, row)"
+                      >
+                        <span class="data-table__cell-text" :title="String(formatCell(column, row))">
+                          {{ formatCell(column, row) }}
+                        </span>
+                      </slot>
+                    </div>
+                  </div>
+                  <button
+                    v-if="shouldShowWrapToggle(getRowId(row), column)"
+                    type="button"
+                    class="data-table__cell-expand-toggle"
+                    @click.stop="toggleRowExpansion(getRowId(row))"
+                  >
+                    {{ isRowExpanded(getRowId(row)) ? 'Thu gọn' : 'Xem thêm' }}
+                  </button>
                 </div>
               </td>
               <td v-if="hasRowActions" class="data-table__action-cell">
@@ -839,6 +950,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
       </div>
 
       <PaginationFooter
+        v-if="showFooter"
         :total-count="totalCount"
         :current-page="currentPage"
         :page-size="pageSize"
@@ -892,8 +1004,11 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
 
 <style scoped>
 .data-table {
-  display: grid;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .data-table__toolbar {
@@ -1011,13 +1126,17 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
 }
 
 .data-table__surface {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: 16px;
   background: var(--color-surface);
 }
 
 .data-table__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -1031,8 +1150,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
 .data-table__table thead th {
   position: sticky;
   top: 0;
-  z-index: 2;
-  position: relative;
+  z-index: 3;
   height: 36px;
   padding: 0 12px;
   border-bottom: 1px solid var(--color-border);
@@ -1052,6 +1170,14 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   line-height: 18px;
 }
 
+.data-table__table td.data-table__cell--wrap,
+.data-table__table td.data-table__cell--expanded {
+  height: auto;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  vertical-align: top;
+}
+
 .data-table__table thead th + th::before {
   content: "";
   position: absolute;
@@ -1066,77 +1192,6 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   width: 40px;
   padding-inline: 12px 8px;
   text-align: center;
-}
-
-.data-table__header-content {
-  display: flex;
-  min-width: 0;
-  width: 100%;
-  align-items: center;
-  gap: 4px;
-}
-
-.data-table__header-button {
-  display: inline-flex;
-  width: 100%;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.data-table__header-label {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-}
-
-.data-table__header-label span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.data-table__header-meta,
-.data-table__column-filter-trigger {
-  display: inline-grid;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  place-items: center;
-}
-
-.data-table__column-filter-trigger {
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-placeholder);
-  cursor: pointer;
-  opacity: 0;
-  transition:
-    opacity 120ms ease,
-    background-color 120ms ease,
-    color 120ms ease;
-}
-
-.data-table__table thead th:hover .data-table__column-filter-trigger,
-.data-table__column-filter-trigger--active {
-  opacity: 1;
-}
-
-.data-table__column-filter-trigger:hover {
-  background: var(--color-surface-muted);
-}
-
-.data-table__column-filter-trigger--active {
-  color: var(--color-brand);
 }
 
 .data-table__row {
@@ -1166,14 +1221,6 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   text-align: right;
 }
 
-.data-table__cell--right .data-table__header-content {
-  justify-content: flex-end;
-}
-
-.data-table__cell--right .data-table__header-button {
-  justify-content: flex-end;
-}
-
 .data-table__cell--right .data-table__cell-content {
   justify-content: flex-end;
 }
@@ -1182,16 +1229,29 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   text-align: right;
 }
 
-.data-table__cell--right .data-table__header-label {
-  justify-content: flex-end;
-}
-
 .data-table__cell-content {
   display: flex;
   min-width: 0;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 8px;
+}
+
+.data-table__cell-content--wrap {
+  width: 100%;
+}
+
+.data-table__cell-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.data-table__cell-main--expanded {
+  overflow: visible;
+}
+
+.data-table__cell-slot {
+  min-width: 0;
 }
 
 .data-table__cell-text {
@@ -1201,11 +1261,39 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   white-space: nowrap;
 }
 
-.data-table__cell--multiline .data-table__cell-text {
+.data-table__cell--wrap .data-table__cell-slot {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: normal;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.data-table__cell--expanded .data-table__cell-slot {
+  display: block;
+  overflow: visible;
+  white-space: normal;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.data-table__cell-expand-toggle {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--color-brand);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 0;
+}
+
+.data-table__cell-expand-toggle:hover {
+  color: var(--color-brand-hover);
 }
 
 .data-table__row-actions {
@@ -1257,8 +1345,7 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   text-align: center;
 }
 
-.data-table__action-cell,
-.data-table__action-header {
+.data-table__action-cell {
   width: 112px;
   min-width: 112px;
   padding-inline: 8px 12px;

@@ -18,5 +18,8 @@ public static class KnowledgeErrorCodes
     public const string StorageUnreachable = "knowledge.storage_unreachable";
     public const string StorageTimedOut = "knowledge.storage_timed_out";
     public const string StorageRejected = "knowledge.storage_rejected";
+    public const string PreviewNotSupported = "knowledge.preview_not_supported";
+    public const string PreviewUnavailable = "knowledge.preview_unavailable";
+    public const string PreviewTimedOut = "knowledge.preview_timed_out";
     public const string ValidationError = "knowledge.validation_error";
 }

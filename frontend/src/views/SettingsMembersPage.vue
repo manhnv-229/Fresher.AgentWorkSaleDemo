@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/buttons/BaseButton.vue';
 import IconButton from '../components/buttons/IconButton.vue';
 import DropdownList from '../components/dropdown/DropdownList.vue';
 import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import DataTable from '../components/tables/DataTable.vue';
 import PaginationFooter from '../components/tables/PaginationFooter.vue';
+import PrimarySecondaryCell from '../components/tables/PrimarySecondaryCell.vue';
 import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
+import type { DataTableColumn, DataTableRow } from '../components/tables/dataTableTypes';
 import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation';
 import { getUsers, lockUser, unlockUser, updateJobPosition, type AdminUserSummary } from '../api';
 import type { PagedResult } from '../api/agents';
@@ -27,6 +30,9 @@ const pageSize = ref<number>(PAGE_SIZE_OPTIONS[0]);
 
 const searchText = ref('');
 const selectedStatus = ref('');
+const searchDebounceMs = 200;
+let searchDebounceTimer: number | undefined;
+let loadUsersRequestId = 0;
 
 const selectedUser = ref<AdminUserSummary | null>(null);
 const isPopupOpen = ref(false);
@@ -72,23 +78,59 @@ const JOB_POSITIONS = [
 ];
 
 const STATUS_OPTIONS = withAllOption(MEMBER_STATUSES);
+const memberTableColumns: DataTableColumn[] = [
+  { key: 'fullName', label: 'Nhân viên', minWidth: '220px' },
+  { key: 'jobPosition', label: 'Vị trí công việc', minWidth: '180px' },
+  { key: 'project', label: 'Dự án', minWidth: '180px' },
+  { key: 'email', label: 'Email', minWidth: '220px' },
+  { key: 'status', label: 'Trạng thái', minWidth: '140px' }
+];
 
 onMounted(() => {
   void loadUsers();
 });
 
-watch([searchText, selectedStatus], () => {
+onBeforeUnmount(() => {
+  if (searchDebounceTimer !== undefined) {
+    window.clearTimeout(searchDebounceTimer);
+  }
+});
+
+watch(searchText, () => {
+  scheduleUserSearch();
+});
+
+watch(selectedStatus, () => {
   currentPage.value = 1;
+  cancelUserSearchDebounce();
   void loadUsers();
 });
 
 watch(pageSize, () => {
   currentPage.value = 1;
+  cancelUserSearchDebounce();
   void loadUsers();
 });
 
-async function loadUsers() {
-  isLoading.value = true;
+function cancelUserSearchDebounce() {
+  if (searchDebounceTimer !== undefined) {
+    window.clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = undefined;
+  }
+}
+
+function scheduleUserSearch() {
+  cancelUserSearchDebounce();
+  searchDebounceTimer = window.setTimeout(() => {
+    currentPage.value = 1;
+    void loadUsers();
+  }, searchDebounceMs);
+}
+
+async function loadUsers(requestId = ++loadUsersRequestId) {
+  if (requestId === loadUsersRequestId) {
+    isLoading.value = true;
+  }
   error.value = '';
   try {
     const filters: MemberListFilters = {
@@ -98,21 +140,29 @@ async function loadUsers() {
     if (searchText.value.trim()) filters.search = searchText.value.trim();
     if (selectedStatus.value) filters.status = selectedStatus.value;
     const result = await getUsers(filters);
+    if (requestId !== loadUsersRequestId) {
+      return;
+    }
     if (result.totalPages > 0 && currentPage.value > result.totalPages) {
       currentPage.value = result.totalPages;
-      await loadUsers();
+      await loadUsers(requestId);
       return;
     }
 
     users.value = result;
   } catch (err) {
+    if (requestId !== loadUsersRequestId) {
+      return;
+    }
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
       return;
     }
     error.value = err instanceof ApiError ? err.message : 'Không tải được danh sách tài khoản.';
   } finally {
-    isLoading.value = false;
+    if (requestId === loadUsersRequestId) {
+      isLoading.value = false;
+    }
   }
 }
 
@@ -131,11 +181,23 @@ function statusTone(status: string) {
   return 'status-chip';
 }
 
+function toText(value: unknown): string {
+  return value === null || value === undefined ? '' : String(value);
+}
+
+function toDisplayValue(value: unknown): string {
+  return toText(value) || '—';
+}
+
 function openPopup(user: AdminUserSummary) {
   selectedUser.value = user;
   editingJobPosition.value = user.jobPosition || '';
   clearPopupErrors();
   isPopupOpen.value = true;
+}
+
+function handleMemberRowClick(row: DataTableRow) {
+  openPopup(row as unknown as AdminUserSummary);
 }
 
 function closePopup() {
@@ -198,14 +260,13 @@ async function handleSaveJobPosition() {
 </script>
 
 <template>
-  <div class="content-panel content-panel--with-pagination user-panel">
+  <div class="content-panel content-panel--with-pagination user-panel members-page-panel">
     <div class="list-toolbar toolbar">
       <TextBoxTopLabel
         v-model="searchText"
         label-position="hidden"
         placeholder="Tìm kiếm nhân viên..."
         class="toolbar__search"
-        :disabled="isLoading"
         clearable
       />
       <DropdownList
@@ -213,8 +274,10 @@ async function handleSaveJobPosition() {
         class="toolbar__status-filter"
         label="Lọc theo trạng thái"
         label-position="hidden"
-        placeholder="Tất cả"
+        placeholder="Chọn trạng thái"
+        persistent-placeholder="Trạng thái: "
         aria-label="Lọc theo trạng thái"
+        state="normal"
         :options="STATUS_OPTIONS"
         :disabled="isLoading"
       />
@@ -234,33 +297,34 @@ async function handleSaveJobPosition() {
       <h3>Không tìm thấy kết quả</h3>
       <p>{{ searchText || selectedStatus ? 'Không có nhân viên nào phù hợp với bộ lọc.' : 'Chưa có tài khoản.' }}</p>
     </div>
-    <div v-else class="table-shell">
-      <table>
-      <thead>
-        <tr>
-          <th>Nhân viên</th>
-          <th>Vị trí công việc</th>
-          <th>Dự án</th>
-          <th>Email</th>
-          <th>Trạng thái</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="user in users.items" :key="user.id" class="clickable-row" @click="openPopup(user)">
-          <td>
-            <div class="user-cell">
-              <strong>{{ user.fullName || '—' }}</strong>
-              <span>{{ user.employeeCode || '—' }}</span>
-            </div>
-          </td>
-          <td>{{ user.jobPosition || '—' }}</td>
-          <td>{{ user.project || '—' }}</td>
-          <td>{{ user.email }}</td>
-          <td><span :class="statusTone(user.status)">{{ getMemberStatusLabel(user.status) }}</span></td>
-        </tr>
-      </tbody>
-      </table>
-    </div>
+    <DataTable
+      v-else
+      :columns="memberTableColumns"
+      :rows="users.items"
+      :show-toolbar="false"
+      :show-footer="false"
+      :paginate="false"
+      :selectable="false"
+      row-clickable
+      empty-label="Chưa có tài khoản."
+      @row-click="handleMemberRowClick"
+    >
+      <template #cell-fullName="{ row }">
+        <PrimarySecondaryCell :primary="toText(row.fullName)" :secondary="toText(row.employeeCode)" />
+      </template>
+      <template #cell-jobPosition="{ value }">
+        {{ toDisplayValue(value) }}
+      </template>
+      <template #cell-project="{ value }">
+        {{ toDisplayValue(value) }}
+      </template>
+      <template #cell-email="{ value }">
+        {{ toDisplayValue(value) }}
+      </template>
+      <template #cell-status="{ row }">
+        <span :class="statusTone(toText(row.status))">{{ getMemberStatusLabel(toText(row.status)) }}</span>
+      </template>
+    </DataTable>
     <PaginationFooter
       :total-count="users.totalCount"
       :current-page="currentPage"
@@ -355,6 +419,19 @@ async function handleSaveJobPosition() {
   display: flex;
   gap: var(--table-toolbar-gap);
   align-items: center;
+}
+
+.members-page-panel {
+  padding: 0;
+  gap: 0;
+}
+
+.members-page-panel .toolbar {
+  padding: var(--card-padding) var(--card-padding) 16px;
+}
+
+.members-page-panel :deep(.data-table__surface) {
+  margin: 0;
 }
 
 .toolbar__search {

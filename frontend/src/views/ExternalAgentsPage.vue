@@ -136,8 +136,10 @@ onBeforeUnmount(() => {
       class="filter-select"
       label="Lọc theo trạng thái"
       label-position="hidden"
-      placeholder="Tất cả"
+      placeholder="Chọn trạng thái"
+      persistent-placeholder="Trạng thái: "
       aria-label="Lọc theo trạng thái"
+      state="normal"
       :options="withAllOption(AGENT_STATUSES)"
     />
     <div class="filter-bar__actions">

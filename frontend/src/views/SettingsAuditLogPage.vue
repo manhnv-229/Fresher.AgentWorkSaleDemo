@@ -7,6 +7,7 @@ import ComboboxMultiple from '../components/combobox/ComboboxMultiple.vue';
 import ComboboxSingle from '../components/combobox/ComboboxSingle.vue';
 import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
 import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
+import DataTable from '../components/tables/DataTable.vue';
 import PaginationFooter from '../components/tables/PaginationFooter.vue';
 import { getAuditLogs, type AuditLogEntry, type AuditLogFilters } from '../api';
 import type { PagedResult } from '../api/agents';
@@ -14,6 +15,7 @@ import { ApiError } from '../api/http';
 import { formatDate } from '../utils/formatDate';
 import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
 import type { ComboboxOption } from '../components/combobox/Combobox.vue';
+import type { DataTableColumn } from '../components/tables/dataTableTypes';
 import { IconFilter, IconLoader2, IconRefresh } from '@tabler/icons-vue';
 
 const router = useRouter();
@@ -25,6 +27,9 @@ const searchText = ref('');
 const isMenuOpen = ref(false);
 const filterButtonRef = ref<HTMLElement | null>(null);
 const filterPopupStyle = ref<Record<string, string>>({});
+const searchDebounceMs = 200;
+let searchDebounceTimer: number | undefined;
+let loadEntriesRequestId = 0;
 
 const selectedTimePreset = ref('');
 const selectedActions = ref<string[]>([]);
@@ -33,6 +38,13 @@ const currentPage = ref(1);
 const pageSize = ref<number>(PAGE_SIZE_OPTIONS[0]);
 const auditActionOptions = ref<ComboboxOption[]>([]);
 const auditTargetOptions = ref<ComboboxOption[]>([]);
+const auditLogTableColumns: DataTableColumn[] = [
+  { key: 'createdAt', label: 'Thời gian', minWidth: '180px' },
+  { key: 'userName', label: 'Người dùng', minWidth: '180px' },
+  { key: 'action', label: 'Hành động', minWidth: '160px' },
+  { key: 'targetType', label: 'Đối tượng', minWidth: '180px' },
+  { key: 'description', label: 'Mô tả', minWidth: '280px', wrap: true }
+];
 const timePresetOptions = [
   { value: '', label: 'Tất cả' },
   { value: 'today', label: 'Hôm nay' },
@@ -66,6 +78,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('resize', handleWindowResize);
   window.removeEventListener('scroll', handleWindowResize, true);
+  cancelSearchDebounce();
 });
 
 watch(isMenuOpen, async (open) => {
@@ -78,7 +91,13 @@ watch(isMenuOpen, async (open) => {
 });
 
 async function loadEntries(filters?: AuditLogFilters) {
-  isLoading.value = true;
+  return loadEntriesInternal(filters);
+}
+
+async function loadEntriesInternal(filters?: AuditLogFilters, requestId = ++loadEntriesRequestId) {
+  if (requestId === loadEntriesRequestId) {
+    isLoading.value = true;
+  }
   error.value = '';
   try {
     const result = await getAuditLogs({
@@ -86,21 +105,29 @@ async function loadEntries(filters?: AuditLogFilters) {
       page: currentPage.value,
       pageSize: pageSize.value
     });
+    if (requestId !== loadEntriesRequestId) {
+      return;
+    }
     if (result.totalPages > 0 && currentPage.value > result.totalPages) {
       currentPage.value = result.totalPages;
-      await loadEntries(filters);
+      await loadEntriesInternal(filters, requestId);
       return;
     }
 
     entries.value = result;
   } catch (err) {
+    if (requestId !== loadEntriesRequestId) {
+      return;
+    }
     if (err instanceof ApiError && err.status === 401) {
       router.push({ name: 'login' });
       return;
     }
     error.value = err instanceof ApiError ? err.message : 'Không tải được nhật ký hoạt động.';
   } finally {
-    isLoading.value = false;
+    if (requestId === loadEntriesRequestId) {
+      isLoading.value = false;
+    }
   }
 }
 
@@ -113,12 +140,14 @@ async function loadAuditLogData() {
 
 function applySearch() {
   currentPage.value = 1;
+  cancelSearchDebounce();
   const filters = buildFilters();
   void loadEntries(filters);
 }
 
 function applyMenuFilters() {
   currentPage.value = 1;
+  cancelSearchDebounce();
   const filters = buildFilters();
   void loadEntries(filters);
   closeMenu();
@@ -129,13 +158,19 @@ function resetMenuFilters() {
   selectedTimePreset.value = '';
   selectedActions.value = [];
   selectedTargetType.value = '';
+  cancelSearchDebounce();
   const filters = buildFilters();
   void loadEntries(filters);
   closeMenu();
 }
 
+watch(searchText, () => {
+  scheduleSearch();
+});
+
 watch(pageSize, () => {
   currentPage.value = 1;
+  cancelSearchDebounce();
   void loadEntries(buildFilters());
 });
 
@@ -146,6 +181,21 @@ function goToPage(page: number) {
 
 function updatePageSize(nextPageSize: number) {
   pageSize.value = nextPageSize;
+}
+
+function cancelSearchDebounce() {
+  if (searchDebounceTimer !== undefined) {
+    window.clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = undefined;
+  }
+}
+
+function scheduleSearch() {
+  cancelSearchDebounce();
+  searchDebounceTimer = window.setTimeout(() => {
+    currentPage.value = 1;
+    void loadEntries(buildFilters());
+  }, searchDebounceMs);
 }
 
 function buildFilters(): AuditLogFilters | undefined {
@@ -246,19 +296,30 @@ function formatAuditLogOptionLabel(value: string) {
     .trim()
     .replace(/^./, (char: string) => char.toUpperCase());
 }
+
+function toText(value: unknown): string {
+  return value === null || value === undefined ? '' : String(value);
+}
+
+function toDisplayValue(value: unknown): string {
+  return toText(value) || '—';
+}
+
+function formatAuditDate(value: unknown): string {
+  return formatDate(toText(value));
+}
 </script>
 
 <template>
-  <div class="content-panel content-panel--with-pagination">
+  <div class="content-panel content-panel--with-pagination audit-log-page-panel">
     <div class="list-toolbar audit-log-toolbar">
       <TextBoxTopLabel
         v-model="searchText"
         label-position="hidden"
         placeholder="Tìm kiếm nhật ký..."
         class="field"
-        :disabled="isLoading"
         clearable
-        @keydown.enter="applySearch"
+        @keydown.enter.prevent="applySearch"
       />
       <div class="filter-trigger">
         <button
@@ -289,28 +350,29 @@ function formatAuditLogOptionLabel(value: string) {
       <h3>Không tìm thấy kết quả</h3>
       <p>{{ hasActiveMenuFilters || searchText ? 'Không có nhật ký nào phù hợp với bộ lọc.' : 'Chưa có nhật ký hoạt động.' }}</p>
     </div>
-    <div v-else class="table-shell">
-      <table>
-      <thead>
-        <tr>
-          <th>Thời gian</th>
-          <th>Người dùng</th>
-          <th>Hành động</th>
-          <th>Đối tượng</th>
-          <th>Mô tả</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="entry in entries.items" :key="entry.id">
-          <td>{{ formatDate(entry.createdAt) }}</td>
-          <td>{{ entry.userName }}</td>
-          <td><span class="status-chip">{{ entry.action }}</span></td>
-          <td>{{ entry.targetType || '—' }}</td>
-          <td>{{ entry.description }}</td>
-        </tr>
-      </tbody>
-      </table>
-    </div>
+    <DataTable
+      v-else
+      :columns="auditLogTableColumns"
+      :rows="entries.items"
+      :show-toolbar="false"
+      :show-footer="false"
+      :paginate="false"
+      :selectable="false"
+      empty-label="Chưa có nhật ký hoạt động."
+    >
+      <template #cell-createdAt="{ row }">
+        {{ formatAuditDate(row.createdAt) }}
+      </template>
+      <template #cell-action="{ value }">
+        <span class="status-chip">{{ toDisplayValue(value) }}</span>
+      </template>
+      <template #cell-targetType="{ value }">
+        {{ toDisplayValue(value) }}
+      </template>
+      <template #cell-description="{ value }">
+        {{ toDisplayValue(value) }}
+      </template>
+    </DataTable>
     <PaginationFooter
       :total-count="entries.totalCount"
       :current-page="currentPage"
@@ -398,6 +460,19 @@ function formatAuditLogOptionLabel(value: string) {
   display: flex;
   gap: var(--table-toolbar-gap);
   align-items: center;
+}
+
+.audit-log-page-panel {
+  padding: 0;
+  gap: 0;
+}
+
+.audit-log-page-panel .audit-log-toolbar {
+  padding: var(--card-padding) var(--card-padding) 16px;
+}
+
+.audit-log-page-panel :deep(.data-table__surface) {
+  margin: 0;
 }
 
 .audit-log-toolbar .field {

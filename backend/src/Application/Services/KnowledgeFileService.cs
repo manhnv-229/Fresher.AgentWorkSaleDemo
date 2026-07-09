@@ -22,6 +22,7 @@ public sealed class KnowledgeFileService(
     ITenantRepository tenantRepository,
     IAgentKnowledgeRepository knowledgeRepository,
     IKnowledgeStorageService storageService,
+    IKnowledgePreviewConverter previewConverter,
     IAuthUserRepository authUserRepository,
     IAuditLogService auditLogService,
     ICacheVersionService cacheVersionService,
@@ -242,6 +243,72 @@ public sealed class KnowledgeFileService(
         catch (Exception)
         {
             return ServiceResult<KnowledgeDownloadResult>.Failure(KnowledgeErrorCodes.StorageUnavailable, "Could not download file from storage.");
+        }
+    }
+
+    /// <summary>
+    /// Xem trước file tri thức theo định dạng mà trình duyệt hỗ trợ. Hiện tại backend chuyển đổi PPTX sang PDF.
+    /// </summary>
+    public async Task<ServiceResult<KnowledgePreviewResult>> PreviewFileAsync(
+        Guid tenantId,
+        Guid agentId,
+        Guid fileId,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var access = await KnowledgeServiceHelper.EnsureReadableAgentAsync(agentRepository, tenantId, agentId, cancellationToken);
+        if (access is not null)
+        {
+            return ServiceResult<KnowledgePreviewResult>.Failure(access.Value.Code, access.Value.Message);
+        }
+
+        var file = await knowledgeRepository.GetFileAsync(agentId, fileId, trackChanges: false, cancellationToken);
+        if (file?.StorageObject is null)
+        {
+            return ServiceResult<KnowledgePreviewResult>.Failure(KnowledgeErrorCodes.FileNotFound, "File was not found.");
+        }
+
+        var ownerAccess = EnsureFileOwnerAccess(file, userId);
+        if (ownerAccess is not null)
+        {
+            return ServiceResult<KnowledgePreviewResult>.Failure(ownerAccess.Value.Code, ownerAccess.Value.Message);
+        }
+
+        var extension = file.Extension.StartsWith('.') ? file.Extension.ToLowerInvariant() : $".{file.Extension.ToLowerInvariant()}";
+        if (extension != ".pptx")
+        {
+            return ServiceResult<KnowledgePreviewResult>.Failure(
+                KnowledgeErrorCodes.PreviewNotSupported,
+                "Preview conversion is only supported for PPTX files on this endpoint.");
+        }
+
+        try
+        {
+            var download = await storageService.DownloadAsync(file.StorageObject.StorageBucket, file.StorageObject.StorageObjectKey, cancellationToken);
+            var preview = await previewConverter.ConvertPptxToPdfAsync(download.Content, file.Name, cancellationToken);
+            return ServiceResult<KnowledgePreviewResult>.Success(preview);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Could not reach MinIO"))
+        {
+            return ServiceResult<KnowledgePreviewResult>.Failure(KnowledgeErrorCodes.StorageUnreachable, "Storage service is unreachable.");
+        }
+        catch (OperationCanceledException)
+        {
+            return ServiceResult<KnowledgePreviewResult>.Failure(KnowledgeErrorCodes.StorageTimedOut, "Storage download timed out.");
+        }
+        catch (TimeoutException)
+        {
+            return ServiceResult<KnowledgePreviewResult>.Failure(KnowledgeErrorCodes.PreviewTimedOut, "Preview conversion timed out.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "Không thể chuyển đổi preview cho file knowledge {FileId}.", fileId);
+            return ServiceResult<KnowledgePreviewResult>.Failure(KnowledgeErrorCodes.PreviewUnavailable, "Could not convert file for preview.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Lỗi không mong muốn khi preview file knowledge {FileId}.", fileId);
+            return ServiceResult<KnowledgePreviewResult>.Failure(KnowledgeErrorCodes.PreviewUnavailable, "Could not convert file for preview.");
         }
     }
 

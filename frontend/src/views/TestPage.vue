@@ -16,12 +16,13 @@ import {
 import BaseButton from '../components/buttons/BaseButton.vue';
 import IconButton from '../components/buttons/IconButton.vue';
 import SplitButton from '../components/buttons/SplitButton.vue';
-import DataTable, {
-  type DataTableColumn,
-  type DataTableDropdownFilter,
-  type DataTableRow,
-  type DataTableToolbarAction
-} from '../components/tables/DataTable.vue';
+import DataTable from '../components/tables/DataTable.vue';
+import type {
+  DataTableColumn,
+  DataTableDropdownFilter,
+  DataTableRow,
+  DataTableToolbarAction
+} from '../components/tables/dataTableTypes';
 import Checkbox from '../components/choices/Checkbox.vue';
 import RadioButton from '../components/choices/RadioButton.vue';
 import type { ComboboxOption } from '../components/combobox/Combobox.vue';

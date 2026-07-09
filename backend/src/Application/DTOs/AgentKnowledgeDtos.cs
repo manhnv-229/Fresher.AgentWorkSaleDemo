@@ -88,6 +88,12 @@ public sealed record KnowledgeDownloadResult(
     string ContentType,
     long SizeBytes);
 
+public sealed record KnowledgePreviewResult(
+    Stream Content,
+    string FileName,
+    string ContentType,
+    long SizeBytes);
+
 public sealed record KnowledgeStorageUploadRequest(
     Stream Content,
     string Bucket,

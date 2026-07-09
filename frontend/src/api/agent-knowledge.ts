@@ -257,3 +257,13 @@ export async function downloadKnowledgeFile(context: KnowledgeAgentContext, file
   link.click();
   URL.revokeObjectURL(url);
 }
+
+// Lấy nội dung preview đã được backend xử lý cho các loại file cần luồng preview riêng.
+export function previewKnowledgeFile(context: KnowledgeAgentContext, fileId: string): Promise<Blob> {
+  return apiRequest<Blob>({
+    url: `${basePath(context)}/files/${fileId}/preview`,
+    method: 'GET',
+    responseType: 'blob',
+    requiresAuth: true
+  });
+}

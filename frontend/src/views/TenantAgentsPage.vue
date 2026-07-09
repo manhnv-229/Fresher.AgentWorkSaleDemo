@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import BaseButton from '../components/buttons/BaseButton.vue';
 import IconButton from '../components/buttons/IconButton.vue';
+import DropdownList from '../components/dropdown/DropdownList.vue';
 import TextBoxTopLabel from '../components/forms/TextBoxTopLabel.vue';
 import Dialog from '../components/dialog/Dialog.vue';
 import PopupTopOneColumn from '../components/popup/PopupTopOneColumn.vue';
@@ -273,14 +274,17 @@ onBeforeUnmount(() => {
       label="Tìm kiếm agent"
       clearable
     />
-    <label class="filter-select">
-      <span class="sr-only">Lọc theo trạng thái</span>
-      <select v-model="filters.statusFilter.value" aria-label="Lọc theo trạng thái">
-        <option v-for="option in withAllOption(AGENT_STATUSES)" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
-    </label>
+    <DropdownList
+      v-model="filters.statusFilter.value"
+      class="filter-select"
+      label="Lọc theo trạng thái"
+      label-position="hidden"
+      placeholder="Chọn trạng thái"
+      persistent-placeholder="Trạng thái: "
+      aria-label="Lọc theo trạng thái"
+      state="normal"
+      :options="withAllOption(AGENT_STATUSES)"
+    />
     <div class="filter-bar__actions">
       <IconButton ariaLabel="Tải lại danh sách agent bên ngoài" title="Tải lại danh sách agent bên ngoài" variant="secondary" type="button" :disabled="isLoading || !selectedTenant" @click="refresh">
         <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />

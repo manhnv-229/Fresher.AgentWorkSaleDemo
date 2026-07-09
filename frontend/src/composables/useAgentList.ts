@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import {
   getExternalAgents,
   getInternalAgents,
@@ -12,6 +12,7 @@ import { ApiError } from '../api/http';
 
 // Các lựa chọn page size dùng chung cho mọi màn danh sách agent.
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+const SEARCH_DEBOUNCE_MS = 200;
 
 type AgentListScope = 'internal' | 'tenant' | 'external';
 
@@ -136,6 +137,7 @@ function createAgentListController(options: AgentListControllerOptions, filters:
 
   let activeCacheKey = '';
   let requestToken = 0;
+  let searchDebounceTimer: number | undefined;
 
   const hasMore = computed(() => agents.value.totalPages > 0 && agents.value.page < agents.value.totalPages);
 
@@ -190,6 +192,20 @@ function createAgentListController(options: AgentListControllerOptions, filters:
     error.value = '';
     isReady.value = false;
     activeCacheKey = '';
+  }
+
+  function cancelSearchDebounce() {
+    if (searchDebounceTimer !== undefined) {
+      window.clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = undefined;
+    }
+  }
+
+  function scheduleSearchLoad() {
+    cancelSearchDebounce();
+    searchDebounceTimer = window.setTimeout(() => {
+      void loadInitial();
+    }, SEARCH_DEBOUNCE_MS);
   }
 
   // Một token tăng dần được dùng để bỏ kết quả response cũ khi filter đổi nhanh liên tiếp.
@@ -262,6 +278,7 @@ function createAgentListController(options: AgentListControllerOptions, filters:
 
   // Luôn bắt đầu lại từ trang đầu khi filter hoặc page size thay đổi.
   async function loadInitial() {
+    cancelSearchDebounce();
     clearCurrentState();
     await loadPage(1, 'replace');
   }
@@ -284,12 +301,20 @@ function createAgentListController(options: AgentListControllerOptions, filters:
 
   // Khi cache key thay đổi nghĩa là filter hiển thị đã đổi, cần tải lại từ đầu.
   watch(
-    () => resolveCacheKey(),
+    [() => filters.statusFilter.value, () => filters.pageSize.value],
     () => {
       void loadInitial();
     },
     { immediate: true }
   );
+
+  watch(() => filters.searchText.value, () => {
+    scheduleSearchLoad();
+  });
+
+  onScopeDispose(() => {
+    cancelSearchDebounce();
+  });
 
   return {
     agents,

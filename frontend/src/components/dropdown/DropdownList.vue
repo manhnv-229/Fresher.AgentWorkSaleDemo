@@ -18,6 +18,7 @@ const props = withDefaults(
     name?: string;
     options: DropdownOption[];
     placeholder?: string;
+    persistentPlaceholder?: string;
     disabled?: boolean;
     label?: string;
     labelPosition?: 'hidden' | 'top' | 'none';
@@ -29,6 +30,7 @@ const props = withDefaults(
   }>(),
   {
     placeholder: 'Chọn giá trị',
+    persistentPlaceholder: '',
     disabled: false,
     labelPosition: 'top',
     required: false,
@@ -68,6 +70,7 @@ const isInvalidState = computed(() => Boolean(props.error) || props.state === 'e
 const isVisualFocused = computed(() => isFocused.value || isFocusState.value || isOpen.value);
 const selectedOption = computed(() => props.options.find((option) => option.value === model.value));
 const hasValue = computed(() => Boolean(selectedOption.value));
+const displayPrefix = computed(() => props.persistentPlaceholder || '');
 const activeOptionId = computed(() => (activeIndex.value >= 0 ? `${inputId.value}-option-${activeIndex.value}` : undefined));
 const describedBy = computed(() => {
   if (isInvalidState.value) {
@@ -271,9 +274,11 @@ onBeforeUnmount(() => {
           @keydown="handleKeydown"
           @focus="handleFocus"
           @blur="handleBlur"
-        >
+          >
           <span class="dropdown-list__value">
-            {{ selectedOption?.label || placeholder }}
+            <span v-if="displayPrefix" class="dropdown-list__prefix">{{ displayPrefix }}</span>
+            <span v-if="hasValue" class="dropdown-list__selected">{{ selectedOption?.label }}</span>
+            <span v-else-if="!displayPrefix" class="dropdown-list__placeholder">{{ placeholder }}</span>
           </span>
           <IconChevronDown
             class="dropdown-list__chevron"
@@ -393,14 +398,38 @@ onBeforeUnmount(() => {
 }
 
 .dropdown-list__control--selected {
-  color: var(--color-brand);
+  color: var(--color-text);
 }
 
 .dropdown-list__value {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0;
+  flex: 1 1 auto;
+}
+
+.dropdown-list__prefix,
+.dropdown-list__selected,
+.dropdown-list__placeholder {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dropdown-list__prefix,
+.dropdown-list__placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.dropdown-list__selected,
+.dropdown-list__placeholder {
+  flex: 1 1 auto;
+}
+
+.dropdown-list__prefix + .dropdown-list__selected {
+  margin-left: 6px;
 }
 
 .dropdown-list__chevron {

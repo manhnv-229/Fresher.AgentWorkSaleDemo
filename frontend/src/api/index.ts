@@ -10,6 +10,7 @@ export {
   getKnowledgeExplorer,
   moveKnowledgeFile,
   moveKnowledgeFolder,
+  previewKnowledgeFile,
   renameKnowledgeFile,
   renameKnowledgeFolder,
   searchKnowledgeItems,
