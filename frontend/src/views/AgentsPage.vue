@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 const route = useRoute();
+// Tab active chỉ phụ thuộc route để đồng bộ URL và trạng thái UI.
 const activeTab = computed(() => (route.name === 'agents-external' ? 'external' : 'internal'));
 const externalTabTo = computed(() => ({ name: 'agents-external' as const }));
 </script>

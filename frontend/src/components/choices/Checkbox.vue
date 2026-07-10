@@ -34,6 +34,7 @@ const wrapperClass = computed(() => ({
   'choice--disabled': props.disabled
 }));
 
+// Đồng bộ trạng thái indeterminate vào input DOM vì checkbox native không lưu bằng v-model.
 watch(
   [isIndeterminate, isSelected],
   () => {

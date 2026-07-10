@@ -14,6 +14,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
+  <!-- Render đệ quy để giữ cấu trúc cây nhưng vẫn dùng cùng một component cho mọi cấp. -->
   <button class="tree-node" type="button" :class="{ 'tree-node--active': activeId === node.id }" :style="{ marginLeft: (depth ?? 0) * 14 + 'px' }" @click="emit('select', node.id)">
     <IconFolder :size="24" stroke-width="1.5" aria-hidden="true" />
     <span>{{ node.name }}</span>

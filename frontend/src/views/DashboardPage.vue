@@ -6,6 +6,7 @@ import {
   IconSettings
 } from '@tabler/icons-vue';
 
+// Dashboard hiện dùng dữ liệu mẫu để giữ layout ổn định khi chưa nối nguồn tổng hợp thật.
 const internalAgentStats = [
   {
     id: 'sales',
@@ -36,6 +37,7 @@ const internalAgentStats = [
   }
 ] as const;
 
+// Danh sách agent bên dưới cũng là dữ liệu minh họa để layout dashboard có đủ trạng thái hiển thị.
 const agentRows = [
   {
     id: '1',

@@ -7,6 +7,7 @@ import Checkbox from '../choices/Checkbox.vue';
 import ContextMenu, { type ContextMenuItem } from '../menus/ContextMenu.vue';
 import DataTableHeader from './DataTableHeader.vue';
 import PaginationFooter from './PaginationFooter.vue';
+import { useI18n } from '../../i18n';
 import type {
   DataTableColumn,
   DataTableDropdownFilter,
@@ -37,7 +38,7 @@ const props = withDefaults(
   }>(),
   {
     title: '',
-    searchPlaceholder: 'Tìm kiếm',
+    searchPlaceholder: '',
     dropdownFilters: () => [],
     toolbarActions: () => [],
     bulkActions: () => [],
@@ -45,7 +46,7 @@ const props = withDefaults(
     summaryRow: undefined,
     pageSizeOptions: () => [10, 20, 50],
     initialPageSize: 10,
-    emptyLabel: 'Không có dữ liệu.',
+    emptyLabel: '',
     selectable: true,
     rowClickable: false,
     showToolbar: true,
@@ -61,12 +62,17 @@ const emit = defineEmits<{
   rowClick: [row: DataTableRow];
 }>();
 
+const { t } = useI18n();
+
+// Trạng thái tìm kiếm, phân trang và chọn hàng.
 const searchValue = ref('');
 const currentPage = ref(1);
 const pageSize = ref(props.initialPageSize);
 const selectedRowIds = ref<Array<string | number>>([]);
+// Trạng thái sắp xếp và trật tự cột hiển thị.
 const sortState = ref<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 const orderedColumnKeys = ref(props.columns.map((column) => column.key));
+// Dữ liệu điều khiển các menu nổi của bảng.
 const headerMenuOpen = ref(false);
 const headerMenuX = ref(0);
 const headerMenuY = ref(0);
@@ -81,22 +87,26 @@ const bulkMenuOpen = ref(false);
 const bulkMenuX = ref(0);
 const bulkMenuY = ref(0);
 const bulkMenuItems = ref<ContextMenuItem[]>([]);
+// Bộ lọc theo cột đang mở và giá trị nháp trước khi áp dụng.
 const activeColumnFilterKey = ref('');
 const columnFilterX = ref(0);
 const columnFilterY = ref(0);
 const columnFilterDraft = ref('');
 const columnFilterInputRef = ref<HTMLInputElement | null>(null);
 const columnFilterValues = ref<Record<string, string>>({});
+// Các cột bị ẩn, ghim và trạng thái mở rộng của row wrap.
 const hiddenColumnKeys = ref<string[]>([]);
 const pinnedColumnKeys = ref(props.columns.filter((column) => column.pinned).map((column) => column.key));
 const expandedRowIds = ref<Array<string | number>>([]);
 const selectedDropdownValues = ref<Record<string, string>>({});
+// Độ rộng cột được người dùng resize thủ công.
 const columnWidths = ref<Record<string, number>>({});
 const wrapCellRefs = ref<Record<string, HTMLElement | null>>({});
 const wrapCellOverflowMap = ref<Record<string, boolean>>({});
 const resizeState = ref<{ columnKey: string; startX: number; startWidth: number; minWidth: number } | null>(null);
 let removeResizeListeners: (() => void) | null = null;
 
+// Row id ổn định là nền tảng cho selection, expansion và resize state.
 function getRowId(row: DataTableRow): string | number {
   return row.id;
 }
@@ -105,6 +115,7 @@ function isSelectedRow(rowId: string | number): boolean {
   return selectedRowIds.value.includes(rowId);
 }
 
+// Selection được lưu theo row id thay vì index để không lệch khi sort/filter.
 function toggleRowSelection(rowId: string | number, value: boolean) {
   if (value) {
     if (!isSelectedRow(rowId)) {
@@ -116,6 +127,7 @@ function toggleRowSelection(rowId: string | number, value: boolean) {
   selectedRowIds.value = selectedRowIds.value.filter((id) => id !== rowId);
 }
 
+// Chỉ select trên page hiện tại để tránh dính dữ liệu ngoài viewport/pagination.
 function handleSelectAllCurrentPage(value: boolean) {
   const pageIds = displayedRows.value.map((row) => getRowId(row));
   if (value) {
@@ -127,6 +139,8 @@ function handleSelectAllCurrentPage(value: boolean) {
   selectedRowIds.value = selectedRowIds.value.filter((id) => !pageIds.includes(id));
 }
 
+// Chuẩn hóa giá trị cell để dùng chung cho search và filter.
+// Chuẩn hóa cell value về string để search/filter nhất quán.
 function normalizeCellValue(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
@@ -135,6 +149,8 @@ function normalizeCellValue(value: unknown): string {
   return String(value).toLowerCase();
 }
 
+// Ưu tiên formatter của cột, nếu không thì dùng giá trị gốc của row.
+// Formatter của column luôn được ưu tiên trước giá trị thô từ row.
 function formatCell(column: DataTableColumn, row: DataTableRow): string | number {
   const value = row[column.key];
   if (column.formatter) {
@@ -148,6 +164,8 @@ function formatCell(column: DataTableColumn, row: DataTableRow): string | number
   return String(value);
 }
 
+// Parse width/minWidth từ kiểu CSS string sang số pixel để resize.
+// Parse width/minWidth từ CSS string để phục vụ resize theo pixel.
 function parseColumnWidth(value?: string): number | null {
   if (!value) {
     return null;
@@ -157,6 +175,8 @@ function parseColumnWidth(value?: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// Tìm kiếm toàn bảng bằng cách quét qua các cột đang hiển thị.
+// Search quét qua các cột đang hiển thị thay vì phụ thuộc data source cụ thể.
 function matchesSearch(row: DataTableRow): boolean {
   if (!searchValue.value.trim()) {
     return true;
@@ -166,6 +186,8 @@ function matchesSearch(row: DataTableRow): boolean {
   return props.columns.some((column) => normalizeCellValue(row[column.key]).includes(keyword));
 }
 
+// Áp dụng các bộ lọc dropdown theo predicate của từng option.
+// Dropdown filter áp theo predicate đã gắn ở từng option.
 function matchesDropdownFilters(row: DataTableRow): boolean {
   return props.dropdownFilters.every((filter) => {
     const selectedValue = selectedDropdownValues.value[filter.id];
@@ -178,6 +200,8 @@ function matchesDropdownFilters(row: DataTableRow): boolean {
   });
 }
 
+// Áp dụng filter dạng text theo từng cột.
+// Filter theo từng cột dùng value nháp rồi commit một lần khi áp dụng.
 function matchesColumnFilters(row: DataTableRow): boolean {
   return Object.entries(columnFilterValues.value).every(([key, value]) => {
     if (!value.trim()) {
@@ -188,6 +212,8 @@ function matchesColumnFilters(row: DataTableRow): boolean {
   });
 }
 
+// So sánh giá trị theo số hoặc theo chuỗi tiếng Việt.
+// So sánh hỗn hợp số/chữ để sort không bị lệch kiểu.
 function compareValues(left: unknown, right: unknown): number {
   if (typeof left === 'number' && typeof right === 'number') {
     return left - right;
@@ -196,6 +222,8 @@ function compareValues(left: unknown, right: unknown): number {
   return String(left ?? '').localeCompare(String(right ?? ''), 'vi');
 }
 
+// Ưu tiên width do người dùng kéo, sau đó mới tới width khai báo sẵn.
+// Width user kéo sẽ thắng width khai báo sẵn trong config cột.
 function getResolvedColumnWidth(column: DataTableColumn): string | undefined {
   const width = columnWidths.value[column.key];
   if (typeof width === 'number') {
@@ -205,14 +233,18 @@ function getResolvedColumnWidth(column: DataTableColumn): string | undefined {
   return column.width;
 }
 
+// Min width dùng làm chặn dưới khi resize cột.
+// Min width dùng làm chặn dưới để resize không làm cột biến mất.
 function getResolvedColumnMinWidth(column: DataTableColumn): string | undefined {
   return column.minWidth || column.width;
 }
 
+// Tạo khóa ổn định để map overflow theo từng cell wrap.
 function getWrapCellKey(rowId: string | number, columnKey: string) {
   return `${rowId}-${columnKey}`;
 }
 
+// Gắn ref DOM cho cell wrap để đo overflow sau khi render.
 function setWrapCellRef(rowId: string | number, columnKey: string) {
   const key = getWrapCellKey(rowId, columnKey);
 
@@ -221,6 +253,8 @@ function setWrapCellRef(rowId: string | number, columnKey: string) {
   };
 }
 
+// Chỉ hiện "Xem thêm" khi nội dung thực sự bị cắt.
+// Đo overflow sau render để quyết định cell nào mới hiện toggle xem thêm.
 function measureWrapCellOverflow() {
   const nextOverflowMap: Record<string, boolean> = {};
 
@@ -236,6 +270,8 @@ function measureWrapCellOverflow() {
   wrapCellOverflowMap.value = nextOverflowMap;
 }
 
+// Đợi DOM cập nhật xong rồi mới đo lại kích thước cell.
+// Delay một frame để DOM kịp cập nhật trước khi đo lại overflow.
 function scheduleMeasureWrapCellOverflow() {
   nextTick(() => {
     measureWrapCellOverflow();
@@ -300,6 +336,7 @@ const visibleBulkActions = computed(() => props.bulkActions.slice(0, 5));
 const overflowBulkActions = computed(() => props.bulkActions.slice(5));
 const hasRowActions = computed(() => displayedRows.value.some((row) => getRowActions(row).length > 0));
 
+// Reset về trang đầu khi search hoặc filter thay đổi.
 watch(
   () => [searchValue.value, JSON.stringify(selectedDropdownValues.value), JSON.stringify(columnFilterValues.value), pageSize.value],
   () => {
@@ -307,6 +344,7 @@ watch(
   }
 );
 
+// Dọn lại selection khi dữ liệu lọc ra không còn chứa row cũ.
 watch(
   filteredRows,
   (rows) => {
@@ -316,6 +354,7 @@ watch(
   { immediate: true }
 );
 
+// Đo lại overflow mỗi khi số row, thứ tự cột, resize hoặc expand thay đổi.
 watch(
   () => [
     displayedRows.value.map((row) => getRowId(row)).join('|'),
@@ -328,10 +367,14 @@ watch(
   }
 );
 
+// Khi đổi page size thì chỉ cập nhật số dòng mỗi trang.
+// Page size đổi thì reset page index về 1 rồi phát lên parent.
 function handlePageSizeChange(value: number) {
   pageSize.value = value;
 }
 
+// Lưu giá trị dropdown filter theo từng filter id.
+// Mỗi filter dropdown có state riêng để merge vào query table.
 function updateDropdownFilter(filterId: string, value: string) {
   selectedDropdownValues.value = {
     ...selectedDropdownValues.value,
@@ -339,6 +382,7 @@ function updateDropdownFilter(filterId: string, value: string) {
   };
 }
 
+// Toolbar action là bridge để parent xử lý action nghiệp vụ.
 function handleToolbarAction(actionId: string) {
   emit('tableAction', actionId);
 }
@@ -347,6 +391,7 @@ function handleBulkAction(actionId: string) {
   emit('bulkAction', actionId, selectedRowIds.value);
 }
 
+// Bulk menu chỉ mở ở góc toolbar, không phụ thuộc row nào.
 function openBulkOverflowMenu(event: MouseEvent) {
   const button = event.currentTarget as HTMLElement | null;
   if (!button) {
@@ -369,6 +414,8 @@ function handleBulkMenuSelect(item: ContextMenuItem) {
   handleBulkAction(item.id);
 }
 
+// Mở menu cột tại đúng vị trí của nút header.
+// Header menu dùng để sort, pin, hide hoặc resize cột.
 function openHeaderMenu(column: DataTableColumn, event: MouseEvent) {
   const button = event.currentTarget as HTMLElement | null;
   if (!button) {
@@ -403,6 +450,7 @@ function openHeaderMenu(column: DataTableColumn, event: MouseEvent) {
   headerMenuOpen.value = true;
 }
 
+// Xử lý các thao tác sort/ghim/ẩn cột từ menu header.
 function handleHeaderMenuSelect(item: ContextMenuItem) {
   const columnKey = activeHeaderColumnKey.value;
   if (!columnKey) {
@@ -455,6 +503,8 @@ function handleHeaderMenuSelect(item: ContextMenuItem) {
 
 }
 
+// Mở popover filter cột và focus vào ô nhập.
+// Column filter popup giữ giá trị nháp trước khi user nhấn apply.
 function openColumnFilter(column: DataTableColumn, event: MouseEvent) {
   const button = event.currentTarget as HTMLElement | null;
   if (!button) {
@@ -473,11 +523,15 @@ function openColumnFilter(column: DataTableColumn, event: MouseEvent) {
   });
 }
 
+// Đóng popover filter và reset giá trị nháp.
+// Đóng popup filter và clear ref để không giữ focus cũ.
 function closeColumnFilter() {
   activeColumnFilterKey.value = '';
   columnFilterDraft.value = '';
 }
 
+// Chỉ commit filter khi người dùng có nhập giá trị.
+// Chỉ commit filter khi input hợp lệ và có giá trị cần áp dụng.
 function applyColumnFilter() {
   const columnKey = activeColumnFilterKey.value;
   if (!columnKey) {
@@ -508,6 +562,8 @@ function handleColumnFilterKeydown(event: KeyboardEvent) {
   }
 }
 
+// Đóng popover filter khi click ra ngoài.
+// Global pointerdown giúp đóng popup/menu khi click ra ngoài.
 function handleDocumentPointerDown(event: PointerEvent) {
   const target = event.target;
   if (!(target instanceof Node)) {
@@ -534,6 +590,7 @@ watch(
   }
 );
 
+// Gỡ listener toàn cục khi component bị huỷ.
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown);
   removeResizeListeners?.();
@@ -541,18 +598,25 @@ onBeforeUnmount(() => {
   resizeState.value = null;
 });
 
+// Đo overflow lần đầu sau khi bảng render xong.
 onMounted(() => {
   scheduleMeasureWrapCellOverflow();
 });
 
+// Trả lại hướng sort hiện tại của một cột.
+// Trả lại trạng thái sort hiện tại cho header icon.
 function getColumnSortDirection(columnKey: string): 'asc' | 'desc' | null {
   return sortState.value?.key === columnKey ? sortState.value.direction : null;
 }
 
+// Kiểm tra một cột có đang được lọc hay không.
+// Chỉ đánh dấu cột có filter đang active để header hiển thị trạng thái.
 function isColumnFiltered(columnKey: string): boolean {
   return Boolean(columnFilterValues.value[columnKey]);
 }
 
+// Mở menu hành động ẩn của row khi có quá nhiều action inline.
+// Row action menu chỉ xuất hiện khi action inline bị dồn vào overflow.
 function openRowActionMenu(row: DataTableRow, event: MouseEvent) {
   const button = event.currentTarget as HTMLElement | null;
   if (!button) {
@@ -573,6 +637,7 @@ function openRowActionMenu(row: DataTableRow, event: MouseEvent) {
   rowMenuOpen.value = true;
 }
 
+// Gửi action từ menu ẩn ra ngoài component.
 function handleRowMenuSelect(item: ContextMenuItem) {
   const row = props.rows.find((entry) => getRowId(entry) === activeRowId.value);
   if (!row) {
@@ -582,10 +647,14 @@ function handleRowMenuSelect(item: ContextMenuItem) {
   emit('rowAction', item.id, row);
 }
 
+// Gửi action inline của row ra ngoài component.
+// Inline action được emit ra ngoài để màn hình cha tự quyết định logic.
 function handleInlineRowAction(actionId: string, row: DataTableRow) {
   emit('rowAction', actionId, row);
 }
 
+// Chỉ emit click khi màn hình bật chế độ rowClickable.
+// Row click chỉ emit khi table bật chế độ clickable.
 function handleRowClick(row: DataTableRow) {
   if (!props.rowClickable) {
     return;
@@ -594,6 +663,8 @@ function handleRowClick(row: DataTableRow) {
   emit('rowClick', row);
 }
 
+// Tự canh phải cho số, còn lại ưu tiên align từ cấu hình cột.
+// Numeric cell tự canh phải, còn lại ưu tiên align được cấu hình.
 function resolveCellAlign(column: DataTableColumn, row?: DataTableRow): 'left' | 'center' | 'right' {
   if (column.align) {
     return column.align;
@@ -606,6 +677,8 @@ function resolveCellAlign(column: DataTableColumn, row?: DataTableRow): 'left' |
   return 'left';
 }
 
+// Gom class cell theo align và trạng thái wrap/expand.
+// Gom class theo align và trạng thái wrap/expand của cell.
 function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   return [
     `data-table__cell--${resolveCellAlign(column, row)}`,
@@ -616,10 +689,14 @@ function getCellClass(column: DataTableColumn, row?: DataTableRow) {
   ];
 }
 
+// Theo dõi row nào đang mở full content.
+// Row wrap mở full content được theo dõi riêng theo row id.
 function isRowExpanded(rowId: string | number) {
   return expandedRowIds.value.includes(rowId);
 }
 
+// Chỉ hiện toggle khi cell thật sự overflow hoặc đang expand.
+// Chỉ hiện toggle khi cell thật sự bị cắt hoặc đang ở trạng thái expand.
 function shouldShowWrapToggle(rowId: string | number, column: DataTableColumn) {
   if (!column.wrap) {
     return false;
@@ -628,6 +705,8 @@ function shouldShowWrapToggle(rowId: string | number, column: DataTableColumn) {
   return Boolean(wrapCellOverflowMap.value[getWrapCellKey(rowId, column.key)] || isRowExpanded(rowId));
 }
 
+// Bật/tắt trạng thái expand cho một row.
+// Toggle mở rộng cell wrap để xem full content của row.
 function toggleRowExpansion(rowId: string | number) {
   if (isRowExpanded(rowId)) {
     expandedRowIds.value = expandedRowIds.value.filter((id) => id !== rowId);
@@ -637,6 +716,8 @@ function toggleRowExpansion(rowId: string | number) {
   expandedRowIds.value = [...expandedRowIds.value, rowId];
 }
 
+// Bắt đầu resize từ width thực tế của header cell để tránh bị nhảy về minWidth.
+// Resize cột bắt đầu từ width thực tế của header cell để tránh jump về minWidth.
 function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
   const currentWidth = columnWidths.value[column.key] ?? parseColumnWidth(column.width);
   const minWidth = Math.max(
@@ -688,14 +769,16 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
 
 <template>
   <section class="data-table">
+    <!-- Thanh công cụ trên cùng: search, dropdown filter, bulk action, action nhanh. -->
     <div v-if="showToolbar" class="data-table__toolbar">
       <div v-if="!isAllRowsSelected" class="data-table__toolbar-start">
-        <label class="data-table__search" aria-label="Tìm kiếm dữ liệu">
+        <!-- Ô search dùng chung cho mọi màn hình đang gắn DataTable. -->
+        <label class="data-table__search" :aria-label="t('actions.search')">
           <IconSearch :size="20" stroke-width="1.5" aria-hidden="true" />
           <input
             v-model="searchValue"
             type="text"
-            :placeholder="searchPlaceholder"
+            :placeholder="searchPlaceholder || t('table.search')"
           />
         </label>
 
@@ -703,7 +786,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
           v-if="selectedCount > 0"
           class="data-table__bulkbar"
         >
-          <span class="data-table__bulkbar-count">Đã chọn {{ selectedCount }} bản ghi</span>
+          <span class="data-table__bulkbar-count">{{ t('table.selectedCount', { count: selectedCount }) }}</span>
           <div class="data-table__bulkbar-actions">
             <BaseButton
               v-for="action in visibleBulkActions"
@@ -727,6 +810,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
           </div>
         </div>
 
+        <!-- Hiển thị nhóm dropdown filter khi không ở trạng thái chọn hàng loạt. -->
         <template v-else-if="dropdownFilters.length">
           <div class="data-table__dropdown-filters">
             <label
@@ -738,7 +822,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
                 :value="selectedDropdownValues[filter.id] ?? ''"
                 @change="updateDropdownFilter(filter.id, ($event.target as HTMLSelectElement).value)"
               >
-                <option value="">{{ filter.placeholder || `Trường: ${filter.label}` }}</option>
+              <option value="">{{ filter.placeholder || `${t('misc.field')}: ${filter.label}` }}</option>
                 <option
                   v-for="option in filter.options"
                   :key="option.value"
@@ -758,7 +842,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
         class="data-table__bulkbar"
         :class="{ 'data-table__bulkbar--all-selected': isAllRowsSelected }"
       >
-        <span class="data-table__bulkbar-count">Đã chọn {{ selectedCount }} bản ghi</span>
+        <span class="data-table__bulkbar-count">{{ t('table.selectedCount', { count: selectedCount }) }}</span>
         <div class="data-table__bulkbar-actions">
           <BaseButton
             v-for="action in visibleBulkActions"
@@ -772,9 +856,9 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
           </BaseButton>
           <IconButton
             v-if="overflowBulkActions.length"
-            title="Thêm thao tác hàng loạt"
+            :title="t('table.bulkMoreActions')"
             variant="secondary"
-            ariaLabel="Thêm thao tác hàng loạt"
+            :ariaLabel="t('table.bulkMoreActions')"
             @click="openBulkOverflowMenu"
           >
             <IconDots :size="20" stroke-width="1.5" aria-hidden="true" />
@@ -799,8 +883,10 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
       </template>
     </div>
 
+    <!-- Khung chứa bảng và footer pagination để giữ layout liền mạch. -->
     <div class="data-table__surface">
       <div class="data-table__scroll">
+        <!-- Table dùng layout fixed để resize cột và sticky header ổn định. -->
         <table class="data-table__table">
           <colgroup>
             <col v-if="selectable" style="width: 40px">
@@ -829,6 +915,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
             @open-column-resize="handleOpenColumnResize"
           />
 
+          <!-- Dữ liệu chính của bảng theo trang hiện tại. -->
           <tbody v-if="displayedRows.length">
             <tr
               v-for="row in displayedRows"
@@ -852,6 +939,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
                   class="data-table__cell-content"
                   :class="{ 'data-table__cell-content--wrap': column.wrap, 'data-table__cell-content--expanded': column.wrap && isRowExpanded(getRowId(row)) }"
                 >
+                  <!-- Cell wrap: clamp 2 dòng, chỉ hiện toggle khi thật sự bị cắt nội dung. -->
                   <div
                     v-if="column.wrap"
                     class="data-table__cell-main"
@@ -887,13 +975,14 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
                       </slot>
                     </div>
                   </div>
+                  <!-- Toggle mở rộng/thu gọn nội dung của cell wrap. -->
                   <button
                     v-if="shouldShowWrapToggle(getRowId(row), column)"
                     type="button"
                     class="data-table__cell-expand-toggle"
                     @click.stop="toggleRowExpansion(getRowId(row))"
                   >
-                    {{ isRowExpanded(getRowId(row)) ? 'Thu gọn' : 'Xem thêm' }}
+                    {{ isRowExpanded(getRowId(row)) ? t('actions.collapse') : t('actions.viewMore') }}
                   </button>
                 </div>
               </td>
@@ -925,14 +1014,16 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
             </tr>
           </tbody>
 
+          <!-- Empty state khi không còn bản ghi sau lọc/search. -->
           <tbody v-else>
             <tr>
               <td :colspan="orderedColumns.length + (selectable ? 1 : 0) + (hasRowActions ? 1 : 0)" class="data-table__empty">
-                {{ emptyLabel }}
+                {{ emptyLabel || t('common.noData') }}
               </td>
             </tr>
           </tbody>
 
+          <!-- Hàng tổng hợp ở chân bảng khi màn hình có cấu hình summary. -->
           <tfoot v-if="summaryRow">
             <tr class="data-table__summary">
               <td v-if="selectable" class="data-table__checkbox-cell"></td>
@@ -949,6 +1040,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
         </table>
       </div>
 
+      <!-- Footer pagination được ghim dưới cùng của panel. -->
       <PaginationFooter
         v-if="showFooter"
         :total-count="totalCount"
@@ -960,6 +1052,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
       />
     </div>
 
+    <!-- Menu cột: sort, pin, hide/show. -->
     <ContextMenu
       v-model:open="headerMenuOpen"
       :x="headerMenuX"
@@ -968,6 +1061,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
       @select="handleHeaderMenuSelect"
     />
 
+    <!-- Menu thao tác của row khi có nhiều action hơn phần inline. -->
     <ContextMenu
       v-model:open="rowMenuOpen"
       :x="rowMenuX"
@@ -976,6 +1070,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
       @select="handleRowMenuSelect"
     />
 
+    <!-- Menu bulk action khi số action vượt ngưỡng hiển thị trực tiếp. -->
     <ContextMenu
       v-model:open="bulkMenuOpen"
       :x="bulkMenuX"
@@ -984,6 +1079,7 @@ function handleOpenColumnResize(column: DataTableColumn, event: MouseEvent) {
       @select="handleBulkMenuSelect"
     />
 
+    <!-- Popover filter text cho từng cột. -->
     <div
       v-if="activeColumnFilterKey"
       class="data-table__column-filter"

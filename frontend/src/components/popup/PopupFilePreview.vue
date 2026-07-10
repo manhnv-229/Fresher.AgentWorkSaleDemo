@@ -5,6 +5,7 @@ import BaseButton from '../buttons/BaseButton.vue';
 import IconButton from '../buttons/IconButton.vue';
 import PopupTopOneColumn from './PopupTopOneColumn.vue';
 import type { KnowledgeFileItem } from '../../api';
+import { useI18n } from '../../i18n';
 
 const props = defineProps<{
   open: boolean;
@@ -22,12 +23,15 @@ const emit = defineEmits<{
   download: [];
 }>();
 
-const title = computed(() => props.file?.name ?? 'Xem nội dung');
+const { t } = useI18n();
+const title = computed(() => props.file?.name ?? t('filePreview.title'));
 
+// Đóng preview phải clear state object URL ở parent thông qua event close.
 function closePreview() {
   emit('close');
 }
 
+// Download chỉ emit khi file hiện tại có thể tải xuống.
 function downloadPreview() {
   emit('download');
 }
@@ -47,7 +51,7 @@ function downloadPreview() {
       <template v-if="loading">
         <div class="knowledge-content-view__loading">
           <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
-          <span>Đang tải nội dung...</span>
+          <span>{{ t('common.loading') }}</span>
         </div>
       </template>
       <template v-else-if="error">
@@ -72,8 +76,8 @@ function downloadPreview() {
       <template v-else>
         <div class="knowledge-content-view__fallback">
           <IconFileText :size="32" stroke-width="1.5" aria-hidden="true" />
-          <p>Loại file này chưa được hỗ trợ xem trước.</p>
-          <p>Vui lòng tải xuống để xem nội dung.</p>
+          <p>{{ t('filePreview.unsupported') }}</p>
+          <p>{{ t('filePreview.downloadHint') }}</p>
         </div>
       </template>
     </div>
@@ -87,12 +91,12 @@ function downloadPreview() {
           @click="downloadPreview"
         >
           <IconDownload :size="20" stroke-width="1.5" aria-hidden="true" />
-          Tải xuống
+          {{ t('actions.download') }}
         </BaseButton>
         <IconButton
           class="knowledge-content-view__close-button"
-          ariaLabel="Đóng popup"
-          title="Đóng"
+          :ariaLabel="t('actions.close')"
+          :title="t('actions.close')"
           variant="secondary"
           type="button"
           @click="closePreview"
@@ -105,7 +109,7 @@ function downloadPreview() {
     <template #footer>
       <div class="knowledge-content-view__footer-actions">
         <BaseButton variant="secondary" type="button" @click="closePreview">
-          Đóng
+          {{ t('actions.close') }}
         </BaseButton>
       </div>
     </template>

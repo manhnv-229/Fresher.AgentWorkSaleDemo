@@ -17,8 +17,10 @@ import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
 import type { ComboboxOption } from '../components/combobox/Combobox.vue';
 import type { DataTableColumn } from '../components/tables/dataTableTypes';
 import { IconFilter, IconLoader2, IconRefresh } from '@tabler/icons-vue';
+import { useI18n } from '../i18n';
 
 const router = useRouter();
+const { t } = useI18n();
 const entries = ref<PagedResult<AuditLogEntry>>({ items: [], page: 1, pageSize: PAGE_SIZE_OPTIONS[0], totalCount: 0, totalPages: 0 });
 const isLoading = ref(false);
 const error = ref('');
@@ -39,22 +41,22 @@ const pageSize = ref<number>(PAGE_SIZE_OPTIONS[0]);
 const auditActionOptions = ref<ComboboxOption[]>([]);
 const auditTargetOptions = ref<ComboboxOption[]>([]);
 const auditLogTableColumns: DataTableColumn[] = [
-  { key: 'createdAt', label: 'Thời gian', minWidth: '180px' },
-  { key: 'userName', label: 'Người dùng', minWidth: '180px' },
-  { key: 'action', label: 'Hành động', minWidth: '160px' },
-  { key: 'targetType', label: 'Đối tượng', minWidth: '180px' },
-  { key: 'description', label: 'Mô tả', minWidth: '280px', wrap: true }
+  { key: 'createdAt', label: t('auditLogPage.filterTime'), minWidth: '180px' },
+  { key: 'userName', label: t('memberPage.popupEmail'), minWidth: '180px' },
+  { key: 'action', label: t('auditLogPage.filterAction'), minWidth: '160px' },
+  { key: 'targetType', label: t('auditLogPage.filterTarget'), minWidth: '180px' },
+  { key: 'description', label: t('memberPage.popupDescription'), minWidth: '280px', wrap: true }
 ];
 const timePresetOptions = [
-  { value: '', label: 'Tất cả' },
-  { value: 'today', label: 'Hôm nay' },
-  { value: 'yesterday', label: 'Hôm qua' },
-  { value: 'this_week', label: 'Tuần này' },
-  { value: 'last_week', label: 'Tuần trước' },
-  { value: 'this_month', label: 'Tháng này' },
-  { value: 'last_month', label: 'Tháng trước' },
-  { value: 'this_year', label: 'Năm nay' },
-  { value: 'last_year', label: 'Năm trước' }
+  { value: '', label: t('auditLogPage.filterAll') },
+  { value: 'today', label: t('auditLogPage.timeToday') },
+  { value: 'yesterday', label: t('auditLogPage.timeYesterday') },
+  { value: 'this_week', label: t('auditLogPage.timeThisWeek') },
+  { value: 'last_week', label: t('auditLogPage.timeLastWeek') },
+  { value: 'this_month', label: t('auditLogPage.timeThisMonth') },
+  { value: 'last_month', label: t('auditLogPage.timeLastMonth') },
+  { value: 'this_year', label: t('auditLogPage.timeThisYear') },
+  { value: 'last_year', label: t('auditLogPage.timeLastYear') }
 ];
 
 const hasActiveMenuFilters = computed(() =>
@@ -81,6 +83,7 @@ onUnmounted(() => {
   cancelSearchDebounce();
 });
 
+// Khi popup bộ lọc mở thì đo lại vị trí sau khi DOM update xong.
 watch(isMenuOpen, async (open) => {
   if (!open) {
     return;
@@ -90,10 +93,12 @@ watch(isMenuOpen, async (open) => {
   updatePopupPosition();
 });
 
+// Public loader để các nhánh UI có thể gọi lại mà không cần biết request id.
 async function loadEntries(filters?: AuditLogFilters) {
   return loadEntriesInternal(filters);
 }
 
+// Dùng request id để bỏ qua response cũ khi người dùng đổi filter liên tục.
 async function loadEntriesInternal(filters?: AuditLogFilters, requestId = ++loadEntriesRequestId) {
   if (requestId === loadEntriesRequestId) {
     isLoading.value = true;
@@ -123,7 +128,7 @@ async function loadEntriesInternal(filters?: AuditLogFilters, requestId = ++load
       router.push({ name: 'login' });
       return;
     }
-    error.value = err instanceof ApiError ? err.message : 'Không tải được nhật ký hoạt động.';
+    error.value = err instanceof ApiError ? err.message : t('auditLogPage.errorLoad');
   } finally {
     if (requestId === loadEntriesRequestId) {
       isLoading.value = false;
@@ -131,6 +136,7 @@ async function loadEntriesInternal(filters?: AuditLogFilters, requestId = ++load
   }
 }
 
+// Tải cùng lúc log hiện tại và catalog filter để popup có option đầy đủ.
 async function loadAuditLogData() {
   await Promise.all([
     loadEntries(),
@@ -138,6 +144,7 @@ async function loadAuditLogData() {
   ]);
 }
 
+// Enter trong ô search sẽ chốt page về đầu và nạp theo filter hiện tại.
 function applySearch() {
   currentPage.value = 1;
   cancelSearchDebounce();
@@ -145,6 +152,7 @@ function applySearch() {
   void loadEntries(filters);
 }
 
+// Chỉ áp dụng filter trong popup sau khi user bấm nút xác nhận.
 function applyMenuFilters() {
   currentPage.value = 1;
   cancelSearchDebounce();
@@ -153,6 +161,7 @@ function applyMenuFilters() {
   closeMenu();
 }
 
+// Reset popup filter đưa toàn bộ state về mặc định rồi load lại dữ liệu.
 function resetMenuFilters() {
   currentPage.value = 1;
   selectedTimePreset.value = '';
@@ -164,25 +173,31 @@ function resetMenuFilters() {
   closeMenu();
 }
 
+// Search audit log debounce để không flood request khi gõ.
 watch(searchText, () => {
+  // Tìm kiếm nhật ký cũng debounce để tránh gọi API quá dày khi người dùng nhập liên tục.
   scheduleSearch();
 });
 
+// Đổi page size thì reset trang để không rơi vào page vượt phạm vi.
 watch(pageSize, () => {
   currentPage.value = 1;
   cancelSearchDebounce();
   void loadEntries(buildFilters());
 });
 
+// Pagination footer chỉ truyền page mới, còn việc load data nằm ở đây.
 function goToPage(page: number) {
   currentPage.value = Math.max(1, page);
   void loadEntries(buildFilters());
 }
 
+// Giữ handler riêng để footer update page size rõ ràng hơn.
 function updatePageSize(nextPageSize: number) {
   pageSize.value = nextPageSize;
 }
 
+// Hủy timer cũ trước khi đặt timer mới.
 function cancelSearchDebounce() {
   if (searchDebounceTimer !== undefined) {
     window.clearTimeout(searchDebounceTimer);
@@ -190,6 +205,7 @@ function cancelSearchDebounce() {
   }
 }
 
+// Debounce search ngắn để vẫn phản hồi nhanh nhưng không gọi API quá nhiều.
 function scheduleSearch() {
   cancelSearchDebounce();
   searchDebounceTimer = window.setTimeout(() => {
@@ -198,6 +214,7 @@ function scheduleSearch() {
   }, searchDebounceMs);
 }
 
+// Gom các filter hiện tại thành payload gọi API.
 function buildFilters(): AuditLogFilters | undefined {
   const filters: AuditLogFilters = {};
   if (searchText.value.trim()) filters.search = searchText.value.trim();
@@ -207,6 +224,7 @@ function buildFilters(): AuditLogFilters | undefined {
   return Object.keys(filters).length > 0 ? filters : undefined;
 }
 
+// Toggle popup filter và nếu mở thì canh vị trí theo nút bấm.
 function toggleMenu() {
   isMenuOpen.value = !isMenuOpen.value;
   if (isMenuOpen.value) {
@@ -214,11 +232,13 @@ function toggleMenu() {
   }
 }
 
+// Đóng popup filter phải dọn cả style vị trí để lần mở sau tính lại từ đầu.
 function closeMenu() {
   isMenuOpen.value = false;
   filterPopupStyle.value = {};
 }
 
+// Resize/scroll có thể làm lệch popup anchored nên cần cập nhật lại tọa độ.
 function handleWindowResize() {
   if (!isMenuOpen.value) {
     return;
@@ -227,6 +247,7 @@ function handleWindowResize() {
   updatePopupPosition();
 }
 
+// Tính vị trí popup dựa trên bounding box của nút filter hiện tại.
 function updatePopupPosition() {
   const button = filterButtonRef.value;
   if (!button) return;
@@ -245,7 +266,9 @@ function updatePopupPosition() {
   };
 }
 
+// Quét các trang log để dựng catalog option cho action/targetType.
 async function loadAuditLogFilterOptions() {
+  // Tải catalog filter bằng cách quét các trang log hiện có rồi gom lại theo action/targetType.
   try {
     const pageSizeForCatalog = 200;
     const actionMap = new Map<string, string>();
@@ -288,6 +311,7 @@ async function loadAuditLogFilterOptions() {
   }
 }
 
+// Chuẩn hóa enum-like value thành label thân thiện để hiển thị trong filter popup.
 function formatAuditLogOptionLabel(value: string) {
   return value
     .split('.').join(' ')
@@ -297,6 +321,7 @@ function formatAuditLogOptionLabel(value: string) {
     .replace(/^./, (char: string) => char.toUpperCase());
 }
 
+// Normalize giá trị đầu vào trước khi render hoặc format.
 function toText(value: unknown): string {
   return value === null || value === undefined ? '' : String(value);
 }
@@ -316,7 +341,7 @@ function formatAuditDate(value: unknown): string {
       <TextBoxTopLabel
         v-model="searchText"
         label-position="hidden"
-        placeholder="Tìm kiếm nhật ký..."
+        :placeholder="t('auditLogPage.searchPlaceholder')"
         class="field"
         clearable
         @keydown.enter.prevent="applySearch"
@@ -335,7 +360,7 @@ function formatAuditDate(value: unknown): string {
           </button>
       </div>
       <div class="audit-log-toolbar__actions">
-        <IconButton ariaLabel="Tải lại nhật ký hoạt động" title="Tải lại nhật ký hoạt động" variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
+        <IconButton :ariaLabel="t('auditLogPage.reload')" :title="t('auditLogPage.reload')" variant="secondary" type="button" :disabled="isLoading" @click="loadEntries()">
           <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </IconButton>
       </div>
@@ -344,11 +369,11 @@ function formatAuditDate(value: unknown): string {
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && entries.items.length === 0" class="loading-row">
       <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
-      <span>Đang tải nhật ký hoạt động...</span>
+      <span>{{ t('auditLogPage.loading') }}</span>
     </div>
     <div v-else-if="entries.items.length === 0" class="empty-card empty-card--tight">
-      <h3>Không tìm thấy kết quả</h3>
-      <p>{{ hasActiveMenuFilters || searchText ? 'Không có nhật ký nào phù hợp với bộ lọc.' : 'Chưa có nhật ký hoạt động.' }}</p>
+      <h3>{{ t('memberPage.noResultsTitle') }}</h3>
+      <p>{{ hasActiveMenuFilters || searchText ? t('auditLogPage.noResultsFiltered') : t('auditLogPage.noResultsEmpty') }}</p>
     </div>
     <DataTable
       v-else
@@ -358,7 +383,7 @@ function formatAuditDate(value: unknown): string {
       :show-footer="false"
       :paginate="false"
       :selectable="false"
-      empty-label="Chưa có nhật ký hoạt động."
+      :empty-label="t('auditLogPage.noResultsEmpty')"
     >
       <template #cell-createdAt="{ row }">
         {{ formatAuditDate(row.createdAt) }}
@@ -378,7 +403,7 @@ function formatAuditDate(value: unknown): string {
       :current-page="currentPage"
       :page-size="pageSize"
       :page-size-options="PAGE_SIZE_OPTIONS"
-      count-label="Tổng số"
+      :count-label="t('memberPage.totalCount')"
       @update:currentPage="goToPage"
       @update:pageSize="updatePageSize"
     />
@@ -386,7 +411,7 @@ function formatAuditDate(value: unknown): string {
 
   <PopupTopOneColumn
     :open="isMenuOpen"
-    title="Bộ lọc nhật ký"
+    :title="t('auditLogPage.tableTitle')"
     placement="anchored"
     :panel-style="filterPopupStyle"
     width="480px"
@@ -399,38 +424,38 @@ function formatAuditDate(value: unknown): string {
   >
     <div class="audit-log-filter-popup">
       <div class="filter-menu__section">
-        <p class="filter-menu__label">Thời gian</p>
+        <p class="filter-menu__label">{{ t('auditLogPage.filterTime') }}</p>
         <ComboboxSingle
           v-model="selectedTimePreset"
           class="audit-log-filter-popup__combobox"
-          placeholder="Tất cả"
-          aria-label="Thời gian"
+          :placeholder="t('auditLogPage.filterAll')"
+          :aria-label="t('auditLogPage.filterTime')"
           :options="timePresetOptions"
         />
       </div>
 
       <div class="filter-menu__section">
-        <p class="filter-menu__label">Hành động</p>
+        <p class="filter-menu__label">{{ t('auditLogPage.filterAction') }}</p>
         <ComboboxMultiple
           v-model="selectedActions"
           class="audit-log-filter-popup__combobox"
-          label="Hành động"
+          :label="t('auditLogPage.filterAction')"
           label-position="hidden"
-          placeholder="Chọn hành động"
-          aria-label="Hành động"
+          :placeholder="t('auditLogPage.filterAction')"
+          :aria-label="t('auditLogPage.filterAction')"
           :options="auditActionOptions"
         />
       </div>
 
       <div class="filter-menu__section">
-        <p class="filter-menu__label">Đối tượng</p>
+        <p class="filter-menu__label">{{ t('auditLogPage.filterTarget') }}</p>
         <ComboboxSingle
           v-model="selectedTargetType"
           class="audit-log-filter-popup__combobox"
-          label="Đối tượng"
+          :label="t('auditLogPage.filterTarget')"
           label-position="hidden"
-          placeholder="Chọn đối tượng"
-          aria-label="Đối tượng"
+          :placeholder="t('auditLogPage.filterTarget')"
+          :aria-label="t('auditLogPage.filterTarget')"
           :options="auditTargetOptions"
         />
       </div>
@@ -439,16 +464,16 @@ function formatAuditDate(value: unknown): string {
     <template #footer>
       <div class="audit-log-filter-popup__footer-left">
         <BaseButton class="audit-log-filter-popup__reset" variant="secondary" type="button" @click="resetMenuFilters">
-          Đặt lại
+          {{ t('auditLogPage.reset') }}
         </BaseButton>
       </div>
 
       <div class="audit-log-filter-popup__footer-right">
         <BaseButton variant="secondary" type="button" @click="closeMenu">
-          Hủy
+          {{ t('auditLogPage.cancel') }}
         </BaseButton>
         <BaseButton variant="primary" type="button" @click="applyMenuFilters">
-          Áp dụng
+          {{ t('auditLogPage.apply') }}
         </BaseButton>
       </div>
     </template>

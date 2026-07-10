@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useAttrs, watch } from 'vue';
 import { IconCheck, IconChevronDown, IconLoader2, IconX } from '@tabler/icons-vue';
+import { useI18n } from '../../i18n';
 
 export type ComboboxOption = {
   label: string;
@@ -43,7 +44,7 @@ const props = withDefaults(
     loadOptions?: (params: { query: string; page: number; pageSize: number }) => Promise<ComboboxLoadResult>;
   }>(),
   {
-    placeholder: 'Chọn giá trị',
+    placeholder: '',
     disabled: false,
     loading: false,
     multiple: false,
@@ -54,8 +55,8 @@ const props = withDefaults(
     hint: '',
     ariaLabel: '',
     state: 'normal',
-    noResultsText: 'Không có kết quả',
-    loadingText: 'Đang tải...',
+    noResultsText: '',
+    loadingText: '',
     loadOnDemand: false,
     pageSize: 20
   }
@@ -73,7 +74,9 @@ const emit = defineEmits<{
 
 const model = defineModel<string | string[]>({ required: true });
 const attrs = useAttrs();
+// Combobox giữ đồng thời state tìm kiếm, chọn option, remote loading và giới hạn tag hiển thị.
 const rootRef = ref<HTMLElement | null>(null);
+const { t } = useI18n();
 const inputRef = ref<HTMLInputElement | null>(null);
 const isOpen = ref(false);
 const isFocused = ref(false);
@@ -168,10 +171,12 @@ const fieldClasses = computed(() => [
   }
 ]);
 
+// Dùng cho cả single và multiple mode để check option đang được chọn.
 function isSelected(value: string) {
   return modelValues.value.includes(value);
 }
 
+// Đo font của tag để tính chính xác số tag hiển thị trên một dòng.
 function getTagFont() {
   const tagElement = rootRef.value?.querySelector('.combobox__tag') as HTMLElement | null;
   const computedStyle = tagElement ? window.getComputedStyle(tagElement) : undefined;
@@ -183,6 +188,7 @@ function getTagFont() {
   return `${fontStyle} ${fontVariant} ${fontWeight} ${fontSize} ${fontFamily}`;
 }
 
+// Độ rộng tag phụ thuộc font thực tế và padding của pill.
 function measureTagWidth(label: string) {
   if (!tagMeasureCanvas) {
     return label.length * 8 + 30;
@@ -198,6 +204,7 @@ function measureTagWidth(label: string) {
   return textWidth + 30;
 }
 
+// Chỉ hiện số tag vừa đủ, phần còn lại sẽ gộp vào badge "+n".
 function updateVisibleTagCount() {
   if (!props.multiple) {
     visibleTagCount.value = 0;
@@ -256,6 +263,7 @@ function mergeOptions(base: ComboboxOption[], next: ComboboxOption[]) {
   return [...base, ...next.filter((option) => !seen.has(option.value))];
 }
 
+// Remote combobox dùng cursor/page để nạp thêm option theo query hiện tại.
 async function loadRemoteOptions(nextQuery = remoteQuery.value, nextPage = 1, replace = false) {
   if (!props.loadOnDemand) {
     return;
@@ -347,6 +355,7 @@ function setActiveToSelected() {
   activeIndex.value = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex();
 }
 
+// Mở dropdown đồng thời sync active index về option đang chọn.
 function openCombobox() {
   if (isDisabled.value || isOpen.value) {
     return;
@@ -368,6 +377,7 @@ function openCombobox() {
   scheduleUpdateVisibleTagCount();
 }
 
+// Đóng combobox phải reset trạng thái focus nội bộ để mở lại không lệch.
 function closeCombobox() {
   if (!isOpen.value) {
     return;
@@ -383,6 +393,7 @@ function focusInput() {
   nextTick(() => inputRef.value?.focus());
 }
 
+// Đồng bộ value về model của parent theo chế độ single/multiple.
 function updateModel(option: ComboboxOption) {
   if (!option || option.disabled) {
     return;
@@ -434,6 +445,7 @@ function toggleHiddenTags() {
   isHiddenTagsOpen.value = shouldOpen;
 }
 
+// Input text chỉ dùng làm query, không commit value trực tiếp.
 function handleInput(event: Event) {
   const target = event.target as HTMLInputElement;
   query.value = target.value;
@@ -457,6 +469,7 @@ function handleBlur(event: FocusEvent) {
   emit('blur', event);
 }
 
+// Keyboard support giữ flow chọn option bằng phím giống native select.
 function handleKeydown(event: KeyboardEvent) {
   if (isDisabled.value) {
     return;
@@ -613,7 +626,7 @@ onBeforeUnmount(() => {
               v-if="hiddenTagCount"
               type="button"
               class="combobox__tag combobox__tag--more"
-              :aria-label="`Mở rộng ${selectedOrderedOptions.length} giá trị đã chọn`"
+              :aria-label="`${t('actions.viewMore')} ${selectedOrderedOptions.length} ${t('common.selected')}`"
               :aria-expanded="isHiddenTagsOpen ? 'true' : 'false'"
               :disabled="isDisabled"
               @mousedown.stop.prevent="toggleHiddenTags"
@@ -627,7 +640,7 @@ onBeforeUnmount(() => {
               <button
                 type="button"
                 class="combobox__tag-remove"
-                :aria-label="`Xóa ${option.label}`"
+                :aria-label="`${t('actions.clear')} ${option.label}`"
                 :disabled="isDisabled"
                 @mousedown.stop.prevent="removeValue(option.value)"
                 @keydown.enter.stop.prevent="removeValue(option.value)"
@@ -645,7 +658,7 @@ onBeforeUnmount(() => {
             :class="{ 'combobox__input--placeholder': !selectedSingleOption && !query }"
             :name="name"
             :value="inputDisplayValue"
-            :placeholder="multiple && selectedOptions.length ? '' : placeholder"
+            :placeholder="multiple && selectedOptions.length ? '' : (placeholder || t('placeholders.chooseValue'))"
             :disabled="isDisabled"
             :readonly="!multiple && Boolean(selectedSingleOption) && !isOpen"
             :aria-label="!label || labelPosition === 'none' ? (ariaLabel || label || placeholder || undefined) : undefined"
@@ -669,7 +682,7 @@ onBeforeUnmount(() => {
             type="button"
             class="combobox__icon-button combobox__icon-button--divider"
             :disabled="isDisabled"
-            aria-label="Mở tìm kiếm nâng cao"
+            :aria-label="t('actions.openAdvancedSearch')"
             @mousedown.stop.prevent="handleAdvancedClick"
             @keydown.enter.stop.prevent="handleAdvancedClick"
             @keydown.space.stop.prevent="handleAdvancedClick"
@@ -681,7 +694,7 @@ onBeforeUnmount(() => {
             type="button"
             class="combobox__icon-button"
             :disabled="isDisabled"
-            aria-label="Mở danh sách"
+            :aria-label="t('actions.openList')"
             @mousedown.stop.prevent="handleToggleClick"
             @keydown.enter.stop.prevent="handleToggleClick"
             @keydown.space.stop.prevent="handleToggleClick"
@@ -704,7 +717,7 @@ onBeforeUnmount(() => {
             :key="option.value"
             type="button"
             class="combobox__hidden-tag"
-            :aria-label="`Xóa ${option.label}`"
+            :aria-label="`${t('actions.clear')} ${option.label}`"
             @mousedown.stop.prevent="removeValue(option.value)"
             @keydown.enter.stop.prevent="removeValue(option.value)"
             @keydown.space.stop.prevent="removeValue(option.value)"
@@ -724,8 +737,8 @@ onBeforeUnmount(() => {
           :aria-multiselectable="multiple ? 'true' : undefined"
           @scroll.passive="handleMenuScroll"
         >
-          <li v-if="isLoading" class="combobox__empty">{{ loadingText }}</li>
-          <li v-else-if="!filteredOptions.length" class="combobox__empty">{{ noResultsText }}</li>
+          <li v-if="isLoading" class="combobox__empty">{{ loadingText || t('common.loading') }}</li>
+          <li v-else-if="!filteredOptions.length" class="combobox__empty">{{ noResultsText || t('common.noResults') }}</li>
           <li
             v-for="(option, index) in filteredOptions"
             v-else

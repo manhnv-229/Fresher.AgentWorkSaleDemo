@@ -2,6 +2,7 @@
 import Checkbox from '../choices/Checkbox.vue';
 import { IconChevronDown, IconChevronUp, IconFilter, IconPin } from '@tabler/icons-vue';
 import type { DataTableColumn, DataTableRow } from './dataTableTypes';
+import { useI18n } from '../../i18n';
 
 const props = defineProps<{
   columns: DataTableColumn[];
@@ -23,6 +24,8 @@ const emit = defineEmits<{
   openColumnResize: [column: DataTableColumn, event: MouseEvent];
 }>();
 
+const { t } = useI18n();
+
 function handleHeaderMenu(column: DataTableColumn, event: MouseEvent) {
   emit('openHeaderMenu', column, event);
 }
@@ -32,12 +35,14 @@ function handleColumnFilter(column: DataTableColumn, event: MouseEvent) {
 }
 
 function handleColumnResize(column: DataTableColumn, event: MouseEvent) {
+  // Đẩy sự kiện resize ra ngoài để DataTable giữ state width tập trung.
   emit('openColumnResize', column, event);
 }
 </script>
 
 <template>
   <thead class="data-table__header">
+    <!-- Header row: checkbox, các cột dữ liệu và cột action cuối bảng. -->
     <tr>
       <th v-if="selectable" class="data-table__checkbox-cell data-table__header-cell">
         <Checkbox
@@ -46,6 +51,7 @@ function handleColumnResize(column: DataTableColumn, event: MouseEvent) {
           @update:model-value="(value) => emit('toggleSelectAllCurrentPage', value)"
         />
       </th>
+      <!-- Mỗi header cell vừa mở menu vừa đóng vai trò vùng kéo resize. -->
       <th
         v-for="column in columns"
         :key="column.key"
@@ -54,6 +60,7 @@ function handleColumnResize(column: DataTableColumn, event: MouseEvent) {
         :style="{ width: getColumnWidth(column), minWidth: getColumnWidth(column) || column.minWidth }"
       >
         <div class="data-table__header-cell-inner">
+          <!-- Cụm label + sort + filter của cột. -->
           <div class="data-table__header-content">
             <button
               type="button"
@@ -92,17 +99,18 @@ function handleColumnResize(column: DataTableColumn, event: MouseEvent) {
               type="button"
               class="data-table__column-filter-trigger"
               :class="{ 'data-table__column-filter-trigger--active': isColumnFiltered(column.key) }"
-              :title="`Lọc cột ${column.label}`"
+              :title="`${t('table.filterColumn')} ${column.label}`"
               @click.stop="handleColumnFilter(column, $event)"
             >
               <IconFilter :size="20" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
+          <!-- Handle resize nằm sát divider để kéo ngang trực tiếp. -->
           <span
             class="data-table__column-resize-handle"
             role="separator"
             aria-orientation="vertical"
-            :aria-label="`Resize cột ${column.label}`"
+            :aria-label="`${t('table.resizeColumn')} ${column.label}`"
             :style="{
               position: 'absolute',
               top: '0',

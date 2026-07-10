@@ -14,6 +14,7 @@ import {
   today,
   toDateRangeModel
 } from '../../utils/datePicker';
+import { useI18n } from '../../i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -53,7 +54,9 @@ const model = defineModel<DateRangeModel>({
   })
 });
 
+// Tách state hiển thị khỏi state commit để người dùng chọn khoảng ngày an toàn trước khi áp dụng.
 const rootRef = ref<HTMLElement | null>(null);
+const { t } = useI18n();
 const isOpen = ref(false);
 const inputValue = ref(formatRangeLabel(parseDate(model.value.start), parseDate(model.value.end)));
 const startDate = ref<Date | null>(parseDate(model.value.start));
@@ -89,6 +92,7 @@ watch(
   { deep: true, immediate: true }
 );
 
+// Range picker chỉ commit khi cả start/end đã hợp lệ.
 function commitSelection() {
   const normalized = normalizeDateRange(pendingStartDate.value, pendingEndDate.value);
   startDate.value = normalized.startDate;
@@ -97,6 +101,7 @@ function commitSelection() {
   inputValue.value = formatRangeLabel(startDate.value, endDate.value);
 }
 
+// Popover mở ra đồng thời sync lại selection nháp từ model hiện tại.
 function openPopover() {
   if (isDisabled.value) {
     return;
@@ -130,6 +135,7 @@ function handleBlur() {
   inputValue.value = formatRangeLabel(startDate.value, endDate.value);
 }
 
+// Chọn mốc đầu tiên rồi mốc thứ hai trước khi cho phép áp dụng.
 function selectDate(date: Date) {
   if (!pendingStartDate.value || (pendingStartDate.value && pendingEndDate.value)) {
     pendingStartDate.value = cloneDate(date);
@@ -146,6 +152,7 @@ function selectDate(date: Date) {
   pendingEndDate.value = cloneDate(date);
 }
 
+// Nút áp dụng mới commit range xuống model ngoài component.
 function applySelection() {
   commitSelection();
   closePopover();
@@ -198,7 +205,7 @@ onBeforeUnmount(() => {
             class="picker-field__input"
             :name="name"
             :value="inputValue"
-            :placeholder="placeholder"
+            :placeholder="placeholder || t('placeholders.dateRange')"
             :disabled="isDisabled"
             :readonly="isReadonlyState"
             :aria-label="!label || labelPosition === 'none' ? (ariaLabel || label || placeholder || undefined) : undefined"
@@ -213,7 +220,7 @@ onBeforeUnmount(() => {
             type="button"
             class="field__action picker-field__action"
             :disabled="isDisabled"
-            aria-label="Mở bộ chọn"
+            :aria-label="t('actions.openPicker')"
             @mousedown.prevent
             @click="togglePopover"
           >
@@ -235,7 +242,7 @@ onBeforeUnmount(() => {
           />
 
           <div class="picker__actions">
-            <BaseButton type="button" variant="secondary" @click="closePopover">Hủy</BaseButton>
+              <BaseButton type="button" variant="secondary" @click="closePopover">{{ t('actions.cancel') }}</BaseButton>
             <BaseButton type="button" @click="applySelection">Đồng ý</BaseButton>
           </div>
         </div>

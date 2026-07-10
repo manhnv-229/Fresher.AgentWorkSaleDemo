@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useAttrs } from 'vue';
 import { IconCircleCheck, IconLoader2, IconX } from '@tabler/icons-vue';
+import { useI18n } from '../../i18n';
 
 defineOptions({
   inheritAttrs: false
@@ -39,8 +40,8 @@ const props = withDefaults(
     ariaLabel: '',
     selectAllOnFocus: true,
     state: 'normal',
-    validateMessage: 'Dữ liệu hợp lệ.',
-    verifyingMessage: 'Đang kiểm tra...'
+    validateMessage: '',
+    verifyingMessage: ''
   }
 );
 
@@ -53,6 +54,8 @@ const emit = defineEmits<{
 
 const model = defineModel<string>({ required: true });
 const attrs = useAttrs();
+const { t } = useI18n();
+// Textbox gói toàn bộ trạng thái visual của field: focus, validate, loading và clear button.
 const inputId = computed(() => props.id || (attrs.id as string | undefined) || props.name || 'field');
 const isFocused = ref(false);
 const showTooltip = computed(() => isFocused.value && Boolean(props.error));
@@ -71,6 +74,7 @@ const inputAttrs = computed(() => {
   return rest;
 });
 
+// Focus/blur/input đều được bọc lại để component tự quản visual state.
 function handleFocus(event: FocusEvent) {
   isFocused.value = true;
 
@@ -160,7 +164,7 @@ function clearValue() {
           v-if="clearable && model && model.trim() && !isValidateState && !isVerifyingState"
           type="button"
           class="field__action field__action--clear"
-          :aria-label="`Xóa ${label || inputId || name || 'nội dung tìm kiếm'}`"
+          :aria-label="`Xóa ${label || inputId || name || t('field.searchContent')}`"
           title="Xóa nội dung"
           :disabled="disabled || isReadonlyState"
           @mousedown.prevent
@@ -188,10 +192,10 @@ function clearValue() {
         {{ error }}
       </span>
       <span v-else-if="isValidateState" :id="`${inputId}-hint`" class="field__feedback field__feedback--success">
-        {{ validateMessage }}
+        {{ validateMessage || t('field.valid') }}
       </span>
       <span v-else-if="isVerifyingState" :id="`${inputId}-hint`" class="field__feedback">
-        {{ verifyingMessage }}
+        {{ verifyingMessage || t('field.verifying') }}
       </span>
       <span v-else-if="hint" :id="`${inputId}-hint`" class="field__feedback">
         {{ hint }}

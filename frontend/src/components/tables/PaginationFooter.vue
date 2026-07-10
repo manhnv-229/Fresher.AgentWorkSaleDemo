@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import BaseButton from '../buttons/BaseButton.vue';
 import { IconChevronLeft, IconChevronRight, IconChevronLeftPipe, IconChevronRightPipe } from '@tabler/icons-vue';
+import { useI18n } from '../../i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -15,10 +16,10 @@ const props = withDefaults(
     nextLabel?: string;
   }>(),
   {
-    countLabel: 'Tổng số',
-    pageSizeLabel: 'Số dòng/trang',
-    previousLabel: 'Trang trước',
-    nextLabel: 'Trang sau'
+    countLabel: '',
+    pageSizeLabel: '',
+    previousLabel: '',
+    nextLabel: ''
   }
 );
 
@@ -27,6 +28,7 @@ const emit = defineEmits<{
   'update:pageSize': [pageSize: number];
 }>();
 
+const { t } = useI18n();
 const totalPages = computed(() => Math.ceil(props.totalCount / props.pageSize));
 const rangeStart = computed(() => ((props.currentPage - 1) * props.pageSize) + 1);
 const rangeEnd = computed(() => Math.min(props.currentPage * props.pageSize, props.totalCount));
@@ -41,11 +43,11 @@ function handlePageSizeChange(event: Event) {
 <template>
   <div v-if="totalCount > 0" class="pagination">
     <div class="pagination__summary">
-      <span class="pagination__count">{{ countLabel }}: {{ totalCount }}</span>
+      <span class="pagination__count">{{ countLabel || t('table.total') }}: {{ totalCount }}</span>
     </div>
     <label class="pagination__page-size">
-      <span class="pagination__page-size-label">{{ pageSizeLabel }}</span>
-      <select :value="pageSize" aria-label="Số dòng mỗi trang" @change="handlePageSizeChange">
+      <span class="pagination__page-size-label">{{ pageSizeLabel || t('table.rowsPerPage') }}</span>
+      <select :value="pageSize" :aria-label="t('table.rowsPerPage')" @change="handlePageSizeChange">
         <option v-for="size in pageSizeOptions" :key="size" :value="size">
           {{ size }}
         </option>
@@ -57,8 +59,8 @@ function handlePageSizeChange(event: Event) {
         type="button"
         class="pagination__icon-button"
         :disabled="currentPage <= 1"
-        aria-label="Trang đầu"
-        title="Trang đầu"
+        :aria-label="t('table.firstPage')"
+        :title="t('table.firstPage')"
         @click="emit('update:currentPage', 1)"
       >
         <IconChevronLeftPipe :size="20" stroke-width="1.5" aria-hidden="true" />
@@ -68,8 +70,8 @@ function handlePageSizeChange(event: Event) {
         type="button"
         class="pagination__icon-button"
         :disabled="currentPage <= 1"
-        :aria-label="previousLabel"
-        :title="previousLabel"
+        :aria-label="previousLabel || t('table.previousPage')"
+        :title="previousLabel || t('table.previousPage')"
         @click="emit('update:currentPage', currentPage - 1)"
       >
         <IconChevronLeft :size="20" stroke-width="1.5" aria-hidden="true" />
@@ -80,8 +82,8 @@ function handlePageSizeChange(event: Event) {
         type="button"
         class="pagination__icon-button"
         :disabled="currentPage >= totalPages"
-        :aria-label="nextLabel"
-        :title="nextLabel"
+        :aria-label="nextLabel || t('table.nextPage')"
+        :title="nextLabel || t('table.nextPage')"
         @click="emit('update:currentPage', currentPage + 1)"
       >
         <IconChevronRight :size="20" stroke-width="1.5" aria-hidden="true" />
@@ -91,8 +93,8 @@ function handlePageSizeChange(event: Event) {
         type="button"
         class="pagination__icon-button"
         :disabled="currentPage >= totalPages"
-        aria-label="Trang cuối"
-        title="Trang cuối"
+        :aria-label="t('table.lastPage')"
+        :title="t('table.lastPage')"
         @click="emit('update:currentPage', totalPages)"
       >
         <IconChevronRightPipe :size="20" stroke-width="1.5" aria-hidden="true" />

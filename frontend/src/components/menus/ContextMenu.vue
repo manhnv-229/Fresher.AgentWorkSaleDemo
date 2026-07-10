@@ -26,6 +26,7 @@ const emit = defineEmits<{
 const rootRef = ref<HTMLElement | null>(null);
 let isListening = false;
 
+// Menu nổi này tự gắn listener toàn cục để đóng khi click ra ngoài hoặc nhấn Escape.
 const menuStyle = computed(() => ({
   left: `${props.x}px`,
   top: `${props.y}px`

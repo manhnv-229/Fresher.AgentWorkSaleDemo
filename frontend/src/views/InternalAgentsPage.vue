@@ -36,6 +36,7 @@ const isDeleteModalOpen = ref(false);
 const agentToDelete = ref<AgentSummary | null>(null);
 const isDeleting = ref(false);
 const loadMoreTrigger = ref<HTMLElement | null>(null);
+// Form tạo agent được giữ tách biệt để validate và reset không làm ảnh hưởng đến danh sách hiện tại.
 const {
   errors: createErrors,
   formError: createFormError,
@@ -101,6 +102,8 @@ const isCreateDirty = computed(() =>
   || createIcon.value !== 'mint'
 );
 
+// Sentinel dưới cùng kích hoạt tải thêm dữ liệu khi người dùng cuộn tới cuối danh sách.
+// Infinite scroll: khi sentinel xuất hiện thì kéo thêm agent và giữ menu/card state độc lập.
 watch(
   loadMoreTrigger,
   (element, _, onCleanup) => {
@@ -120,11 +123,13 @@ watch(
   { flush: 'post' }
 );
 
+// Avatar dùng gradient theo preset icon để nhìn danh sách đỡ đơn điệu.
 function avatarStyle(icon: string | null | undefined) {
   const option = avatarOptions.find(item => item.id === icon) ?? avatarOptions[0];
   return { background: option.accent };
 }
 
+// Điều hướng sang trang detail, kèm query edit nếu cần mở thẳng chế độ chỉnh sửa.
 function openDetail(agent: AgentSummary, startInEdit = false) {
   router.push({
     name: 'agent-detail',
@@ -133,14 +138,17 @@ function openDetail(agent: AgentSummary, startInEdit = false) {
   });
 }
 
+// Chỉ cho phép một menu card mở tại một thời điểm.
 function toggleCardMenu(agentId: string) {
   cardMenuOpenId.value = cardMenuOpenId.value === agentId ? null : agentId;
 }
 
+// Đóng menu card khi click ra ngoài hoặc sau khi thực hiện action.
 function closeCardMenu() {
   cardMenuOpenId.value = null;
 }
 
+// Action menu gom 3 thao tác view/edit/delete để tránh gắn logic rải trong template.
 function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete', event: Event) {
   event.stopPropagation();
   event.preventDefault();
@@ -155,11 +163,14 @@ function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete
   openDetail(agent, action === 'edit');
 }
 
+// Mở modal tạo mới chỉ sau khi dọn state cũ để tránh giữ lại lỗi validate.
+// Mở modal tạo mới với state sạch để validate không bị dính từ lần trước.
 function openCreateModal() {
   clearCreateErrors();
   isCreateModalOpen.value = true;
 }
 
+// Reset toàn bộ state tạo mới để modal sau mở lên không mang dữ liệu cũ.
 function closeCreateModal() {
   isCreateModalOpen.value = false;
   createName.value = '';
@@ -169,6 +180,7 @@ function closeCreateModal() {
   clearCreateErrors();
 }
 
+// Nếu form đã thay đổi thì chặn đóng và bật dialog xác nhận thoát.
 function requestCloseCreateModal() {
   if (isCreateDirty.value && !isSaving.value) {
     isUnsavedCreateDialogOpen.value = true;
@@ -178,6 +190,7 @@ function requestCloseCreateModal() {
   closeCreateModal();
 }
 
+// Submit tạo agent, sau khi thành công sẽ refresh lại grid.
 async function submitCreate() {
   clearCreateErrors();
   if (!validateCreateForm()) {
@@ -209,11 +222,14 @@ async function submitCreate() {
   }
 }
 
+// Xóa agent cần xác nhận riêng vì đây là thao tác phá hủy và phải refresh lại list sau khi xong.
+// Đóng modal xóa và bỏ agent đang chờ xác nhận.
 function closeDeleteModal() {
   isDeleteModalOpen.value = false;
   agentToDelete.value = null;
 }
 
+// Xóa là thao tác phá hủy nên luôn refresh lại danh sách sau khi thành công.
 async function confirmDelete() {
   if (!agentToDelete.value) return;
 

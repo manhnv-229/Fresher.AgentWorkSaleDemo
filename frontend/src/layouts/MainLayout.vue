@@ -12,12 +12,14 @@ import { useAgentDetailEditor } from '../composables/useAgentDetailEditor';
 import { invalidateAgentListCache } from '../composables/useAgentList';
 import { useTenantSelection } from '../composables/useTenantSelection';
 import { ApiError } from '../api/http';
+import { useI18n } from '../i18n';
 
 const { isAuthenticated, isInitializing, initializeAuth, logout, clearSession } = useAuth();
 const { tenants, loadTenants, selectTenant } = useTenantSelection();
 const route = useRoute();
 const router = useRouter();
 const { beginEdit, cancelEdit, saveDraft, saveAndPublish, toggleActivation, isEditing, isSaving } = useAgentDetailEditor();
+const { t } = useI18n();
 
 const sidebarError = ref('');
 const isLoadingTenants = ref(false);
@@ -35,7 +37,7 @@ const canToggleAgentStatus = computed(() => {
 });
 const agentStatusActionLabel = computed(() => {
   const status = agent.value?.status;
-  return status === 'Active' || status === 'Published' ? 'Dừng' : 'Kích hoạt';
+  return status === 'Active' || status === 'Published' ? t('agent.stop') : t('agent.start');
 });
 
 const { agent, isLoading: isLoadingAgent, loadInternal, loadTenant, clear: clearAgent } = useAgentDetail();
@@ -73,7 +75,7 @@ watch(isAuthenticated, async (authenticated) => {
         clearSession();
         return;
       }
-      sidebarError.value = 'Không tải được danh sách đơn vị.';
+      sidebarError.value = t('errors.noTenantList');
     } finally {
       isLoadingTenants.value = false;
     }
@@ -180,11 +182,11 @@ function toggleSettingsSidebar() {
 
 <template>
   <main v-if="isInitializing" class="app-shell">
-    <p class="message">Đang kiểm tra phiên đăng nhập...</p>
+    <p class="message">{{ t('auth.checkingSession') }}</p>
   </main>
 
   <main v-else-if="!isAuthenticated" class="app-shell">
-    <p class="message">Đang chuyển tới trang đăng nhập...</p>
+    <p class="message">{{ t('auth.redirectingLogin') }}</p>
   </main>
 
   <section

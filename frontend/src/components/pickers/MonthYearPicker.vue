@@ -4,6 +4,7 @@ import { IconCalendarMonth, IconChevronLeft, IconChevronRight } from '@tabler/ic
 import BaseButton from '../buttons/BaseButton.vue';
 import { addYears, cloneDate, formatMonthYear, getMonthLabels, parseMonthYear, startOfMonth, today } from '../../utils/datePicker';
 import { usePickerField } from './usePickerField';
+import { useI18n } from '../../i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -37,7 +38,9 @@ const props = withDefaults(
 );
 
 const model = defineModel<string>({ default: '' });
+// Month/year picker giữ state text, tháng được chọn và tháng đang duyệt riêng để tránh commit sớm.
 const rootRef = ref<HTMLElement | null>(null);
+const { t } = useI18n();
 const isOpen = ref(false);
 const inputValue = ref(model.value);
 const selectedMonth = ref(parseMonthYear(model.value));
@@ -67,6 +70,7 @@ watch(
   }
 );
 
+// Commit tháng/năm đã chọn về model theo format hiển thị chuẩn của picker.
 function commitValue(date: Date | null) {
   const nextValue = formatMonthYear(date);
   model.value = nextValue;
@@ -74,6 +78,7 @@ function commitValue(date: Date | null) {
   selectedMonth.value = date ? cloneDate(date) : null;
 }
 
+// Popover chỉ mở khi field đang tương tác, không mở trong trạng thái disabled.
 function openPopover() {
   if (isDisabled.value) {
     return;
@@ -116,6 +121,7 @@ function handleBlur() {
   displayDate.value = startOfMonth(nextMonth);
 }
 
+// Click vào một tháng sẽ commit ngay và đóng popover.
 function selectMonth(monthIndex: number) {
   const nextDate = new Date(displayDate.value.getFullYear(), monthIndex, 1);
   commitValue(nextDate);
@@ -123,6 +129,7 @@ function selectMonth(monthIndex: number) {
   closePopover();
 }
 
+// Nút hôm nay hiện tại tương đương chọn tháng hiện hành.
 function selectCurrentMonth() {
   const nextDate = startOfMonth(today());
   commitValue(nextDate);
@@ -185,7 +192,7 @@ onBeforeUnmount(() => {
             class="picker-field__input"
             :name="name"
             :value="inputValue"
-            :placeholder="placeholder"
+            :placeholder="placeholder || t('placeholders.monthYear')"
             :disabled="isDisabled"
             :readonly="isReadonlyState"
             :aria-label="!label || labelPosition === 'none' ? (ariaLabel || label || placeholder || undefined) : undefined"
@@ -200,7 +207,7 @@ onBeforeUnmount(() => {
             type="button"
             class="field__action picker-field__action"
             :disabled="isDisabled"
-            aria-label="Mở bộ chọn"
+            :aria-label="t('actions.openPicker')"
             @mousedown.prevent
             @click="togglePopover"
           >

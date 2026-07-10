@@ -19,8 +19,10 @@ import { PAGE_SIZE_OPTIONS } from '../composables/useAgentList';
 import { MEMBER_STATUSES, withAllOption, getMemberStatusLabel } from '../utils/statuses';
 import { hasMaxLength, isOneOf } from '../utils/validators';
 import { IconLock, IconLoader2, IconRefresh, IconShieldCheck } from '@tabler/icons-vue';
+import { useI18n } from '../i18n';
 
 const router = useRouter();
+const { t } = useI18n();
 const users = ref<PagedResult<AdminUserSummary>>({ items: [], page: 1, pageSize: PAGE_SIZE_OPTIONS[0], totalCount: 0, totalPages: 0 });
 const isLoading = ref(false);
 const error = ref('');
@@ -58,9 +60,9 @@ const {
       const normalizedJobPosition = values.jobPosition.trim();
 
       if (normalizedJobPosition && !isOneOf(normalizedJobPosition, JOB_POSITIONS)) {
-        nextErrors.jobPosition = 'Chức vụ không hợp lệ.';
+        nextErrors.jobPosition = t('memberPage.errorJobPositionInvalid');
       } else if (normalizedJobPosition && !hasMaxLength(normalizedJobPosition, 255)) {
-        nextErrors.jobPosition = 'Chức vụ không được vượt quá 255 ký tự.';
+        nextErrors.jobPosition = t('memberPage.errorJobPositionTooLong');
       }
 
       return nextErrors;
@@ -79,11 +81,11 @@ const JOB_POSITIONS = [
 
 const STATUS_OPTIONS = withAllOption(MEMBER_STATUSES);
 const memberTableColumns: DataTableColumn[] = [
-  { key: 'fullName', label: 'Nhân viên', minWidth: '220px' },
-  { key: 'jobPosition', label: 'Vị trí công việc', minWidth: '180px' },
-  { key: 'project', label: 'Dự án', minWidth: '180px' },
-  { key: 'email', label: 'Email', minWidth: '220px' },
-  { key: 'status', label: 'Trạng thái', minWidth: '140px' }
+  { key: 'fullName', label: t('memberPage.columnName'), minWidth: '220px' },
+  { key: 'jobPosition', label: t('memberPage.columnJobPosition'), minWidth: '180px' },
+  { key: 'project', label: t('memberPage.columnProject'), minWidth: '180px' },
+  { key: 'email', label: t('memberPage.columnEmail'), minWidth: '220px' },
+  { key: 'status', label: t('memberPage.columnStatus'), minWidth: '140px' }
 ];
 
 onMounted(() => {
@@ -96,22 +98,27 @@ onBeforeUnmount(() => {
   }
 });
 
+// Search text debounce để tránh gọi API mỗi ký tự khi người dùng nhập nhanh.
 watch(searchText, () => {
+  // Search chỉ gọi API sau một nhịp ngắn để tránh bắn request liên tục khi gõ nhanh.
   scheduleUserSearch();
 });
 
+// Bộ lọc trạng thái thay đổi thì reset pagination và tải lại data ngay.
 watch(selectedStatus, () => {
   currentPage.value = 1;
   cancelUserSearchDebounce();
   void loadUsers();
 });
 
+// Đổi page size luôn quay về trang đầu để tránh vượt quá tổng trang hiện tại.
 watch(pageSize, () => {
   currentPage.value = 1;
   cancelUserSearchDebounce();
   void loadUsers();
 });
 
+// Hủy timer cũ trước khi đặt timer mới để chỉ còn request cuối cùng được phát.
 function cancelUserSearchDebounce() {
   if (searchDebounceTimer !== undefined) {
     window.clearTimeout(searchDebounceTimer);
@@ -119,6 +126,7 @@ function cancelUserSearchDebounce() {
   }
 }
 
+// Debounce search member để cân bằng giữa phản hồi UI và số lượng request.
 function scheduleUserSearch() {
   cancelUserSearchDebounce();
   searchDebounceTimer = window.setTimeout(() => {
@@ -127,6 +135,7 @@ function scheduleUserSearch() {
   }, searchDebounceMs);
 }
 
+// Tải dữ liệu theo request id mới nhất để bỏ qua response đến chậm.
 async function loadUsers(requestId = ++loadUsersRequestId) {
   if (requestId === loadUsersRequestId) {
     isLoading.value = true;
@@ -158,7 +167,7 @@ async function loadUsers(requestId = ++loadUsersRequestId) {
       router.push({ name: 'login' });
       return;
     }
-    error.value = err instanceof ApiError ? err.message : 'Không tải được danh sách tài khoản.';
+    error.value = err instanceof ApiError ? err.message : t('memberPage.errorLoad');
   } finally {
     if (requestId === loadUsersRequestId) {
       isLoading.value = false;
@@ -166,21 +175,25 @@ async function loadUsers(requestId = ++loadUsersRequestId) {
   }
 }
 
+// Chỉ clamp trang hợp lệ rồi dùng chung loader.
 function goToPage(page: number) {
   currentPage.value = Math.max(1, page);
   void loadUsers();
 }
 
+// Page size đổi theo footer pagination.
 function updatePageSize(nextPageSize: number) {
   pageSize.value = nextPageSize;
 }
 
+// Tone trạng thái được map ra class để template giữ gọn.
 function statusTone(status: string) {
   if (status === 'Locked') return 'status-chip status-chip--danger';
   if (status === 'Active') return 'status-chip status-chip--success';
   return 'status-chip';
 }
 
+// Chuẩn hóa dữ liệu undefined/null trước khi render.
 function toText(value: unknown): string {
   return value === null || value === undefined ? '' : String(value);
 }
@@ -189,23 +202,28 @@ function toDisplayValue(value: unknown): string {
   return toText(value) || '—';
 }
 
+// Popup detail luôn copy user hiện tại vào state edit trước khi mở.
 function openPopup(user: AdminUserSummary) {
+  // Popup chỉ mở sau khi copy dữ liệu hiện tại vào form chỉnh sửa.
   selectedUser.value = user;
   editingJobPosition.value = user.jobPosition || '';
   clearPopupErrors();
   isPopupOpen.value = true;
 }
 
+// Row click chỉ là lớp bọc để mở popup cùng một logic.
 function handleMemberRowClick(row: DataTableRow) {
   openPopup(row as unknown as AdminUserSummary);
 }
 
+// Đóng popup và xóa error cũ để lần mở sau sạch state.
 function closePopup() {
   selectedUser.value = null;
   isPopupOpen.value = false;
   clearPopupErrors();
 }
 
+// Lock/unlock tài khoản là action rời nên refresh lại selected row sau khi xong.
 async function handleToggleLock() {
   if (!selectedUser.value) return;
   activeActionId.value = selectedUser.value.id;
@@ -223,12 +241,13 @@ async function handleToggleLock() {
       router.push({ name: 'login' });
       return;
     }
-    setPopupFormError(err instanceof ApiError ? err.message : 'Không cập nhật được trạng thái.');
+    setPopupFormError(err instanceof ApiError ? err.message : t('memberPage.errorUpdateStatus'));
   } finally {
     activeActionId.value = '';
   }
 }
 
+// Lưu chức vụ từ popup detail, sau đó đồng bộ lại row và record đang mở.
 async function handleSaveJobPosition() {
   if (!selectedUser.value) return;
   clearPopupErrors();
@@ -252,7 +271,7 @@ async function handleSaveJobPosition() {
     }
     applyPopupApiError(err, {
       validation_error: FORM_ERROR
-    }, 'Không cập nhật được chức vụ.');
+    }, t('memberPage.errorUpdateJobPosition'));
   } finally {
     isSaving.value = false;
   }
@@ -265,24 +284,24 @@ async function handleSaveJobPosition() {
       <TextBoxTopLabel
         v-model="searchText"
         label-position="hidden"
-        placeholder="Tìm kiếm nhân viên..."
+        :placeholder="t('memberPage.searchPlaceholder')"
         class="toolbar__search"
         clearable
       />
       <DropdownList
         v-model="selectedStatus"
         class="toolbar__status-filter"
-        label="Lọc theo trạng thái"
+        :label="t('memberPage.filterLabel')"
         label-position="hidden"
-        placeholder="Chọn trạng thái"
+        :placeholder="t('memberPage.filterPlaceholder')"
         persistent-placeholder="Trạng thái: "
-        aria-label="Lọc theo trạng thái"
+        :aria-label="t('memberPage.filterLabel')"
         state="normal"
         :options="STATUS_OPTIONS"
         :disabled="isLoading"
       />
       <div class="toolbar__actions">
-        <IconButton ariaLabel="Tải lại danh sách nhân viên" title="Tải lại danh sách nhân viên" variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
+        <IconButton :ariaLabel="t('memberPage.reload')" :title="t('memberPage.reload')" variant="secondary" type="button" :disabled="isLoading" @click="loadUsers">
           <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
         </IconButton>
       </div>
@@ -291,11 +310,11 @@ async function handleSaveJobPosition() {
     <p v-if="error" class="message message--error">{{ error }}</p>
     <div v-else-if="isLoading && users.items.length === 0" class="loading-row">
       <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
-      <span>Đang tải danh sách tài khoản...</span>
+      <span>{{ t('memberPage.loading') }}</span>
     </div>
     <div v-else-if="users.items.length === 0" class="empty-card empty-card--tight">
-      <h3>Không tìm thấy kết quả</h3>
-      <p>{{ searchText || selectedStatus ? 'Không có nhân viên nào phù hợp với bộ lọc.' : 'Chưa có tài khoản.' }}</p>
+      <h3>{{ t('memberPage.noResultsTitle') }}</h3>
+      <p>{{ searchText || selectedStatus ? t('memberPage.noResultsFiltered') : t('memberPage.noResultsEmpty') }}</p>
     </div>
     <DataTable
       v-else
@@ -306,7 +325,7 @@ async function handleSaveJobPosition() {
       :paginate="false"
       :selectable="false"
       row-clickable
-      empty-label="Chưa có tài khoản."
+      :empty-label="t('memberPage.noResultsEmpty')"
       @row-click="handleMemberRowClick"
     >
       <template #cell-fullName="{ row }">
@@ -330,7 +349,7 @@ async function handleSaveJobPosition() {
       :current-page="currentPage"
       :page-size="pageSize"
       :page-size-options="PAGE_SIZE_OPTIONS"
-      count-label="Tổng số"
+      :count-label="t('memberPage.totalCount')"
       @update:currentPage="goToPage"
       @update:pageSize="updatePageSize"
     />
@@ -338,8 +357,8 @@ async function handleSaveJobPosition() {
 
   <PopupTopOneColumn
     :open="isPopupOpen && Boolean(selectedUser)"
-    title="Thông tin nhân viên"
-    cancel-label="Đóng"
+    :title="t('memberPage.title')"
+    :cancel-label="t('actions.close')"
     :show-confirm="false"
     @cancel="closePopup"
   >
@@ -348,27 +367,27 @@ async function handleSaveJobPosition() {
           <p v-if="popupError" class="message message--error">{{ popupError }}</p>
 
           <div class="popup__section">
-            <h4>Thông tin cá nhân</h4>
+            <h4>{{ t('memberPage.popupPersonalInfo') }}</h4>
             <div class="popup__field">
-              <label>Họ tên</label>
+              <label>{{ t('memberPage.popupFullName') }}</label>
               <span>{{ selectedUser.fullName || '—' }}</span>
             </div>
             <div class="popup__field">
-              <label>Mã nhân viên</label>
+              <label>{{ t('memberPage.popupEmployeeCode') }}</label>
               <span>{{ selectedUser.employeeCode || '—' }}</span>
             </div>
             <div class="popup__field">
-              <label>Email</label>
+              <label>{{ t('memberPage.popupEmail') }}</label>
               <span>{{ selectedUser.email }}</span>
             </div>
             <div class="popup__field">
-              <label>Dự án</label>
+              <label>{{ t('memberPage.popupProject') }}</label>
               <span>{{ selectedUser.project || '—' }}</span>
             </div>
           </div>
 
           <div class="popup__section">
-            <h4>Chức vụ</h4>
+            <h4>{{ t('memberPage.popupJobPositionTitle') }}</h4>
             <div class="popup__field popup__field--edit">
               <select
                 v-model="editingJobPosition"
@@ -377,7 +396,7 @@ async function handleSaveJobPosition() {
                 :disabled="isSaving"
                 @change="clearPopupFieldError('jobPosition')"
               >
-                <option value="">-- Chọn chức vụ --</option>
+                <option value="">{{ t('memberPage.popupChooseJobPosition') }}</option>
                 <option v-for="position in JOB_POSITIONS" :key="position" :value="position">
                   {{ position }}
                 </option>
@@ -390,13 +409,13 @@ async function handleSaveJobPosition() {
               :disabled="isSaving || editingJobPosition === (selectedUser.jobPosition || '')"
               @click="handleSaveJobPosition"
             >
-              {{ isSaving ? 'Đang lưu...' : 'Lưu chức vụ' }}
+              {{ isSaving ? t('memberPage.popupSaving') : t('memberPage.popupSaveJobPosition') }}
             </BaseButton>
           </div>
 
           <div class="popup__section">
             <div class="popup__section-header">
-              <h4>Trạng thái tài khoản</h4>
+              <h4>{{ t('memberPage.popupAccountStatus') }}</h4>
               <span :class="statusTone(selectedUser.status)">{{ getMemberStatusLabel(selectedUser.status) }}</span>
             </div>
             <BaseButton
@@ -406,7 +425,7 @@ async function handleSaveJobPosition() {
               @click="handleToggleLock"
             >
               <component :is="selectedUser.status === 'Locked' ? IconShieldCheck : IconLock" :size="24" stroke-width="1.5" aria-hidden="true" />
-              {{ activeActionId === selectedUser.id ? 'Đang xử lý...' : selectedUser.status === 'Locked' ? 'Mở khóa' : 'Khóa tài khoản' }}
+              {{ activeActionId === selectedUser.id ? t('memberPage.popupProcessing') : selectedUser.status === 'Locked' ? t('memberPage.popupUnlock') : t('memberPage.popupLock') }}
             </BaseButton>
           </div>
       </div>

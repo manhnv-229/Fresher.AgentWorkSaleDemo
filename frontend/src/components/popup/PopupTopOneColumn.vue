@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted } from 'vue';
 import { IconX } from '@tabler/icons-vue';
 import BaseButton from '../buttons/BaseButton.vue';
+import { useI18n } from '../../i18n';
 
 withDefaults(
   defineProps<{
@@ -41,8 +42,8 @@ withDefaults(
     minWidth: '',
     panelStyle: () => ({}),
     showClose: true,
-    cancelLabel: 'Hủy',
-    confirmLabel: 'Lưu',
+    cancelLabel: '',
+    confirmLabel: '',
     showCancel: true,
     showConfirm: true,
     cancelDisabled: false,
@@ -56,6 +57,8 @@ const emit = defineEmits<{
   confirm: [];
   close: [];
 }>();
+
+const { t } = useI18n();
 
 function handleBackdropClick() {
   emit('cancel');
@@ -126,8 +129,8 @@ onBeforeUnmount(() => {
             v-if="showClose"
             type="button"
             class="popup__close"
-            aria-label="Đóng popup"
-            title="Đóng"
+            :aria-label="t('actions.close')"
+            :title="t('actions.close')"
             @click="handleBackdropClick"
           >
             <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
@@ -142,11 +145,11 @@ onBeforeUnmount(() => {
           <footer v-if="$slots.footer || showCancel || showConfirm" class="popup__footer">
             <slot name="footer">
               <BaseButton v-if="showCancel" variant="secondary" type="button" :disabled="cancelDisabled" @click="handleCancel">
-                {{ cancelLabel }}
+                {{ cancelLabel || t('actions.cancel') }}
               </BaseButton>
 
               <BaseButton v-if="showConfirm" :variant="confirmVariant" type="submit" :disabled="confirmDisabled">
-                {{ confirmLabel }}
+                {{ confirmLabel || t('actions.save') }}
               </BaseButton>
             </slot>
           </footer>

@@ -47,6 +47,7 @@ const weekdayLabels = computed(() => getWeekdayLabels());
 const panelTitle = computed(() => `Thg ${props.displayDate.getMonth() + 1}`);
 const panelYear = computed(() => props.displayDate.getFullYear());
 
+// Panel lịch chỉ render lưới ngày và phát event chọn/nghiệp vụ điều hướng ra ngoài.
 function selectDate(date: Date) {
   emit('select', date);
 }

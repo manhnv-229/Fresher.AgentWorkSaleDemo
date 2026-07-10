@@ -40,6 +40,7 @@ const { errors, formError, validate, clearErrors, clearFieldError, applyApiError
   ]
 );
 
+// Login form chỉ validate đầu vào, gọi auth composable và map lỗi API về đúng field.
 async function submitLogin() {
   clearErrors();
 

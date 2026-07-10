@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import BaseButton from '../components/buttons/BaseButton.vue';
 import type { TenantSummary } from '../api';
+import { useI18n } from '../i18n';
 import {
   IconBuildingStore,
   IconHome,
@@ -30,24 +31,26 @@ const props = defineProps<{
   isCollapsed: boolean;
 }>();
 
+const { t } = useI18n();
+
 const mainItems = computed(() => [
   {
     key: 'dashboard',
-    label: 'Tổng quan',
+    label: t('nav.dashboard'),
     to: { name: 'dashboard' as const },
     isActive: props.activeRouteName === 'dashboard',
     icon: IconSmartHome
   },
   {
     key: 'agents',
-    label: 'Nhân viên AI',
+    label: t('nav.aiAgents'),
     to: { name: 'agents' as const },
     isActive: props.activeRouteName === 'agents' || props.activeRouteName === 'agents-external',
     icon: IconUserStar
   },
   {
     key: 'settings',
-    label: 'Thiết lập',
+    label: t('nav.settings'),
     to: { name: 'settings-members' as const },
     isActive: props.isSettingsRoute,
     icon: IconSettings
@@ -58,7 +61,7 @@ const mainItems = computed(() => [
 <template>
   <aside class="workspace__sidebar" :class="{ 'workspace__sidebar--collapsed': props.isCollapsed }">
     <div class="workspace__sidebar-content">
-      <nav class="sidebar__nav" aria-label="Khu vực làm việc">
+      <nav class="sidebar__nav" :aria-label="t('nav.workspace')">
         <div
           v-for="item in mainItems"
           :key="item.key"
@@ -85,10 +88,10 @@ const mainItems = computed(() => [
 
       <section class="tenant-list" aria-labelledby="tenant-list-title">
         <div class="tenant-list__header">
-          <h2 id="tenant-list-title">Đơn vị</h2>
+          <h2 id="tenant-list-title">{{ t('nav.unit') }}</h2>
         </div>
         <p v-if="props.sidebarError" class="message message--error">{{ props.sidebarError }}</p>
-        <p v-else-if="props.isLoadingTenants && props.tenants.length === 0" class="message">Đang tải danh sách đơn vị...</p>
+        <p v-else-if="props.isLoadingTenants && props.tenants.length === 0" class="message">{{ t('states.loadingTenantList') }}</p>
         <div v-else class="tenant-list__items">
           <RouterLink
             v-for="tenant in props.tenants"
@@ -101,7 +104,7 @@ const mainItems = computed(() => [
             <IconBuildingStore :size="24" stroke-width="1.5" aria-hidden="true" />
             <span>{{ tenant.name }}</span>
           </RouterLink>
-          <p v-if="props.tenants.length === 0" class="message">Chưa có đơn vị nào.</p>
+          <p v-if="props.tenants.length === 0" class="message">{{ t('states.noTenant') }}</p>
         </div>
       </section>
     </div>
@@ -109,7 +112,7 @@ const mainItems = computed(() => [
     <div class="workspace__sidebar-action">
       <BaseButton class="workspace__sidebar-action-button" variant="secondary" type="button" @click="emit('logout')">
         <IconLogout :size="24" stroke-width="1.5" aria-hidden="true" />
-        <span class="workspace__sidebar-action-label">Đăng xuất</span>
+        <span class="workspace__sidebar-action-label">{{ t('nav.logout') }}</span>
       </BaseButton>
     </div>
 
@@ -118,8 +121,8 @@ const mainItems = computed(() => [
         class="workspace__sidebar-footer-button workspace__sidebar-footer-button--icon"
         variant="secondary"
         type="button"
-        :aria-label="props.isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'"
-        :title="props.isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'"
+        :aria-label="props.isCollapsed ? t('actions.expandSidebar') : t('actions.collapseSidebar')"
+        :title="props.isCollapsed ? t('actions.expandSidebar') : t('actions.collapseSidebar')"
         @click="emit('toggleSidebar')"
       >
         <IconLayoutSidebarLeftExpand v-if="props.isCollapsed" :size="24" stroke-width="1.5" aria-hidden="true" />

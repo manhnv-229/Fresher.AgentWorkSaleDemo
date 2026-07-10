@@ -4,6 +4,7 @@ import { IconCalendar } from '@tabler/icons-vue';
 import CalendarPanel from './CalendarPanel.vue';
 import { cloneDate, formatDate, parseDate, startOfMonth, today } from '../../utils/datePicker';
 import { usePickerField } from './usePickerField';
+import { useI18n } from '../../i18n';
 
 const props = withDefaults(
   defineProps<{
@@ -37,7 +38,9 @@ const props = withDefaults(
 );
 
 const model = defineModel<string>({ default: '' });
+// Cụm state này quản lý giá trị hiển thị, ngày đã chọn và ngày đang được duyệt trên lịch.
 const rootRef = ref<HTMLElement | null>(null);
+const { t } = useI18n();
 const isOpen = ref(false);
 const inputValue = ref(model.value);
 const selectedDate = ref(parseDate(model.value));
@@ -66,6 +69,7 @@ watch(
   }
 );
 
+// Commit date vào model chỉ sau khi normalize sang chuỗi hiển thị chuẩn.
 function commitDate(date: Date | null) {
   const nextValue = formatDate(date);
   model.value = nextValue;
@@ -73,6 +77,7 @@ function commitDate(date: Date | null) {
   selectedDate.value = date ? cloneDate(date) : null;
 }
 
+// Popover chỉ mở khi field còn hoạt động.
 function openPopover() {
   if (isDisabled.value) {
     return;
@@ -94,6 +99,7 @@ function togglePopover() {
   openPopover();
 }
 
+// Input text được parse dần để giữ UX nhập tay và chọn từ calendar đồng nhất.
 function handleInput(event: Event) {
   inputValue.value = (event.target as HTMLInputElement).value;
 }
@@ -114,6 +120,7 @@ function handleBlur() {
   }
 }
 
+// Chọn ngày từ panel sẽ commit ngay về model và đóng popover.
 function selectDate(date: Date) {
   commitDate(date);
   displayDate.value = startOfMonth(date);
@@ -174,7 +181,7 @@ onBeforeUnmount(() => {
             class="picker-field__input"
             :name="name"
             :value="inputValue"
-            :placeholder="placeholder"
+            :placeholder="placeholder || t('placeholders.date')"
             :disabled="isDisabled"
             :readonly="isReadonlyState"
             :aria-label="!label || labelPosition === 'none' ? (ariaLabel || label || placeholder || undefined) : undefined"
@@ -189,7 +196,7 @@ onBeforeUnmount(() => {
             type="button"
             class="field__action picker-field__action"
             :disabled="isDisabled"
-            aria-label="Mở bộ chọn"
+            :aria-label="t('actions.openPicker')"
             @mousedown.prevent
             @click="togglePopover"
           >

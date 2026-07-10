@@ -6,8 +6,10 @@ import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation'
 import { useAuth } from '../composables/useAuth';
 import { hasMaxLength, hasMinLength, isRequired } from '../utils/validators';
 import { IconEye, IconEyeOff } from '@tabler/icons-vue';
+import { useI18n } from '../i18n';
 
 const { changePassword: submitPasswordChange } = useAuth();
+const { t } = useI18n();
 
 const currentPassword = ref('');
 const newPassword = ref('');
@@ -29,19 +31,19 @@ const { errors, formError, validate, clearErrors, clearFieldError, applyApiError
       const nextErrors: Partial<Record<'currentPassword' | 'newPassword', string>> = {};
 
       if (!isRequired(values.currentPassword)) {
-        nextErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại.';
+        nextErrors.currentPassword = t('settingsPassword.currentRequired');
       } else if (!hasMaxLength(values.currentPassword, 255)) {
-        nextErrors.currentPassword = 'Mật khẩu hiện tại không được vượt quá 255 ký tự.';
+        nextErrors.currentPassword = t('settingsPassword.currentTooLong');
       }
 
       if (!isRequired(values.newPassword)) {
-        nextErrors.newPassword = 'Vui lòng nhập mật khẩu mới.';
+        nextErrors.newPassword = t('settingsPassword.newRequired');
       } else if (!hasMinLength(values.newPassword, 8)) {
-        nextErrors.newPassword = 'Mật khẩu mới phải có ít nhất 8 ký tự.';
+        nextErrors.newPassword = t('settingsPassword.newTooShort');
       } else if (!hasMaxLength(values.newPassword, 255)) {
-        nextErrors.newPassword = 'Mật khẩu mới không được vượt quá 255 ký tự.';
+        nextErrors.newPassword = t('settingsPassword.newTooLong');
       } else if (values.currentPassword === values.newPassword) {
-        nextErrors.newPassword = 'Mật khẩu mới cần khác mật khẩu hiện tại.';
+        nextErrors.newPassword = t('settingsPassword.newDifferent');
       }
 
       return nextErrors;
@@ -49,6 +51,7 @@ const { errors, formError, validate, clearErrors, clearFieldError, applyApiError
   ]
 );
 
+// Reset toàn bộ form để tránh giữ lại mật khẩu cũ trong state local.
 function clearForm() {
   currentPassword.value = '';
   newPassword.value = '';
@@ -56,6 +59,7 @@ function clearForm() {
   clearErrors();
 }
 
+// Submit đổi mật khẩu chỉ chạy sau khi validate local pass.
 async function submit() {
   notice.value = '';
   clearErrors();
@@ -66,13 +70,13 @@ async function submit() {
   isLoading.value = true;
   try {
     await submitPasswordChange(currentPassword.value, newPassword.value);
-    notice.value = 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại.';
+    notice.value = t('settingsPassword.updated');
     clearForm();
   } catch (err) {
     applyApiError(err, {
       invalid_current_password: 'currentPassword',
       validation_error: FORM_ERROR
-    }, 'Không thể đổi mật khẩu.');
+    }, t('settingsPassword.updateFailed'));
   } finally {
     isLoading.value = false;
   }
@@ -83,7 +87,7 @@ async function submit() {
   <section class="settings-password-page">
     <div class="content-panel settings-password-card">
       <header class="settings-password-header">
-        <h2 class="settings-password-title">Đổi mật khẩu</h2>
+        <h2 class="settings-password-title">{{ t('settings.password') }}</h2>
         <!-- <p class="settings-password-description">Cập nhật mật khẩu đăng nhập cho tài khoản của bạn.</p> -->
       </header>
 
@@ -91,14 +95,14 @@ async function submit() {
 
       <form id="settings-password-form" class="settings-password-form" @submit.prevent="submit">
         <div class="create-agent__group">
-          <label class="create-agent__label" for="current-password">Mật khẩu hiện tại</label>
+          <label class="create-agent__label" for="current-password">{{ t('settingsPassword.currentLabel') }}</label>
           <TextBoxTopLabel
             id="current-password"
             v-model="currentPassword"
             label-position="hidden"
             :type="showCurrentPassword ? 'text' : 'password'"
             autocomplete="current-password"
-            placeholder="Nhập mật khẩu hiện tại"
+            :placeholder="t('settingsPassword.currentPlaceholder')"
             has-action
             :error="errors.currentPassword"
             @input="clearFieldError('currentPassword')"
@@ -107,8 +111,8 @@ async function submit() {
               <button
                 class="field__action field__action--plain"
                 type="button"
-                :aria-label="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
-                :title="showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'"
+                :aria-label="showCurrentPassword ? t('settingsPassword.hideCurrent') : t('settingsPassword.showCurrent')"
+                :title="showCurrentPassword ? t('settingsPassword.hideCurrent') : t('settingsPassword.showCurrent')"
                 @click="showCurrentPassword = !showCurrentPassword"
               >
                 <IconEyeOff v-if="showCurrentPassword" :size="24" stroke-width="1.5" aria-hidden="true" />
@@ -119,14 +123,14 @@ async function submit() {
         </div>
 
         <div class="create-agent__group">
-          <label class="create-agent__label" for="new-password">Mật khẩu mới</label>
+          <label class="create-agent__label" for="new-password">{{ t('settingsPassword.newLabel') }}</label>
           <TextBoxTopLabel
             id="new-password"
             v-model="newPassword"
             label-position="hidden"
             :type="showNewPassword ? 'text' : 'password'"
             autocomplete="new-password"
-            placeholder="Nhập mật khẩu mới"
+            :placeholder="t('settingsPassword.newPlaceholder')"
             has-action
             :error="errors.newPassword"
             @input="clearFieldError('newPassword')"
@@ -135,8 +139,8 @@ async function submit() {
               <button
                 class="field__action field__action--plain"
                 type="button"
-                :aria-label="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
-                :title="showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'"
+                :aria-label="showNewPassword ? t('settingsPassword.hideNew') : t('settingsPassword.showNew')"
+                :title="showNewPassword ? t('settingsPassword.hideNew') : t('settingsPassword.showNew')"
                 @click="showNewPassword = !showNewPassword"
               >
                 <IconEyeOff v-if="showNewPassword" :size="24" stroke-width="1.5" aria-hidden="true" />
@@ -150,9 +154,9 @@ async function submit() {
       <p v-if="formError" class="message message--error">{{ formError }}</p>
 
       <div class="action-bar">
-        <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">Xóa</BaseButton>
+        <BaseButton variant="secondary" type="button" :disabled="isLoading" @click="clearForm">{{ t('actions.clear') }}</BaseButton>
         <BaseButton type="submit" form="settings-password-form" :disabled="isLoading">
-          {{ isLoading ? 'Đang cập nhật...' : 'Xác nhận đổi mật khẩu' }}
+          {{ isLoading ? t('settingsPassword.updating') : t('settingsPassword.submit') }}
         </BaseButton>
       </div>
     </div>

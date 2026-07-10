@@ -5,6 +5,8 @@ import Notification from './Notification.vue';
 
 const notificationStore = useNotificationStore();
 const { visibleNotifications } = storeToRefs(notificationStore);
+
+// Notification stack cũng chỉ phản chiếu state từ store, không giữ logic riêng.
 </script>
 
 <template>

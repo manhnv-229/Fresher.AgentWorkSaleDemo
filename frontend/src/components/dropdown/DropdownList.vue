@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useAttrs } from 'vue';
 import { IconChevronDown } from '@tabler/icons-vue';
+import { useI18n } from '../../i18n';
 
 export type DropdownOption = {
   label: string;
@@ -29,7 +30,7 @@ const props = withDefaults(
     state?: 'normal' | 'hover' | 'focus' | 'disabled' | 'error';
   }>(),
   {
-    placeholder: 'Chọn giá trị',
+    placeholder: '',
     persistentPlaceholder: '',
     disabled: false,
     labelPosition: 'top',
@@ -51,7 +52,9 @@ const emit = defineEmits<{
 
 const model = defineModel<string>({ required: true });
 const attrs = useAttrs();
+// Dropdown này chỉ giữ một giá trị nhưng vẫn xử lý focus, keyboard và placeholder cố định.
 const rootRef = ref<HTMLElement | null>(null);
+const { t } = useI18n();
 const buttonRef = ref<HTMLButtonElement | null>(null);
 const isOpen = ref(false);
 const isFocused = ref(false);
@@ -95,6 +98,7 @@ const fieldClasses = computed(() => [
   }
 ]);
 
+// Tìm option đầu tiên có thể chọn được để keyboard navigation không rơi vào item disabled.
 function firstEnabledIndex(startIndex = 0) {
   return props.options.findIndex((option, index) => index >= startIndex && !option.disabled);
 }
@@ -130,6 +134,7 @@ function setActiveToSelected() {
   activeIndex.value = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex();
 }
 
+// Open/close dropdown giữ tách biệt khỏi model value để không commit sớm.
 function openDropdown() {
   if (isDisabled.value || isOpen.value) {
     return;
@@ -159,6 +164,7 @@ function toggleDropdown() {
   openDropdown();
 }
 
+// Commit option được chọn về model ngoài component.
 function selectOption(option: DropdownOption | undefined) {
   if (!option || option.disabled) {
     return;
@@ -170,6 +176,7 @@ function selectOption(option: DropdownOption | undefined) {
   nextTick(() => buttonRef.value?.focus());
 }
 
+// Keyboard support giúp dropdown dùng được như native select.
 function handleKeydown(event: KeyboardEvent) {
   if (isDisabled.value) {
     return;
@@ -278,7 +285,7 @@ onBeforeUnmount(() => {
           <span class="dropdown-list__value">
             <span v-if="displayPrefix" class="dropdown-list__prefix">{{ displayPrefix }}</span>
             <span v-if="hasValue" class="dropdown-list__selected">{{ selectedOption?.label }}</span>
-            <span v-else-if="!displayPrefix" class="dropdown-list__placeholder">{{ placeholder }}</span>
+            <span v-else-if="!displayPrefix" class="dropdown-list__placeholder">{{ placeholder || t('placeholders.chooseValue') }}</span>
           </span>
           <IconChevronDown
             class="dropdown-list__chevron"

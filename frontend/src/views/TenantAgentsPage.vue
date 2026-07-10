@@ -15,9 +15,11 @@ import { useTenantSelection } from '../composables/useTenantSelection';
 import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
 import { hasMaxLength, isRequired } from '../utils/validators';
 import { IconDotsVertical, IconEdit, IconEye, IconLoader2, IconPlus, IconRefresh, IconTrashX } from '@tabler/icons-vue';
+import { useI18n } from '../i18n';
 
 const props = defineProps<{ tenantId: string }>();
 const router = useRouter();
+const { t } = useI18n();
 const { tenants, loadTenants, selectTenant } = useTenantSelection();
 const filters = useAgentList();
 const { agents, isLoading, error, loadMore, refresh } = useTenantAgents(filters, () => props.tenantId);
@@ -61,23 +63,23 @@ const {
       const nextErrors: Partial<Record<'name' | 'role' | 'description' | 'icon', string>> = {};
 
       if (!isRequired(values.name)) {
-        nextErrors.name = 'Vui lòng nhập tên agent.';
+        nextErrors.name = t('agentList.errorCreateRequiredName');
       } else if (!hasMaxLength(values.name, 255)) {
-        nextErrors.name = 'Tên agent không được vượt quá 255 ký tự.';
+        nextErrors.name = t('agentList.errorCreateNameTooLong');
       }
 
       if (!isRequired(values.role)) {
-        nextErrors.role = 'Vui lòng nhập vai trò.';
+        nextErrors.role = t('agentList.errorCreateRequiredRole');
       } else if (!hasMaxLength(values.role, 100)) {
-        nextErrors.role = 'Vai trò không được vượt quá 100 ký tự.';
+        nextErrors.role = t('agentList.errorCreateRoleTooLong');
       }
 
       if (values.description && !hasMaxLength(values.description, 500)) {
-        nextErrors.description = 'Mô tả không được vượt quá 500 ký tự.';
+        nextErrors.description = t('agentList.errorCreateDescriptionTooLong');
       }
 
       if (values.icon && !hasMaxLength(values.icon, 500)) {
-        nextErrors.icon = 'Icon không được vượt quá 500 ký tự.';
+        nextErrors.icon = t('agentList.errorCreateIconTooLong');
       }
 
       return nextErrors;
@@ -109,10 +111,12 @@ onMounted(async () => {
   selectTenant(props.tenantId);
 });
 
+// Đồng bộ tenant selection khi route param đổi.
 watch(() => props.tenantId, (id) => {
   selectTenant(id);
 });
 
+// Infinite scroll giữ list tenant agents nhẹ và tải thêm theo nhu cầu.
 watch(
   loadMoreTrigger,
   (element, _, onCleanup) => {
@@ -120,6 +124,7 @@ watch(
       return;
     }
 
+    // Sentinel dưới cùng kéo thêm agent khi người dùng cuộn gần hết danh sách.
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
@@ -137,11 +142,13 @@ watch(
   { flush: 'post' }
 );
 
+// Avatar gradient theo preset icon giúp các card dễ phân biệt khi scan nhanh.
 function avatarStyle(icon: string | null | undefined) {
   const option = avatarOptions.find((item) => item.id === icon) ?? avatarOptions[0];
   return { background: option.accent };
 }
 
+// Mở trang detail của agent theo tenant hiện tại.
 function openDetail(agent: AgentSummary, startInEdit = false) {
   router.push({
     name: 'agent-detail',
@@ -150,14 +157,17 @@ function openDetail(agent: AgentSummary, startInEdit = false) {
   });
 }
 
+// Menu trên card chỉ cho phép mở một agent tại một thời điểm.
 function toggleCardMenu(agentId: string) {
   cardMenuOpenId.value = cardMenuOpenId.value === agentId ? null : agentId;
 }
 
+// Đóng menu card khi rời focus hoặc sau khi click action.
 function closeCardMenu() {
   cardMenuOpenId.value = null;
 }
 
+// Action card tách riêng để chặn click bubbling lên card root.
 function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete', event: Event) {
   event.stopPropagation();
   event.preventDefault();
@@ -172,11 +182,14 @@ function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete
   openDetail(agent, action === 'edit');
 }
 
+// Mở modal tạo agent với validation state đã được reset.
 function openCreateModal() {
+  // Mở modal tạo mới với state sạch để validate không bị dính từ lần trước.
   clearCreateErrors();
   isCreateModalOpen.value = true;
 }
 
+// Reset form tạo mới để lần mở sau không còn dữ liệu cũ.
 function closeCreateModal() {
   isCreateModalOpen.value = false;
   createName.value = '';
@@ -186,6 +199,7 @@ function closeCreateModal() {
   clearCreateErrors();
 }
 
+// Khi form bẩn thì chuyển sang dialog xác nhận thay vì đóng thẳng.
 function requestCloseCreateModal() {
   if (isCreateDirty.value && !isSaving.value) {
     isUnsavedCreateDialogOpen.value = true;
@@ -195,10 +209,11 @@ function requestCloseCreateModal() {
   closeCreateModal();
 }
 
+// Submit tạo tenant agent và refresh lại danh sách khi thành công.
 async function submitCreate() {
   clearCreateErrors();
   if (!selectedTenant.value) {
-    setCreateFormError('Vui lòng chọn đơn vị trước khi tạo agent.');
+    setCreateFormError(t('agentList.createErrorNoTenant'));
     return;
   }
 
@@ -228,18 +243,21 @@ async function submitCreate() {
       {
         validation_error: FORM_ERROR
       },
-      'Không tạo được agent cho đơn vị.'
+      t('agentList.createErrorLoad')
     );
   } finally {
     isSaving.value = false;
   }
 }
 
+// Đóng modal xóa và bỏ reference tới agent đang chờ xác nhận.
 function closeDeleteModal() {
+  // Delete luôn yêu cầu xác nhận riêng vì sẽ làm refresh lại danh sách.
   isDeleteModalOpen.value = false;
   agentToDelete.value = null;
 }
 
+// Xóa tenant agent xong thì reload list để phản ánh ngay thay đổi.
 async function confirmDelete() {
   if (!agentToDelete.value) {
     return;
@@ -270,28 +288,28 @@ onBeforeUnmount(() => {
     <TextBoxTopLabel
       v-model="filters.searchText.value"
       label-position="hidden"
-      placeholder="Tìm theo tên, mô tả hoặc vai trò"
-      label="Tìm kiếm agent"
+      :placeholder="t('agentList.searchPlaceholder')"
+      :label="t('agentList.searchLabel')"
       clearable
     />
     <DropdownList
       v-model="filters.statusFilter.value"
       class="filter-select"
-      label="Lọc theo trạng thái"
+      :label="t('agentList.statusLabel')"
       label-position="hidden"
-      placeholder="Chọn trạng thái"
+      :placeholder="t('agentList.statusPlaceholder')"
       persistent-placeholder="Trạng thái: "
-      aria-label="Lọc theo trạng thái"
+      :aria-label="t('agentList.statusLabel')"
       state="normal"
       :options="withAllOption(AGENT_STATUSES)"
     />
     <div class="filter-bar__actions">
-      <IconButton ariaLabel="Tải lại danh sách agent bên ngoài" title="Tải lại danh sách agent bên ngoài" variant="secondary" type="button" :disabled="isLoading || !selectedTenant" @click="refresh">
+      <IconButton :ariaLabel="t('agentList.reloadExternal')" :title="t('agentList.reloadExternal')" variant="secondary" type="button" :disabled="isLoading || !selectedTenant" @click="refresh">
         <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
       </IconButton>
       <BaseButton type="button" :disabled="!selectedTenant || Boolean(error)" @click="openCreateModal">
         <IconPlus :size="24" stroke-width="1.5" aria-hidden="true" />
-        Thêm mới
+        {{ t('buttons.add') }}
       </BaseButton>
     </div>
   </div>
@@ -299,15 +317,15 @@ onBeforeUnmount(() => {
   <p v-if="error" class="message message--error">{{ error }}</p>
   <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
     <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
-    <span>Đang tải agent của đơn vị...</span>
+    <span>{{ t('agentList.loadingExternal') }}</span>
   </div>
   <div v-else-if="!selectedTenant" class="empty-card">
-    <h3>Chưa chọn đơn vị</h3>
-    <p>Chọn một đơn vị ở sidebar để xem agent.</p>
+    <h3>{{ t('nav.unit') }}</h3>
+    <p>{{ t('agentList.emptyHintExternal') }}</p>
   </div>
   <div v-else-if="agents.items.length === 0" class="empty-card">
-    <h3>{{ filters.hasActiveFilters.value ? 'Không có agent phù hợp' : `${selectedTenant.name} chưa có agent` }}</h3>
-    <p>{{ filters.hasActiveFilters.value ? 'Hãy thử đổi bộ lọc.' : 'Danh sách agent sẽ xuất hiện khi có dữ liệu.' }}</p>
+    <h3>{{ filters.hasActiveFilters.value ? t('agentList.emptyFiltered') : t('agentList.emptyTenant', { tenantName: selectedTenant.name }) }}</h3>
+    <p>{{ filters.hasActiveFilters.value ? t('agentList.emptyHintFiltered') : t('agentList.emptyHintTenant') }}</p>
   </div>
   <div v-else class="agent-grid">
     <article v-for="agent in agents.items" :key="agent.id" class="agent-card" @click="openDetail(agent)">
@@ -316,25 +334,25 @@ onBeforeUnmount(() => {
         <div class="agent-card__top">
           <div>
             <h3>{{ agent.name }}</h3>
-            <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
+            <p>{{ agent.description || t('agentList.noDescription') }}</p>
           </div>
           <div class="agent-card__actions" @click.stop>
             <div class="card-menu-wrapper">
-              <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
+              <button type="button" class="card-menu-trigger" :title="t('agentList.actionMenu')" @click.stop="toggleCardMenu(agent.id)">
                 <IconDotsVertical :size="24" stroke-width="1.5" aria-hidden="true" />
               </button>
               <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">
                   <IconEye :size="16" stroke-width="1.5" aria-hidden="true" />
-                  Xem chi tiết
+                  {{ t('agentList.viewDetail') }}
                 </button>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'edit', $event)">
                   <IconEdit :size="16" stroke-width="1.5" aria-hidden="true" />
-                  Sửa
+                  {{ t('agentList.edit') }}
                 </button>
                 <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardAction(agent, 'delete', $event)">
                   <IconTrashX :size="16" stroke-width="1.5" aria-hidden="true" />
-                  Xóa
+                  {{ t('agentList.delete') }}
                 </button>
               </div>
             </div>
@@ -342,11 +360,11 @@ onBeforeUnmount(() => {
         </div>
         <dl class="agent-meta">
           <div class="agent-meta__row">
-            <dt>Vai trò</dt>
+            <dt>{{ t('agentList.role') }}</dt>
             <dd>{{ agent.role }}</dd>
           </div>
           <div class="agent-meta__row">
-            <dt>Trạng thái</dt>
+            <dt>{{ t('agentList.status') }}</dt>
             <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--danger': agent.status === 'Inactive', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
           </div>
         </dl>
@@ -357,23 +375,23 @@ onBeforeUnmount(() => {
 
   <Dialog
     :open="isDeleteModalOpen"
-    title="Xác nhận xóa"
+    :title="t('agentList.confirmDeleteTitle')"
     description=""
     :busy="isDeleting"
-    confirm-label="Xác nhận xóa"
+    :confirm-label="t('actions.confirm')"
     confirm-variant="danger"
     @cancel="closeDeleteModal"
     @confirm="confirmDelete"
   >
-    <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
-    <p>Hành động này không thể hoàn tác.</p>
+    <p>{{ t('agentList.confirmDeleteBody', { name: agentToDelete?.name || '' }) }}</p>
+    <p>{{ t('agentList.confirmDeleteHint') }}</p>
   </Dialog>
 
   <PopupTopOneColumn
     :open="isCreateModalOpen"
-    :title="`Tạo agent cho ${selectedTenant?.name || 'đơn vị'}`"
-    confirm-label="Lưu"
-    cancel-label="Hủy"
+    :title="t('agentList.createTitle', { tenantName: selectedTenant?.name || t('nav.unit') })"
+    :confirm-label="t('agentList.createSave')"
+    :cancel-label="t('actions.cancel')"
     :confirm-disabled="isSaving"
     :cancel-disabled="isSaving"
     @cancel="requestCloseCreateModal"
@@ -381,7 +399,7 @@ onBeforeUnmount(() => {
   >
     <div class="create-agent">
       <div class="create-agent__group">
-        <p class="create-agent__label">Hình đại diện</p>
+        <p class="create-agent__label">{{ t('agentList.createAvatar') }}</p>
         <div class="avatar-picker">
           <button
             v-for="opt in avatarOptions"
@@ -397,36 +415,36 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="create-agent__group">
-        <label class="create-agent__label" for="tenant-create-name">Tên</label>
+        <label class="create-agent__label" for="tenant-create-name">{{ t('agentList.createName') }}</label>
         <TextBoxTopLabel
           id="tenant-create-name"
           v-model="createName"
           label-position="hidden"
-          placeholder="Nhập tên"
+          :placeholder="t('agentList.createNamePlaceholder')"
           :error="createErrors.name"
           @input="clearCreateFieldError('name')"
         />
       </div>
       <div class="create-agent__group">
-        <label class="create-agent__label" for="tenant-create-role">Vai trò</label>
+        <label class="create-agent__label" for="tenant-create-role">{{ t('agentList.createRole') }}</label>
         <textarea
           id="tenant-create-role"
           v-model="createRole"
           class="agent-textarea"
           rows="3"
-          placeholder="Nhập mô tả vai trò"
+          :placeholder="t('agentList.createRolePlaceholder')"
           @input="clearCreateFieldError('role')"
         />
         <p v-if="createErrors.role" class="message message--error">{{ createErrors.role }}</p>
       </div>
       <div class="create-agent__group">
-        <label class="create-agent__label" for="tenant-create-desc">Mô tả</label>
+        <label class="create-agent__label" for="tenant-create-desc">{{ t('agentList.createDescription') }}</label>
         <textarea
           id="tenant-create-desc"
           v-model="createDescription"
           class="agent-textarea"
           rows="4"
-          placeholder="Mô tả ngắn về agent"
+          :placeholder="t('agentList.createDescriptionPlaceholder')"
           @input="clearCreateFieldError('description')"
         />
         <p v-if="createErrors.description" class="message message--error">{{ createErrors.description }}</p>
@@ -436,10 +454,10 @@ onBeforeUnmount(() => {
   </PopupTopOneColumn>
   <Dialog
     :open="isUnsavedCreateDialogOpen"
-    title="Thoát và không lưu?"
-    description="Nếu bạn thoát, các dữ liệu đang nhập liệu sẽ không được lưu lại."
-    cancel-label="Ở lại"
-    confirm-label="Thoát, không lưu"
+    :title="t('agentList.createUnsavedTitle')"
+    :description="t('agentList.createUnsavedDescription')"
+    :cancel-label="t('agentList.createUnsavedStay')"
+    :confirm-label="t('agentList.createUnsavedLeave')"
     confirm-variant="danger"
     @cancel="isUnsavedCreateDialogOpen = false"
     @confirm="isUnsavedCreateDialogOpen = false; closeCreateModal()"

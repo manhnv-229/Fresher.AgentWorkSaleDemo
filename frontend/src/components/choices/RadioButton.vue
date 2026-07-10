@@ -28,6 +28,8 @@ const wrapperClass = computed(() => ({
   'choice--error': isInvalid.value,
   'choice--disabled': props.disabled
 }));
+
+// Radio button chỉ là một state machine mỏng cho lựa chọn đơn.
 </script>
 
 <template>

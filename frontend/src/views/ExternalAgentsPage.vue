@@ -10,9 +10,11 @@ import { ApiError } from '../api/http';
 import { useAgentList, useExternalAgents } from '../composables/useAgentList';
 import { AGENT_STATUSES, withAllOption, getAgentStatusLabel } from '../utils/statuses';
 import { IconDotsVertical, IconEdit, IconEye, IconLoader2, IconRefresh, IconTrashX } from '@tabler/icons-vue';
+import { useI18n } from '../i18n';
 
 const router = useRouter();
 const filters = useAgentList();
+const { t } = useI18n();
 const { agents, isLoading, error, loadMore, refresh } = useExternalAgents(filters);
 
 const cardMenuOpenId = ref<string | null>(null);
@@ -29,6 +31,7 @@ const avatarOptions = [
   { id: 'violet', accent: 'linear-gradient(135deg, #b197fc, #7048e8)' }
 ];
 
+// Infinite scroll cho danh sách external agents dùng cùng cơ chế với màn tenant.
 watch(
   loadMoreTrigger,
   (element, _, onCleanup) => {
@@ -36,6 +39,7 @@ watch(
       return;
     }
 
+    // Cơ chế infinite scroll giống màn tenant agent để giữ hành vi nhất quán giữa hai tab.
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
@@ -53,11 +57,13 @@ watch(
   { flush: 'post' }
 );
 
+// Chuyển preset icon thành background gradient để card có nhận diện tốt hơn.
 function avatarStyle(icon: string | null | undefined) {
   const option = avatarOptions.find((item) => item.id === icon) ?? avatarOptions[0];
   return { background: option.accent };
 }
 
+// Điều hướng sang agent detail theo tenantId đi kèm trong record.
 function openDetail(agent: AgentSummary, startInEdit = false) {
   if (!agent.tenantId) {
     return;
@@ -70,14 +76,17 @@ function openDetail(agent: AgentSummary, startInEdit = false) {
   });
 }
 
+// Một card chỉ mở một overflow menu tại thời điểm hiện tại.
 function toggleCardMenu(agentId: string) {
   cardMenuOpenId.value = cardMenuOpenId.value === agentId ? null : agentId;
 }
 
+// Đóng menu khi click ra ngoài hoặc sau khi chạy action.
 function closeCardMenu() {
   cardMenuOpenId.value = null;
 }
 
+// Gộp view/edit/delete vào một handler để template không phải lặp logic stopPropagation.
 function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete', event: Event) {
   event.stopPropagation();
   event.preventDefault();
@@ -92,11 +101,13 @@ function handleCardAction(agent: AgentSummary, action: 'view' | 'edit' | 'delete
   openDetail(agent, action === 'edit');
 }
 
+// Đóng modal xóa và clear agent đang chọn.
 function closeDeleteModal() {
   isDeleteModalOpen.value = false;
   agentToDelete.value = null;
 }
 
+// Xóa xong phải refresh lại data source để đồng bộ UI với backend.
 async function confirmDelete() {
   if (!agentToDelete.value?.tenantId) {
     return;
@@ -127,23 +138,23 @@ onBeforeUnmount(() => {
     <TextBoxTopLabel
       v-model="filters.searchText.value"
       label-position="hidden"
-      placeholder="Tìm theo tên, mô tả hoặc vai trò"
-      label="Tìm kiếm agent"
+      :placeholder="t('agentList.searchPlaceholder')"
+      :label="t('agentList.searchLabel')"
       clearable
     />
     <DropdownList
       v-model="filters.statusFilter.value"
       class="filter-select"
-      label="Lọc theo trạng thái"
+      :label="t('agentList.statusLabel')"
       label-position="hidden"
-      placeholder="Chọn trạng thái"
+      :placeholder="t('agentList.statusPlaceholder')"
       persistent-placeholder="Trạng thái: "
-      aria-label="Lọc theo trạng thái"
+      :aria-label="t('agentList.statusLabel')"
       state="normal"
       :options="withAllOption(AGENT_STATUSES)"
     />
     <div class="filter-bar__actions">
-      <IconButton ariaLabel="Tải lại danh sách agent bên ngoài" title="Tải lại danh sách agent bên ngoài" variant="secondary" type="button" :disabled="isLoading" @click="refresh">
+      <IconButton :ariaLabel="t('agentList.reloadExternal')" :title="t('agentList.reloadExternal')" variant="secondary" type="button" :disabled="isLoading" @click="refresh">
         <IconRefresh :size="24" :class="{ spin: isLoading }" stroke-width="1.5" aria-hidden="true" />
       </IconButton>
     </div>
@@ -152,11 +163,11 @@ onBeforeUnmount(() => {
   <p v-if="error" class="message message--error">{{ error }}</p>
   <div v-else-if="isLoading && agents.items.length === 0" class="loading-row">
     <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
-    <span>Đang tải agent bên ngoài...</span>
+    <span>{{ t('agentList.loadingExternal') }}</span>
   </div>
   <div v-else-if="agents.items.length === 0" class="empty-card">
-    <h3>{{ filters.hasActiveFilters.value ? 'Không có agent phù hợp' : 'Chưa có agent bên ngoài' }}</h3>
-    <p>{{ filters.hasActiveFilters.value ? 'Hãy thử đổi bộ lọc.' : 'Danh sách agent của các tenant sẽ xuất hiện khi có dữ liệu.' }}</p>
+    <h3>{{ filters.hasActiveFilters.value ? t('agentList.emptyFiltered') : t('agentList.emptyExternal') }}</h3>
+    <p>{{ filters.hasActiveFilters.value ? t('agentList.emptyHintFiltered') : t('agentList.emptyHintExternal') }}</p>
   </div>
   <div v-else class="agent-grid">
     <article v-for="agent in agents.items" :key="agent.id" class="agent-card" @click="openDetail(agent)">
@@ -165,25 +176,25 @@ onBeforeUnmount(() => {
         <div class="agent-card__top">
           <div>
             <h3>{{ agent.name }}</h3>
-            <p>{{ agent.description || 'Chưa có mô tả.' }}</p>
+            <p>{{ agent.description || t('agentList.noDescription') }}</p>
           </div>
           <div class="agent-card__actions" @click.stop>
             <div class="card-menu-wrapper">
-              <button type="button" class="card-menu-trigger" title="Hành động" @click.stop="toggleCardMenu(agent.id)">
+              <button type="button" class="card-menu-trigger" :title="t('agentList.actionMenu')" @click.stop="toggleCardMenu(agent.id)">
                 <IconDotsVertical :size="24" stroke-width="1.5" aria-hidden="true" />
               </button>
               <div v-if="cardMenuOpenId === agent.id" class="card-menu" @click.stop>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'view', $event)">
                   <IconEye :size="16" stroke-width="1.5" aria-hidden="true" />
-                  Xem chi tiết
+                  {{ t('agentList.viewDetail') }}
                 </button>
                 <button type="button" class="card-menu__item" @click="handleCardAction(agent, 'edit', $event)">
                   <IconEdit :size="16" stroke-width="1.5" aria-hidden="true" />
-                  Sửa
+                  {{ t('agentList.edit') }}
                 </button>
                 <button type="button" class="card-menu__item card-menu__item--danger" @click="handleCardAction(agent, 'delete', $event)">
                   <IconTrashX :size="16" stroke-width="1.5" aria-hidden="true" />
-                  Xóa
+                  {{ t('agentList.delete') }}
                 </button>
               </div>
             </div>
@@ -191,15 +202,15 @@ onBeforeUnmount(() => {
         </div>
         <dl class="agent-meta">
           <div class="agent-meta__row">
-            <dt>Đơn vị</dt>
+            <dt>{{ t('agentList.unit') }}</dt>
             <dd>{{ agent.tenantName || '—' }}</dd>
           </div>
           <div class="agent-meta__row">
-            <dt>Vai trò</dt>
+            <dt>{{ t('agentList.role') }}</dt>
             <dd>{{ agent.role }}</dd>
           </div>
           <div class="agent-meta__row">
-            <dt>Trạng thái</dt>
+            <dt>{{ t('agentList.status') }}</dt>
             <dd><span class="status-chip" :class="{ 'status-chip--success': agent.status === 'Active' || agent.status === 'Published', 'status-chip--danger': agent.status === 'Inactive', 'status-chip--muted': agent.status === 'Deleted' }">{{ getAgentStatusLabel(agent.status) }}</span></dd>
           </div>
         </dl>
@@ -210,15 +221,15 @@ onBeforeUnmount(() => {
 
   <Dialog
     :open="isDeleteModalOpen"
-    title="Xác nhận xóa"
+    :title="t('agentList.confirmDeleteTitle')"
     description=""
     :busy="isDeleting"
-    confirm-label="Xác nhận xóa"
+    :confirm-label="t('actions.confirm')"
     confirm-variant="danger"
     @cancel="closeDeleteModal"
     @confirm="confirmDelete"
   >
-    <p>Bạn có chắc chắn muốn xóa agent <strong>{{ agentToDelete?.name }}</strong>?</p>
-    <p>Hành động này không thể hoàn tác.</p>
+    <p>{{ t('agentList.confirmDeleteBody', { name: agentToDelete?.name || '' }) }}</p>
+    <p>{{ t('agentList.confirmDeleteHint') }}</p>
   </Dialog>
 </template>

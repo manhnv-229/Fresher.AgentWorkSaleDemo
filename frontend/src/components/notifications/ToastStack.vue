@@ -5,6 +5,8 @@ import Toast from './Toast.vue';
 
 const toastStore = useToastStore();
 const { visibleToasts } = storeToRefs(toastStore);
+
+// Stack này chỉ là cổng render toast từ store ra Teleport body.
 </script>
 
 <template>

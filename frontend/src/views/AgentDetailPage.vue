@@ -11,10 +11,12 @@ import { FORM_ERROR, useFormValidation } from '../composables/useFormValidation'
 import { useUnsavedChangesGuard } from '../composables/useUnsavedChangesGuard';
 import { hasMaxLength, isRequired } from '../utils/validators';
 import { IconLoader2 } from '@tabler/icons-vue';
+import { useI18n } from '../i18n';
 
 const props = defineProps<{ agentId: string }>();
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const { agent, isLoading, error, loadInternal, loadTenant, saveInternal, saveTenant, clear } = useAgentDetail();
 const editor = useAgentDetailEditor();
 
@@ -51,23 +53,23 @@ const {
       const nextErrors: Partial<Record<'name' | 'role' | 'description' | 'icon', string>> = {};
 
       if (!isRequired(values.name)) {
-        nextErrors.name = 'Vui lòng nhập tên agent.';
+        nextErrors.name = t('agentList.errorCreateRequiredName');
       } else if (!hasMaxLength(values.name, 255)) {
-        nextErrors.name = 'Tên agent không được vượt quá 255 ký tự.';
+        nextErrors.name = t('agentList.errorCreateNameTooLong');
       }
 
       if (!isRequired(values.role)) {
-        nextErrors.role = 'Vui lòng nhập vai trò.';
+        nextErrors.role = t('agentList.errorCreateRequiredRole');
       } else if (!hasMaxLength(values.role, 100)) {
-        nextErrors.role = 'Vai trò không được vượt quá 100 ký tự.';
+        nextErrors.role = t('agentList.errorCreateRoleTooLong');
       }
 
       if (values.description && !hasMaxLength(values.description, 500)) {
-        nextErrors.description = 'Mô tả không được vượt quá 500 ký tự.';
+        nextErrors.description = t('agentList.errorCreateDescriptionTooLong');
       }
 
       if (values.icon && !hasMaxLength(values.icon, 500)) {
-        nextErrors.icon = 'Icon không được vượt quá 500 ký tự.';
+        nextErrors.icon = t('agentList.errorCreateIconTooLong');
       }
 
       return nextErrors;
@@ -119,18 +121,20 @@ onBeforeUnmount(() => {
   editor.clearHandlers();
 });
 
+// Khi route hoặc scope đổi, tải lại agent và đồng bộ lại form theo bản ghi mới nhất.
 watch([() => props.agentId, scope, tenantId], () => {
   void loadAgent();
 });
 
+// Load dữ liệu chi tiết theo scope hiện tại và khởi tạo lại state edit từ record gốc.
 async function loadAgent() {
   clear();
   clearEditErrors();
   isEditing.value = false;
   try {
-    if (scope.value === 'tenant') {
+      if (scope.value === 'tenant') {
       if (!tenantId.value) {
-        error.value = 'Thiếu ngữ cảnh đơn vị cho agent này.';
+        error.value = t('agentDetail.missingTenantScope');
         persistedAgent.value = null;
         return;
       }
@@ -154,6 +158,7 @@ async function loadAgent() {
   }
 }
 
+// Copy dữ liệu persist vào form local để phục vụ edit và so sánh dirty state.
 function syncFormFromPersistedAgent() {
   if (!persistedAgent.value) return;
   editName.value = persistedAgent.value.name;
@@ -163,31 +168,37 @@ function syncFormFromPersistedAgent() {
   clearEditErrors();
 }
 
+// Chỉ cho vào chế độ edit khi đã có dữ liệu và user không đang load.
 function beginEdit() {
   if (!canEdit.value) return;
   syncFormFromPersistedAgent();
   isEditing.value = true;
 }
 
+// Hủy edit chỉ reset form local, không gọi API.
 function cancelEdit() {
   syncFormFromPersistedAgent();
   isEditing.value = false;
 }
 
+// Lưu draft giữ nguyên status hiện tại của agent.
 async function saveDraft() {
   await submitSaveWithStatus(currentStatus.value);
 }
 
+// Lưu và chuyển agent sang trạng thái publish trong cùng một lần submit.
 async function saveAndPublish() {
   await submitSaveWithStatus('Published');
 }
 
+// Toggle active/inactive bằng cách suy ra status đích từ status hiện tại.
 async function toggleActivation() {
   const status = currentStatus.value;
   const nextStatus = status === 'Active' || status === 'Published' ? 'Inactive' : 'Active';
   await submitSaveWithStatus(nextStatus);
 }
 
+// Một hàm submit duy nhất để dùng chung cho draft, publish và activate/deactivate.
 async function submitSaveWithStatus(status: string) {
   if (!agent.value || !persistedAgent.value) return;
   clearEditErrors();
@@ -218,7 +229,7 @@ async function submitSaveWithStatus(status: string) {
     }
     applyEditApiError(err, {
       validation_error: FORM_ERROR
-    }, 'Không cập nhật được agent.');
+    }, t('agentDetail.errorUpdate'));
   } finally {
     isSaving.value = false;
   }
@@ -229,19 +240,19 @@ async function submitSaveWithStatus(status: string) {
   <div class="content-panel agent-detail-panel">
     <div v-if="isLoading" class="loading-row">
       <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
-      <span>Đang tải chi tiết agent...</span>
+      <span>{{ t('agentDetail.loading') }}</span>
     </div>
     <div v-else-if="error" class="message message--error">{{ error }}</div>
     <template v-else-if="agent">
       <div class="create-agent">
         <div class="create-agent__header">
           <div>
-            <p class="create-agent__eyebrow">Chi tiết agent</p>
+            <p class="create-agent__eyebrow">{{ t('agentDetail.eyebrow') }}</p>
             <h2 class="create-agent__title">{{ agent.name }}</h2>
           </div>
         </div>
         <div class="create-agent__group">
-          <p class="create-agent__label">Hình đại diện</p>
+          <p class="create-agent__label">{{ t('agentDetail.avatar') }}</p>
           <div class="avatar-picker">
             <button
               v-for="opt in avatarOptions"
@@ -258,38 +269,38 @@ async function submitSaveWithStatus(status: string) {
           </div>
         </div>
         <div class="create-agent__group">
-          <label class="create-agent__label" for="edit-name">Tên</label>
+        <label class="create-agent__label" for="edit-name">{{ t('agentDetail.name') }}</label>
           <TextBoxTopLabel
             id="edit-name"
             v-model="editName"
             label-position="hidden"
-            placeholder="Nhập tên"
+          :placeholder="t('agentDetail.name')"
             :disabled="!isEditing"
             :error="editErrors.name"
             @input="clearEditFieldError('name')"
           />
         </div>
         <div class="create-agent__group">
-          <label class="create-agent__label" for="edit-role">Vai trò</label>
+        <label class="create-agent__label" for="edit-role">{{ t('agentDetail.role') }}</label>
           <textarea
             id="edit-role"
             v-model="editRole"
             class="agent-textarea"
             rows="3"
-            placeholder="Nhập mô tả vai trò"
+          :placeholder="t('agentDetail.role')"
             :disabled="!isEditing"
             @input="clearEditFieldError('role')"
           />
           <p v-if="editErrors.role" class="message message--error">{{ editErrors.role }}</p>
         </div>
         <div class="create-agent__group">
-          <label class="create-agent__label" for="edit-desc">Mô tả</label>
+            <label class="create-agent__label" for="edit-desc">{{ t('agentDetail.formDescription') }}</label>
           <textarea
             id="edit-desc"
             v-model="editDescription"
             class="agent-textarea"
             rows="4"
-            placeholder="Mô tả ngắn về agent"
+            :placeholder="t('agentDetail.formDescriptionPlaceholder')"
             :disabled="!isEditing"
             @input="clearEditFieldError('description')"
           />
@@ -301,10 +312,10 @@ async function submitSaveWithStatus(status: string) {
   </div>
   <Dialog
     :open="isDialogOpen"
-    title="Thoát và không lưu?"
-    description="Nếu bạn thoát, các dữ liệu đang nhập liệu sẽ không được lưu lại."
-    cancel-label="Ở lại"
-    confirm-label="Thoát, không lưu"
+    :title="t('agentList.createUnsavedTitle')"
+    :description="t('agentList.createUnsavedDescription')"
+    :cancel-label="t('agentList.createUnsavedStay')"
+    :confirm-label="t('agentList.createUnsavedLeave')"
     confirm-variant="danger"
     @cancel="stayOnPage"
     @confirm="discardChanges"

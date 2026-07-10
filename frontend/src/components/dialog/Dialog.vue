@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { IconX } from '@tabler/icons-vue';
 import BaseButton from '../buttons/BaseButton.vue';
+import { useI18n } from '../../i18n';
 
 withDefaults(
   defineProps<{
@@ -15,12 +16,12 @@ withDefaults(
     busyLabel?: string;
   }>(),
   {
-    confirmLabel: 'Xác nhận',
-    cancelLabel: 'Hủy',
+    confirmLabel: '',
+    cancelLabel: '',
     confirmVariant: 'primary',
     confirmDisabled: false,
     busy: false,
-    busyLabel: 'Đang xử lý...'
+    busyLabel: ''
   }
 );
 
@@ -28,6 +29,8 @@ const emit = defineEmits<{
   cancel: [];
   confirm: [];
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -37,7 +40,7 @@ const emit = defineEmits<{
         <div class="dialog__header">
           <h2 class="dialog__title">{{ title }}</h2>
 
-          <button type="button" class="dialog__close" aria-label="Đóng" @click="emit('cancel')">
+          <button type="button" class="dialog__close" :aria-label="t('actions.close')" @click="emit('cancel')">
             <IconX :size="20" stroke-width="1.5" aria-hidden="true" />
           </button>
         </div>
@@ -52,10 +55,10 @@ const emit = defineEmits<{
 
         <div class="dialog__actions">
           <BaseButton variant="secondary" type="button" :disabled="busy" @click="emit('cancel')">
-            {{ cancelLabel }}
+            {{ cancelLabel || t('actions.cancel') }}
           </BaseButton>
           <BaseButton :variant="confirmVariant" type="button" :disabled="busy || confirmDisabled" @click="emit('confirm')">
-            {{ busy ? busyLabel : confirmLabel }}
+            {{ busy ? (busyLabel || t('common.pleaseWait')) : (confirmLabel || t('actions.confirm')) }}
           </BaseButton>
         </div>
       </section>

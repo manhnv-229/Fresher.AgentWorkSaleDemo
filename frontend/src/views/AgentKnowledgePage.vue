@@ -59,10 +59,12 @@ import {
   hasPositiveFileSize,
   isRequired
 } from '../utils/validators';
+import { useI18n } from '../i18n';
 
 const props = defineProps<{ agentId: string }>();
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 
 // Explorer state: tree, breadcrumb, current folders/files từ API
 const explorer = ref<KnowledgeExplorerResponse | null>(null);
@@ -103,21 +105,25 @@ type ActiveItem =
   | { type: 'folder'; item: KnowledgeFolderItem }
   | { type: 'file'; item: KnowledgeFileItem };
 
+// Overflow menu chỉ mở cho một item và đóng context menu khác để tránh chồng nhau.
 function toggleOverflowMenu(itemId: string, event: MouseEvent) {
   event.stopPropagation();
   contextMenu.value = null;
   openOverflowMenuId.value = openOverflowMenuId.value === itemId ? null : itemId;
 }
 
+// Context menu dùng tọa độ chuột nên phải reset overflow menu đang mở.
 function openContextMenu(x: number, y: number, item: ActiveItem) {
   openOverflowMenuId.value = null;
   contextMenu.value = { x, y, item };
 }
 
+// Đóng context menu khi click ra ngoài hoặc sau khi thực hiện action.
 function closeContextMenu() {
   contextMenu.value = null;
 }
 
+// Menu chuột phải cần chặn mặc định để dùng menu custom của app.
 function onContextMenu(event: MouseEvent, item: ActiveItem) {
   event.preventDefault();
   event.stopPropagation();
@@ -155,7 +161,7 @@ const canGoUp = computed(() => selectedFolderId.value !== null);
 const canGoBack = computed(() => backHistory.value.length > 0);
 const canGoForward = computed(() => forwardHistory.value.length > 0);
 const currentUserId = computed(() => getCurrentUserIdFromAccessToken());
-const supportedUploadTypesLabel = 'PDF, DOCX, XLSX, PPTX, TXT, PNG, JPG';
+const supportedUploadTypesLabel = t('knowledge.supportedFileTypes');
 const supportedUploadExtensions = ['.pdf', '.docx', '.xlsx', '.pptx', '.txt', '.png', '.jpg'] as const;
 const maxUploadSizeBytes = 50 * 1024 * 1024;
 const {
@@ -176,9 +182,9 @@ const {
       const nextErrors: Partial<Record<'name', string>> = {};
 
       if (!isRequired(values.name)) {
-        nextErrors.name = 'Tên thư mục là bắt buộc.';
+        nextErrors.name = t('knowledge.errorCreateFolderRequired');
       } else if (!hasMaxLength(values.name, 255)) {
-        nextErrors.name = 'Tên thư mục không được vượt quá 255 ký tự.';
+        nextErrors.name = t('knowledge.errorCreateFolderTooLong');
       }
 
       return nextErrors;
@@ -204,9 +210,9 @@ const {
       const nextErrors: Partial<Record<'name', string>> = {};
 
       if (!isRequired(values.name)) {
-        nextErrors.name = 'Tên mới là bắt buộc.';
+        nextErrors.name = t('knowledge.errorRenameRequired');
       } else if (!hasMaxLength(values.name, 255)) {
-        nextErrors.name = 'Tên mới không được vượt quá 255 ký tự.';
+        nextErrors.name = t('knowledge.errorRenameTooLong');
       }
 
       return nextErrors;
@@ -247,7 +253,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick);
 });
 
-// Khi agentId, scope, hoặc tenantId thay đổi, reset folder selection và reload explorer
+// Khi agentId, scope, hoặc tenantId thay đổi, reset folder selection và reload explorer.
 watch(() => [props.agentId, scope.value, tenantId.value], () => {
   selectedFolderId.value = null;
   void loadExplorer();
@@ -256,6 +262,7 @@ watch(() => [props.agentId, scope.value, tenantId.value], () => {
 const searchDebounceMs = 200;
 let searchDebounceTimer: number | undefined;
 
+// Hủy timer cũ để chỉ còn search cuối cùng chạy.
 function cancelSearchDebounce() {
   if (searchDebounceTimer !== undefined) {
     window.clearTimeout(searchDebounceTimer);
@@ -263,6 +270,7 @@ function cancelSearchDebounce() {
   }
 }
 
+// Auto-search với debounce ngắn để giữ trải nghiệm gõ tự nhiên.
 function scheduleSearch() {
   cancelSearchDebounce();
   searchDebounceTimer = window.setTimeout(() => {
@@ -270,7 +278,7 @@ function scheduleSearch() {
   }, searchDebounceMs);
 }
 
-// Auto-search khi search text thay đổi với debounce ngắn để giảm request thừa.
+// Auto-search khi search text thay đổi để giảm request thừa.
 watch(searchText, () => {
   scheduleSearch();
 });
@@ -280,7 +288,7 @@ async function loadExplorer(folderId = selectedFolderId.value) {
   error.value = '';
   message.value = '';
   if (scope.value === 'tenant' && !tenantId.value) {
-    error.value = 'Thiếu ngữ cảnh đơn vị cho agent này.';
+    error.value = t('agentDetail.missingTenantScope');
     return;
   }
 
@@ -290,13 +298,13 @@ async function loadExplorer(folderId = selectedFolderId.value) {
     selectedFolderId.value = explorer.value.selectedFolderId ?? null;
     await runSearch();
   } catch (err) {
-    handleError(err, 'Không tải được tri thức agent.');
+    handleError(err, t('knowledge.errorLoad'));
   } finally {
     isLoading.value = false;
   }
 }
 
-// Chọn folder từ tree hoặc breadcrumb: ghi lịch sử và reload
+// Chọn folder từ tree hoặc breadcrumb: ghi lịch sử và reload.
 async function openFolder(folderId: string | null) {
   if (folderId === selectedFolderId.value) return;
   const prevFolderId = selectedFolderId.value;
@@ -308,7 +316,7 @@ async function openFolder(folderId: string | null) {
   }
 }
 
-// Điều hướng lên thư mục cha
+// Điều hướng lên thư mục cha.
 async function goUp() {
   const parentId = currentFolderParentId.value;
   if (parentId === undefined) return;
@@ -321,7 +329,7 @@ async function goUp() {
   }
 }
 
-// Quay lại thư mục trước đó
+// Quay lại thư mục trước đó.
 async function goBack() {
   if (backHistory.value.length === 0) return;
   const prev = backHistory.value.pop()!;
@@ -333,7 +341,7 @@ async function goBack() {
   }
 }
 
-// Đi tới thư mục tiếp theo
+// Đi tới thư mục tiếp theo.
 async function goForward() {
   if (forwardHistory.value.length === 0) return;
   const next = forwardHistory.value.pop()!;
@@ -358,23 +366,25 @@ async function runSearch() {
       name: query
     });
   } catch (err) {
-    handleError(err, 'Không tìm kiếm được tài liệu.');
+    handleError(err, t('knowledge.errorSearch'));
   }
 }
 
+// Mở modal tạo thư mục với state sạch.
 function openCreateFolder() {
   folderName.value = '';
   clearCreateFolderErrors();
   isCreateFolderOpen.value = true;
 }
 
+// Đóng modal tạo thư mục và dọn input/error.
 function closeCreateFolder() {
   isCreateFolderOpen.value = false;
   folderName.value = '';
   clearCreateFolderErrors();
 }
 
-// Tạo thư mục: gọi API, đóng modal, hiển thị message, và refresh explorer
+// Tạo thư mục: gọi API, đóng modal, hiển thị message, và refresh explorer.
 async function submitCreateFolder() {
   clearCreateFolderErrors();
   if (!validateCreateFolder()) {
@@ -389,16 +399,16 @@ async function submitCreateFolder() {
         parentFolderId: selectedFolderId.value
       });
       closeCreateFolder();
-      message.value = 'Đã tạo thư mục.';
+      message.value = t('knowledge.createdFolder');
       await loadExplorer();
     },
     (err) => applyCreateFolderApiError(err, {
       validation_error: FORM_ERROR
-    }, 'Không tạo được thư mục.')
+    }, t('knowledge.errorCreateFolder'))
   );
 }
 
-// Upload file vào thư mục hiện tại: dùng chung cho file picker và drag & drop
+// Upload file vào thư mục hiện tại: dùng chung cho file picker và drag & drop.
 async function uploadFile(file: File) {
   const uploadValidationMessage = validateUploadFile(file);
   if (uploadValidationMessage) {
@@ -410,20 +420,20 @@ async function uploadFile(file: File) {
   await runBusy(
     async () => {
       await uploadKnowledgeFile(knowledgeContext.value, file, selectedFolderId.value);
-      message.value = 'Đã tải file lên.';
+      message.value = t('knowledge.uploadedFile');
       await loadExplorer();
     },
     undefined,
-    'Không tải file lên được.'
+    t('knowledge.errorUpload')
   );
 }
 
-// Trigger file input click để mở file picker
+// Trigger file input click để mở file picker.
 function triggerUpload() {
   fileInput.value?.click();
 }
 
-// Xử lý file được chọn từ file picker
+// Xử lý file được chọn từ file picker.
 function onFileSelected(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -432,7 +442,7 @@ function onFileSelected(event: Event) {
   void uploadFile(file);
 }
 
-// Drag & drop handlers: dùng counter để tránh nhấp nháy khi đi qua child elements
+// Drag & drop handlers: dùng counter để tránh nhấp nháy khi đi qua child elements.
 function onDragEnter(event: DragEvent) {
   event.preventDefault();
   if (!event.dataTransfer?.types.includes('Files')) return;
@@ -440,10 +450,12 @@ function onDragEnter(event: DragEvent) {
   isDragOver.value = true;
 }
 
+// Khi kéo file qua vùng drop thì chỉ cần chặn default browser behavior.
 function onDragOver(event: DragEvent) {
   event.preventDefault();
 }
 
+// Counter về 0 nghĩa là người dùng đã rời khỏi toàn bộ vùng drop.
 function onDragLeave(event: DragEvent) {
   event.preventDefault();
   dragCounter.value--;
@@ -453,6 +465,7 @@ function onDragLeave(event: DragEvent) {
   }
 }
 
+// Drop file sẽ đi thẳng vào flow upload đang dùng chung với picker.
 function onDrop(event: DragEvent) {
   event.preventDefault();
   dragCounter.value = 0;
@@ -464,6 +477,7 @@ function onDrop(event: DragEvent) {
   void uploadFile(file);
 }
 
+// Modal đổi tên copy item hiện tại vào state local để tránh sửa trực tiếp bản gốc.
 function openRename(item: ActiveItem) {
   if (!ensureItemOwner(item)) return;
   activeItem.value = item;
@@ -472,6 +486,7 @@ function openRename(item: ActiveItem) {
   isRenameOpen.value = true;
 }
 
+// Đóng modal đổi tên và reset form local.
 function closeRename() {
   isRenameOpen.value = false;
   activeItem.value = null;
@@ -481,49 +496,58 @@ function closeRename() {
 
 const previewableExtensions = new Set(['.txt', '.md', '.json', '.csv', '.xml', '.html', '.css', '.js', '.ts', '.py', '.java', '.c', '.cpp', '.cs', '.rb', '.go', '.rs', '.sh', '.sql', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', '.log']);
 
+// Extract extension để quyết định loại preview phù hợp.
 function getFileExtension(file: KnowledgeFileItem | null): string {
   if (!file) return '';
   return file.extension.startsWith('.') ? file.extension.toLowerCase() : `.${file.extension.toLowerCase()}`;
 }
 
+// Text previewable gồm extension phổ biến và content-type text/*.
 function isTextPreviewable(file: KnowledgeFileItem | null): boolean {
   if (!file) return false;
   const ext = getFileExtension(file);
   return previewableExtensions.has(ext.toLowerCase()) || file.contentType.startsWith('text/');
 }
 
+// Nhận diện ảnh để preview trực tiếp trong popup.
 function isImagePreviewable(file: KnowledgeFileItem | null): boolean {
   if (!file) return false;
   const ext = getFileExtension(file);
   return ext === '.png' || ext === '.jpg' || ext === '.jpeg' || file.contentType.startsWith('image/');
 }
 
+// PDF có viewer riêng nên cần nhánh preview khác với text.
 function isPdfPreviewable(file: KnowledgeFileItem | null): boolean {
   if (!file) return false;
   return getFileExtension(file) === '.pdf' || file.contentType === 'application/pdf';
 }
 
+// DOCX được render thông qua mammoth sau khi tải blob về.
 function isDocxPreviewable(file: KnowledgeFileItem | null): boolean {
   if (!file) return false;
   return getFileExtension(file) === '.docx' || file.contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 }
 
+// XLSX sẽ được render thành bảng HTML trong popup preview.
 function isXlsxPreviewable(file: KnowledgeFileItem | null): boolean {
   if (!file) return false;
   return getFileExtension(file) === '.xlsx' || file.contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 }
 
+// PPTX không preview trực tiếp nên cần kiểm tra riêng để fallback hợp lý.
 function isPptxPreviewable(file: KnowledgeFileItem | null): boolean {
   if (!file) return false;
   return getFileExtension(file) === '.pptx' || file.contentType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 }
 
+// Cleanup object URL trước khi tạo preview mới hoặc đóng popup.
 function clearContentViewObjectUrl() {
   if (!contentViewObjectUrl.value) return;
   URL.revokeObjectURL(contentViewObjectUrl.value);
   contentViewObjectUrl.value = '';
 }
 
+// Đóng preview file và giải phóng blob/object URL đang dùng.
 function closeContentView() {
   isContentViewOpen.value = false;
   contentViewFile.value = null;
@@ -535,6 +559,7 @@ function closeContentView() {
   clearContentViewObjectUrl();
 }
 
+// Tách nhánh preview/download để dùng chung logic lấy blob từ backend.
 async function getFilePreviewBlob(file: KnowledgeFileItem): Promise<Blob> {
   if (isPptxPreviewable(file)) {
     return previewKnowledgeFile(knowledgeContext.value, file.id);
@@ -596,6 +621,7 @@ async function setXlsxPreview(fileBlob: Blob) {
   contentViewKind.value = 'html';
 }
 
+// Mở preview phải tải blob trước rồi quyết định render theo loại file.
 async function openContentView(file: KnowledgeFileItem) {
   if (!ensureFileOwner(file)) return;
   clearContentViewObjectUrl();
@@ -625,18 +651,18 @@ async function openContentView(file: KnowledgeFileItem) {
       router.push({ name: 'login' });
       return;
     }
-    contentViewError.value = err instanceof ApiError ? err.message : 'Không tải được nội dung file.';
+    contentViewError.value = err instanceof ApiError ? err.message : t('knowledge.errorContentLoad');
   } finally {
     isContentViewLoading.value = false;
   }
 }
 
-// Đổi tên: gọi API tương ứng (folder/file), đóng modal, và refresh explorer
+// Submit rename cho folder/file dùng chung một luồng.
 async function submitRename() {
   const item = activeItem.value;
   clearRenameErrors();
   if (!item) {
-    setRenameFormError('Không xác định được đối tượng cần đổi tên.');
+    setRenameFormError(t('knowledge.errorNoActiveItem'));
     return;
   }
 
@@ -654,15 +680,16 @@ async function submitRename() {
       }
 
       closeRename();
-      message.value = 'Đã đổi tên.';
+      message.value = t('knowledge.renameDone');
       await loadExplorer();
     },
     (err) => applyRenameApiError(err, {
       validation_error: FORM_ERROR
-    }, 'Không đổi tên được.')
+    }, t('knowledge.errorRename'))
   );
 }
 
+// Mở modal di chuyển và set sẵn target hiện tại để user chỉnh tiếp.
 function openMove(item: ActiveItem) {
   if (!ensureItemOwner(item)) return;
   activeItem.value = item;
@@ -671,6 +698,7 @@ function openMove(item: ActiveItem) {
   isMoveOpen.value = true;
 }
 
+// Đóng modal di chuyển và clear item/target tạm.
 function closeMove() {
   isMoveOpen.value = false;
   moveTargetFolderId.value = null;
@@ -683,12 +711,12 @@ async function submitMove() {
   const item = activeItem.value;
   clearMoveErrors();
   if (!item) {
-    setMoveFormError('Không xác định được đối tượng cần di chuyển.');
+    setMoveFormError(t('knowledge.errorNoActiveItem'));
     return;
   }
 
   if (item.type === 'folder' && moveTargetFolderId.value === item.item.id) {
-    setMoveFormError('Không thể di chuyển thư mục vào chính nó.');
+    setMoveFormError(t('knowledge.errorMoveSelf'));
     return;
   }
 
@@ -705,15 +733,16 @@ async function submitMove() {
       }
 
       closeMove();
-      message.value = 'Đã di chuyển.';
+      message.value = t('knowledge.moveDone');
       await loadExplorer();
     },
     (err) => applyMoveApiError(err, {
       validation_error: FORM_ERROR
-    }, 'Không di chuyển được.')
+    }, t('knowledge.errorMove'))
   );
 }
 
+// Xóa luôn đi qua modal xác nhận vì đây là thao tác phá hủy.
 function openDelete(item: ActiveItem) {
   if (!ensureItemOwner(item)) return;
   activeItem.value = item;
@@ -733,11 +762,12 @@ async function submitDelete() {
     }
 
     isDeleteOpen.value = false;
-    message.value = 'Đã xóa.';
+    message.value = t('knowledge.deleteDone');
     await loadExplorer();
   });
 }
 
+// Download dùng chung quyền owner check như preview.
 async function downloadFile(file: KnowledgeFileItem) {
   if (!ensureFileOwner(file)) return;
   await runBusy(async () => {
@@ -749,7 +779,7 @@ async function downloadFile(file: KnowledgeFileItem) {
 async function runBusy(
   action: () => Promise<void>,
   handleValidationError?: (err: unknown) => void,
-  fallback = 'Thao tác không thành công.'
+  fallback = t('knowledge.errorDelete')
 ) {
   error.value = '';
   message.value = '';
@@ -768,17 +798,18 @@ async function runBusy(
   }
 }
 
+// Validate upload file ở client trước để chặn lỗi rõ ràng hơn.
 function validateUploadFile(file: File): string {
   if (!hasPositiveFileSize(file.size)) {
-    return 'File trống.';
+    return t('knowledge.errorFileSize');
   }
 
   if (!hasAllowedFileExtension(file.name, supportedUploadExtensions)) {
-    return `Chỉ hỗ trợ file ${supportedUploadTypesLabel}.`;
+    return t('knowledge.errorFileType', { types: supportedUploadTypesLabel });
   }
 
   if (!hasMaxFileSize(file.size, maxUploadSizeBytes)) {
-    return 'Dung lượng file không được vượt quá 50 MB.';
+    return t('knowledge.errorFileTooLarge');
   }
 
   return '';
@@ -794,15 +825,15 @@ function handleError(err: unknown, fallback: string) {
   if (err instanceof ApiError) {
     const code = (err as any).code as string | undefined;
     if (code === 'knowledge.file_owner_required') {
-      error.value = 'Chỉ người tải lên mới có thể xem nội dung, tải xuống, đổi tên, di chuyển hoặc xóa file này.';
+      error.value = t('knowledge.errorFileOwner');
     } else if (code === 'knowledge.folder_owner_required') {
-      error.value = 'Chỉ người tạo thư mục mới có thể đổi tên, di chuyển hoặc xóa thư mục này.';
+      error.value = t('knowledge.errorFolderOwner');
     } else if (code === 'knowledge.storage_unreachable') {
-      error.value = 'Không thể kết nối đến dịch vụ lưu trữ. Kiểm tra kết nối mạng và cấu hình MinIO.';
+      error.value = t('knowledge.errorStorageUnreachable');
     } else if (code === 'knowledge.storage_timed_out') {
-      error.value = 'Thao tác lưu trữ bị hết thời gian chờ. Thử lại sau hoặc kiểm tra cấu hình timeout.';
+      error.value = t('knowledge.errorStorageTimedOut');
     } else if (code === 'knowledge.storage_rejected') {
-      error.value = 'Dịch vụ lưu trữ từ chối yêu cầu. Kiểm tra cấu hình bucket và quyền truy cập.';
+      error.value = t('knowledge.errorStorageRejected');
     } else {
       error.value = err.message || fallback;
     }
@@ -826,12 +857,14 @@ function flattenFolders(nodes: KnowledgeFolderTreeItem[]): KnowledgeFolderTreeIt
   ]);
 }
 
+// Format size theo đơn vị đọc được để list file gọn hơn.
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+// Format ngày tạo chung cho cây và bảng file/folder.
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('vi-VN', {
     dateStyle: 'short',
@@ -839,18 +872,22 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+// Hiển thị người tạo folder, fallback theo owner hiện tại nếu backend chưa trả tên.
 function formatFolderCreatedBy(folder: KnowledgeFolderItem) {
   return folder.createdByUserName || '-';
 }
 
+// Ngày tạo folder cần normalize từ createdAt/updatedAt tùy data backend trả về.
 function formatFolderCreatedAt(folder: KnowledgeFolderItem) {
   return folder.createdAt ? formatDate(folder.createdAt) : '-';
 }
 
+// Chuẩn hóa GUID từ token claim để so sánh owner.
 function normalizeGuid(value: string | null | undefined): string | null {
   return value ? value.toLowerCase() : null;
 }
 
+// Lấy user id hiện tại từ access token để check quyền ownership ở client.
 function getCurrentUserIdFromAccessToken(): string | null {
   const accessToken = getAccessToken();
   if (!accessToken) return null;
@@ -870,30 +907,35 @@ function getCurrentUserIdFromAccessToken(): string | null {
   }
 }
 
+// Quyền thao tác file dựa trên owner hiện tại.
 function isFileOwner(file: KnowledgeFileItem): boolean {
   return normalizeGuid(file.createdByUserId) === currentUserId.value;
 }
 
+// Quyền thao tác folder cũng dựa trên owner.
 function isFolderOwner(folder: KnowledgeFolderItem): boolean {
   return normalizeGuid(folder.createdByUserId) === currentUserId.value;
 }
 
+// Guard quyền file trước khi cho phép action nhạy cảm.
 function ensureFileOwner(file: KnowledgeFileItem): boolean {
   if (isFileOwner(file)) return true;
-  error.value = 'Chỉ người tải lên mới có thể xem nội dung, tải xuống, đổi tên, di chuyển hoặc xóa file này.';
+  error.value = t('knowledge.errorFileOwner');
   message.value = '';
   openOverflowMenuId.value = null;
   return false;
 }
 
+// Guard quyền folder trước khi cho phép action nhạy cảm.
 function ensureFolderOwner(folder: KnowledgeFolderItem): boolean {
   if (isFolderOwner(folder)) return true;
-  error.value = 'Chỉ người tạo thư mục mới có thể đổi tên, di chuyển hoặc xóa thư mục này.';
+  error.value = t('knowledge.errorFolderOwner');
   message.value = '';
   openOverflowMenuId.value = null;
   return false;
 }
 
+// Chọn guard phù hợp theo loại item.
 function ensureItemOwner(item: ActiveItem): boolean {
   return item.type === 'file' ? ensureFileOwner(item.item) : ensureFolderOwner(item.item);
 }
@@ -903,15 +945,15 @@ function ensureItemOwner(item: ActiveItem): boolean {
   <header class="content-header knowledge-header">
     <div>
       <!-- <p class="content-header__eyebrow">Tri thức</p> -->
-      <h2>Tri thức agent</h2>
-      <p class="content-header__copy">Quản lý thư mục, tài liệu và file nguồn cho agent hiện tại.</p>
+      <h2>{{ t('knowledge.title') }}</h2>
+      <p class="content-header__copy">{{ t('knowledge.description') }}</p>
     </div>
   </header>
 
   <div class="content-panel knowledge-panel">
     <div v-if="isLoading" class="loading-row">
       <IconLoader2 :size="24" class="spin" stroke-width="1.5" aria-hidden="true" />
-      <span>Đang tải tri thức agent...</span>
+        <span>{{ t('knowledge.loading') }}</span>
     </div>
     <template v-else>
       <p v-if="error" class="message message--error">{{ error }}</p>
@@ -922,19 +964,19 @@ function ensureItemOwner(item: ActiveItem): boolean {
           v-model="searchText"
           label-position="hidden"
           type="search"
-          placeholder="Tìm kiếm tài liệu hoặc thư mục"
+          :placeholder="t('knowledge.searchPlaceholder')"
           class="knowledge-search"
-          label="Tìm kiếm tài liệu hoặc thư mục"
+          :label="t('knowledge.searchPlaceholder')"
           clearable
         />
         <div class="knowledge-toolbar__actions">
           <BaseButton variant="secondary" type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="openCreateFolder">
           <IconFolderPlus :size="24" stroke-width="1.5" aria-hidden="true" />
-            Thư mục
+            {{ t('knowledge.createFolder') }}
           </BaseButton>
           <BaseButton type="button" :disabled="isBusy || (scope === 'tenant' && !tenantId)" @click="triggerUpload">
           <IconUpload :size="24" stroke-width="1.5" aria-hidden="true" />
-            Upload
+            {{ t('knowledge.upload') }}
           </BaseButton>
           <input
             ref="fileInput"
@@ -955,30 +997,30 @@ function ensureItemOwner(item: ActiveItem): boolean {
       <div class="knowledge-layout" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDrop">
         <div v-if="isDragOver" class="knowledge-dropzone">
           <IconUpload :size="32" stroke-width="1.5" aria-hidden="true" />
-          <p>Thả file vào đây để upload vào thư mục hiện tại</p>
+          <p>{{ t('knowledge.uploadHint') }}</p>
         </div>
         <aside class="knowledge-tree">
           <div class="knowledge-tree__nav">
-            <button class="knowledge-tree__nav-btn" type="button" title="Lên trên (↑)" :disabled="!canGoUp" @click="goUp">
+            <button class="knowledge-tree__nav-btn" type="button" :title="t('actions.collapse')" :disabled="!canGoUp" @click="goUp">
               <IconArrowUp :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
-            <button class="knowledge-tree__nav-btn" type="button" title="Quay lại (←)" :disabled="!canGoBack" @click="goBack">
+            <button class="knowledge-tree__nav-btn" type="button" :title="t('actions.previousPage')" :disabled="!canGoBack" @click="goBack">
               <IconArrowLeft :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
-            <button class="knowledge-tree__nav-btn" type="button" title="Đi tiếp (→)" :disabled="!canGoForward" @click="goForward">
+            <button class="knowledge-tree__nav-btn" type="button" :title="t('actions.nextPage')" :disabled="!canGoForward" @click="goForward">
               <IconArrowRight :size="24" stroke-width="1.5" aria-hidden="true" />
             </button>
           </div>
-          <p class="knowledge-section-title">Thư mục</p>
+        <p class="knowledge-section-title">{{ t('knowledge.folderLabel') }}</p>
           <KnowledgeTreeNode v-for="node in explorer?.tree ?? []" :key="node.id" :node="node" :active-id="selectedFolderId" :depth="0" @select="openFolder" />
         </aside>
 
         <section class="knowledge-content">
           <div class="knowledge-grid knowledge-grid--head">
-            <span>Tên</span>
-            <span>Người tạo</span>
-            <span>Ngày tạo</span>
-            <span>Dung lượng</span>
+            <span>{{ t('knowledge.columnName') }}</span>
+            <span>{{ t('knowledge.columnCreator') }}</span>
+            <span>{{ t('knowledge.columnCreatedAt') }}</span>
+            <span>{{ t('knowledge.columnSize') }}</span>
             <span></span>
           </div>
 
@@ -997,18 +1039,18 @@ function ensureItemOwner(item: ActiveItem): boolean {
             <span>Folder</span>
             <span class="knowledge-actions">
               <span class="knowledge-overflow-wrap">
-                <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('folder-' + folder.id, $event)">
+                <button class="knowledge-overflow-trigger" :title="t('knowledge.actionMenu')" type="button" @click="toggleOverflowMenu('folder-' + folder.id, $event)">
                   <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
                 </button>
                 <div v-if="openOverflowMenuId === 'folder-' + folder.id" class="knowledge-overflow-menu" @click.stop>
                   <button type="button" :disabled="!isFolderOwner(folder)" @click="openRename({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+                  <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.rename') }}
                   </button>
                   <button type="button" :disabled="!isFolderOwner(folder)" @click="openMove({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+                  <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.move') }}
                   </button>
                   <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFolderOwner(folder)" @click="openDelete({ type: 'folder', item: folder }); openOverflowMenuId = null">
-                  <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
+                  <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.delete') }}
                   </button>
                 </div>
               </span>
@@ -1030,24 +1072,24 @@ function ensureItemOwner(item: ActiveItem): boolean {
             <span>{{ formatSize(file.sizeBytes) }}</span>
             <span class="knowledge-actions">
               <span class="knowledge-overflow-wrap">
-                <button class="knowledge-overflow-trigger" title="Thao tác" type="button" @click="toggleOverflowMenu('file-' + file.id, $event)">
+                <button class="knowledge-overflow-trigger" :title="t('knowledge.actionMenu')" type="button" @click="toggleOverflowMenu('file-' + file.id, $event)">
                   <IconDots :size="24" stroke-width="1.5" aria-hidden="true" />
                 </button>
                 <div v-if="openOverflowMenuId === 'file-' + file.id" class="knowledge-overflow-menu" @click.stop>
                   <button type="button" :disabled="!isFileOwner(file)" @click="downloadFile(file); openOverflowMenuId = null">
-                  <IconDownload :size="24" stroke-width="1.5" aria-hidden="true" /> Tải xuống
+                  <IconDownload :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('actions.download') }}
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openContentView(file); openOverflowMenuId = null">
-                  <IconEye :size="24" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
+                  <IconEye :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.contentView') }}
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openRename({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+                  <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.rename') }}
                   </button>
                   <button type="button" :disabled="!isFileOwner(file)" @click="openMove({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+                  <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.move') }}
                   </button>
                   <button type="button" class="knowledge-overflow-menu--danger" :disabled="!isFileOwner(file)" @click="openDelete({ type: 'file', item: file }); openOverflowMenuId = null">
-                  <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
+                  <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.delete') }}
                   </button>
                 </div>
               </span>
@@ -1057,13 +1099,13 @@ function ensureItemOwner(item: ActiveItem): boolean {
           <div v-if="displayedFolders.length === 0 && displayedFiles.length === 0" class="knowledge-empty">
             <IconFolder :size="32" stroke-width="1.5" aria-hidden="true" />
             <template v-if="isSearchActive">
-              <p>Không có file phù hợp.</p>
+              <p>{{ t('common.noResults') }}</p>
             </template>
             <template v-else-if="(explorer?.tree ?? []).length === 0 && !selectedFolderId">
-              <p>Agent chưa có thư mục tri thức nào.</p>
+              <p>{{ t('knowledge.noFolders') }}</p>
             </template>
             <template v-else>
-              <p>Thư mục này chưa có tài liệu.</p>
+              <p>{{ t('knowledge.noFiles') }}</p>
             </template>
           </div>
         </section>
@@ -1080,30 +1122,30 @@ function ensureItemOwner(item: ActiveItem): boolean {
     >
       <template v-if="contextMenu.item.type === 'file'">
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="downloadFile(contextMenu.item.item); closeContextMenu()">
-          <IconDownload :size="24" stroke-width="1.5" aria-hidden="true" /> Tải xuống
+          <IconDownload :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('actions.download') }}
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openContentView(contextMenu.item.item); closeContextMenu()">
-          <IconEye :size="24" stroke-width="1.5" aria-hidden="true" /> Xem nội dung
+          <IconEye :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.contentView') }}
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
-          <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+          <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.rename') }}
         </button>
         <button type="button" :disabled="!isFileOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
-          <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+          <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.move') }}
         </button>
         <button type="button" class="knowledge-context-menu--danger" :disabled="!isFileOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
-          <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
+          <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.delete') }}
         </button>
       </template>
       <template v-else>
         <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openRename(contextMenu.item); closeContextMenu()">
-          <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> Đổi tên
+          <IconEdit :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.rename') }}
         </button>
         <button type="button" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openMove(contextMenu.item); closeContextMenu()">
-          <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> Di chuyển
+          <IconArrowsMove :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.move') }}
         </button>
         <button type="button" class="knowledge-context-menu--danger" :disabled="!isFolderOwner(contextMenu.item.item)" @click="openDelete(contextMenu.item); closeContextMenu()">
-          <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> Xóa
+          <IconTrash :size="24" stroke-width="1.5" aria-hidden="true" /> {{ t('knowledge.delete') }}
         </button>
       </template>
     </div>
@@ -1111,9 +1153,9 @@ function ensureItemOwner(item: ActiveItem): boolean {
 
   <PopupTopOneColumn
     :open="isCreateFolderOpen"
-    title="Tạo thư mục"
-    confirm-label="Tạo"
-    cancel-label="Hủy"
+    :title="t('knowledge.createFolder')"
+    :confirm-label="t('actions.create')"
+    :cancel-label="t('actions.cancel')"
     :confirm-disabled="isBusy"
     :cancel-disabled="isBusy"
     @cancel="closeCreateFolder"
@@ -1123,19 +1165,19 @@ function ensureItemOwner(item: ActiveItem): boolean {
       <TextBoxTopLabel
         v-model="folderName"
         label-position="hidden"
-        placeholder="Tên thư mục"
+        :placeholder="t('knowledge.createFolderPlaceholder')"
         :error="createFolderErrors.name"
         @input="clearCreateFolderFieldError('name')"
       />
-      <p v-if="createFolderFormError" class="message message--error">{{ createFolderFormError }}</p>
+        <p v-if="createFolderFormError" class="message message--error">{{ createFolderFormError }}</p>
     </div>
   </PopupTopOneColumn>
 
   <PopupTopOneColumn
     :open="isRenameOpen"
-    title="Đổi tên"
-    confirm-label="Lưu"
-    cancel-label="Hủy"
+    :title="t('knowledge.rename')"
+    :confirm-label="t('actions.save')"
+    :cancel-label="t('actions.cancel')"
     :confirm-disabled="isBusy"
     :cancel-disabled="isBusy"
     @cancel="closeRename"
@@ -1145,7 +1187,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
       <TextBoxTopLabel
         v-model="renameValue"
         label-position="hidden"
-        placeholder="Tên mới"
+        :placeholder="t('knowledge.renamePlaceholder')"
         :error="renameErrors.name"
         @input="clearRenameFieldError('name')"
       />
@@ -1155,9 +1197,9 @@ function ensureItemOwner(item: ActiveItem): boolean {
 
   <PopupTopOneColumn
     :open="isMoveOpen"
-    title="Di chuyển"
-    confirm-label="Di chuyển"
-    cancel-label="Hủy"
+    :title="t('knowledge.move')"
+    :confirm-label="t('knowledge.move')"
+    :cancel-label="t('actions.cancel')"
     :confirm-disabled="isBusy"
     :cancel-disabled="isBusy"
     @cancel="closeMove"
@@ -1165,7 +1207,7 @@ function ensureItemOwner(item: ActiveItem): boolean {
   >
     <div class="knowledge-modal">
       <select v-model="moveTargetFolderId" class="knowledge-select">
-        <option :value="null">Gốc</option>
+        <option :value="null">{{ t('knowledge.root') }}</option>
         <option v-for="folder in allFolders" :key="folder.id" :value="folder.id" :disabled="activeItem?.type === 'folder' && activeItem.item.id === folder.id">
           {{ folder.name }}
         </option>
@@ -1176,15 +1218,15 @@ function ensureItemOwner(item: ActiveItem): boolean {
 
   <Dialog
     :open="isDeleteOpen"
-    title="Xác nhận xóa"
+    :title="t('agentList.confirmDeleteTitle')"
     description=""
     :busy="isBusy"
-    confirm-label="Xóa"
+    :confirm-label="t('knowledge.delete')"
     confirm-variant="danger"
     @cancel="isDeleteOpen = false"
     @confirm="submitDelete"
   >
-    <p>Bạn có chắc chắn muốn xóa <strong>{{ activeItem?.item.name }}</strong>?</p>
+    <p>{{ t('agentList.confirmDeleteBody', { name: activeItem?.item.name || '' }) }}</p>
   </Dialog>
 
   <PopupFilePreview
