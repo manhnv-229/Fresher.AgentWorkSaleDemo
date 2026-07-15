@@ -12,10 +12,23 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Demo.Api.Controllers;
 
+/// <summary>
+/// Cung cấp các endpoint quản lý agent trong phạm vi một tenant.
+/// Controller chuyển request sang agent catalog service và giữ contract response của API tenant.
+/// </summary>
 [ApiController]
 [Route("api/tenants/{tenantId:guid}/agents")]
 public sealed class AgentsController(IAgentCatalogService agentService) : ControllerBase
 {
+    /// <summary>
+    /// Lấy danh sách agent của tenant theo bộ lọc và phân trang.
+    /// <param name="tenantId">Định danh tenant sở hữu các agent.</param>
+    /// <param name="status">Trạng thái agent cần lọc.</param>
+    /// <param name="search">Từ khóa tìm kiếm theo thông tin agent.</param>
+    /// <param name="page">Số trang bắt đầu từ một.</param>
+    /// <param name="pageSize">Số agent tối đa trên một trang.</param>
+    /// <returns>Danh sách agent đã phân trang hoặc lỗi validation.</returns>
+    /// </summary>
     [HttpGet]
     [HasPermission(PermissionCodes.AgentView)]
     public async Task<ActionResult<IReadOnlyList<object>>> GetAgents(
@@ -43,6 +56,12 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
 
     [HttpGet("{agentId:guid}")]
     [HasPermission(PermissionCodes.AgentView)]
+    /// <summary>
+    /// Lấy chi tiết agent thuộc tenant theo định danh.
+    /// <param name="tenantId">Định danh tenant sở hữu agent.</param>
+    /// <param name="agentId">Định danh agent cần xem.</param>
+    /// <returns>Chi tiết agent hoặc lỗi không tìm thấy.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> GetAgentDetail(
         Guid tenantId,
         Guid agentId,
@@ -62,6 +81,12 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
 
     [HttpPost]
     [HasPermission(PermissionCodes.AgentCreate)]
+    /// <summary>
+    /// Tạo agent mới trong tenant.
+    /// <param name="tenantId">Định danh tenant sở hữu agent.</param>
+    /// <param name="request">Tên, vai trò, mô tả và biểu tượng của agent.</param>
+    /// <returns>Agent mới hoặc lỗi xác thực/nghiệp vụ.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> CreateAgent(Guid tenantId, CreateAgentRequest request, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
@@ -96,6 +121,13 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
 
     [HttpPut("{agentId:guid}")]
     [HasPermission(PermissionCodes.AgentUpdate)]
+    /// <summary>
+    /// Cập nhật thông tin agent trong tenant.
+    /// <param name="tenantId">Định danh tenant sở hữu agent.</param>
+    /// <param name="agentId">Định danh agent cần cập nhật.</param>
+    /// <param name="request">Dữ liệu mới của agent.</param>
+    /// <returns>Agent sau cập nhật hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> UpdateAgent(
         Guid tenantId,
         Guid agentId,
@@ -135,6 +167,12 @@ public sealed class AgentsController(IAgentCatalogService agentService) : Contro
 
     [HttpDelete("{agentId:guid}")]
     [HasPermission(PermissionCodes.AgentDelete)]
+    /// <summary>
+    /// Xóa mềm agent trong tenant và ghi nhận thao tác quản trị.
+    /// <param name="tenantId">Định danh tenant sở hữu agent.</param>
+    /// <param name="agentId">Định danh agent cần xóa.</param>
+    /// <returns>Không có nội dung khi xóa thành công hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     public async Task<ActionResult> DeleteAgent(
         Guid tenantId,
         Guid agentId,

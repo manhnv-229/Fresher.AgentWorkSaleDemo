@@ -11,6 +11,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services;
 
+/// <summary>
+/// Điều phối các luồng xác thực, quản lý phiên và phát hành token cho người dùng.
+/// Service được sử dụng bởi API authentication để đăng nhập, đổi mật khẩu, làm mới hoặc thu hồi phiên.
+/// Các collaborator chính gồm repository người dùng/phiên, dịch vụ quyền, bộ ký token và cache phiên.
+/// </summary>
 public sealed class AuthService(
     IAuthUserRepository authUserRepository,
     IRefreshTokenRepository refreshTokenRepository,
@@ -29,6 +34,9 @@ public sealed class AuthService(
 
     /// <summary>
     /// Xác thực thông tin đăng nhập và tạo phiên đăng nhập mới cho người dùng hợp lệ.
+    /// <param name="request">Thông tin email và mật khẩu do client gửi.</param>
+    /// <param name="ipAddress">Địa chỉ IP của client, dùng để audit và gắn với phiên.</param>
+    /// <returns>Kết quả chứa access token và refresh token nếu xác thực thành công.</returns>
     /// </summary>
     public async Task<ServiceResult<AuthTokenResult>> LoginAsync(
         LoginRequest request,
@@ -69,6 +77,10 @@ public sealed class AuthService(
 
     /// <summary>
     /// Đổi mật khẩu và thu hồi toàn bộ phiên đang còn hiệu lực của người dùng.
+    /// <param name="userId">Định danh người dùng đang yêu cầu đổi mật khẩu.</param>
+    /// <param name="request">Mật khẩu hiện tại và mật khẩu mới.</param>
+    /// <param name="ipAddress">Địa chỉ IP của client để ghi audit và đánh dấu phiên bị thu hồi.</param>
+    /// <returns>Kết quả thành công khi mật khẩu được cập nhật và các phiên được thu hồi.</returns>
     /// </summary>
     public async Task<ServiceResult<bool>> ChangePasswordAsync(
         Guid userId,
@@ -109,6 +121,9 @@ public sealed class AuthService(
 
     /// <summary>
     /// Làm mới access token bằng refresh token còn hiệu lực và xoay vòng refresh token cũ.
+    /// <param name="request">Refresh token hiện tại do client cung cấp.</param>
+    /// <param name="ipAddress">Địa chỉ IP của client để ghi nhận token mới và token bị thu hồi.</param>
+    /// <returns>Kết quả chứa cặp access token và refresh token mới nếu phiên còn hợp lệ.</returns>
     /// </summary>
     public async Task<ServiceResult<AuthTokenResult>> RefreshAsync(
         RefreshTokenRequest request,
@@ -181,6 +196,8 @@ public sealed class AuthService(
 
     /// <summary>
     /// Thu hồi refresh token hiện tại và đánh dấu phiên đăng xuất nếu còn hoạt động.
+    /// <param name="request">Refresh token của phiên cần đăng xuất.</param>
+    /// <param name="ipAddress">Địa chỉ IP của client thực hiện đăng xuất.</param>
     /// </summary>
     public async Task LogoutAsync(LogoutRequest request, string? ipAddress, CancellationToken cancellationToken)
     {
@@ -213,6 +230,8 @@ public sealed class AuthService(
 
     /// <summary>
     /// Lấy thông tin người dùng hiện tại từ định danh đã xác thực.
+    /// <param name="userId">Định danh người dùng lấy từ access token.</param>
+    /// <returns>Kết quả chứa thông tin hồ sơ hiện tại hoặc lỗi nếu không tìm thấy người dùng.</returns>
     /// </summary>
     public async Task<ServiceResult<CurrentUserResponse>> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken)
     {

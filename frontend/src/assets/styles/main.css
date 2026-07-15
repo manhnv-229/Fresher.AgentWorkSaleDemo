@@ -129,7 +129,6 @@
   outline: none;
   transition:
     border-color 120ms ease,
-    box-shadow 120ms ease,
     background 120ms ease;
 }
 
@@ -148,28 +147,30 @@
 .filter-select select:hover,
 .agent-textarea:hover {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
 }
 
 .field--hover input,
 .field--hover select,
 .field--hover .agent-textarea {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
 }
 
 .field input:focus,
 .filter-select select:focus,
 .agent-textarea:focus {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
+}
+
+.field .agent-textarea:focus-visible,
+.agent-textarea:focus-visible {
+  outline: none;
+  outline-offset: 0;
 }
 
 .field--focus input,
 .field--focus select,
 .field--focus .agent-textarea {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.12);
 }
 
 .field--invalid input,
@@ -177,21 +178,34 @@
 .field--invalid select,
 .agent-textarea--error {
   border-color: var(--color-danger);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
 }
 
 .field--validate input,
 .field--validate .agent-textarea,
 .field--validate select {
   border-color: var(--color-success);
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.08);
 }
 
 .field--verifying input,
 .field--verifying .agent-textarea,
 .field--verifying select {
   border-color: var(--color-info);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.field--invalid input:hover,
+.field--invalid select:hover,
+.field--invalid .agent-textarea:hover,
+.field--invalid input:focus,
+.field--invalid select:focus,
+.field--invalid .agent-textarea:focus {
+  border-color: var(--color-danger);
+}
+
+.create-agent__field.field--invalid .agent-textarea,
+.create-agent__field.field--invalid .agent-textarea:hover,
+.create-agent__field.field--invalid .agent-textarea:focus {
+  border-color: var(--color-danger);
+  outline: none;
 }
 
 .field--readonly input,
@@ -327,6 +341,10 @@
   box-shadow: var(--shadow-card);
   font-size: 12px;
   line-height: 16px;
+}
+
+.create-agent__field .field__tooltip {
+  top: 100%;
 }
 
 .field__feedback {
@@ -1715,9 +1733,11 @@
 .agent-header__menu-trigger {
   width: var(--button-icon-only-size);
   height: var(--button-icon-only-size);
+  padding: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--button-radius);
   background: var(--color-surface);
+  line-height: 1;
 }
 
 .agent-header__close {

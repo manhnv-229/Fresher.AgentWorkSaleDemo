@@ -3,8 +3,16 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Demo.Api.Filters;
 
+/// <summary>
+/// Bổ sung schema multipart/form-data cho endpoint nhận file trong tài liệu OpenAPI.
+/// </summary>
 public sealed class FormFileUploadFilter : IOperationFilter
 {
+    /// <summary>
+    /// Điều chỉnh OpenAPI operation để mô tả đúng các field file và field form.
+    /// <param name="operation">Operation OpenAPI cần cập nhật.</param>
+    /// <param name="context">Metadata action và parameter dùng để xây schema.</param>
+    /// </summary>
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
         var formFileParameters = context.MethodInfo.GetParameters()

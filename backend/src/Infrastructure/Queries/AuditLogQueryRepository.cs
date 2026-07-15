@@ -8,6 +8,9 @@ using Demo.Domain.Interfaces.Repository;
 
 namespace Demo.Infrastructure.Queries;
 
+/// <summary>
+/// Truy vấn audit log theo bộ lọc và phân trang từ cơ sở dữ liệu.
+/// </summary>
 public sealed class AuditLogQueryRepository(IDbConnectionFactory connectionFactory) : IAuditLogQueryRepository
 {
     public async Task<PagedResult<AuditLogEntryRow>> GetFilteredAsync(

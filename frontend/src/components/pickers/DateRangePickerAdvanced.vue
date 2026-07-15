@@ -92,6 +92,7 @@ watch(
   { deep: true, immediate: true }
 );
 
+// Chuẩn hóa khoảng ngày đang chọn rồi mới cập nhật model của component.
 function commitSelection() {
   const normalized = normalizeDateRange(pendingStartDate.value, pendingEndDate.value);
   startDate.value = normalized.startDate;
@@ -100,6 +101,7 @@ function commitSelection() {
   inputValue.value = formatRangeLabel(startDate.value, endDate.value);
 }
 
+// Mở popover với bản sao dữ liệu hiện tại để người dùng có thể hủy mà không đổi model.
 function openPopover() {
   if (isDisabled.value) {
     return;
@@ -111,6 +113,7 @@ function openPopover() {
   isOpen.value = true;
 }
 
+// Đóng popover mà không commit lựa chọn đang ở trạng thái pending.
 function closePopover() {
   isOpen.value = false;
 }
@@ -133,6 +136,7 @@ function handleBlur() {
   inputValue.value = formatRangeLabel(startDate.value, endDate.value);
 }
 
+// Chọn ngày đầu tiên, ngày kết thúc hoặc bắt đầu lại range khi click ngày sớm hơn.
 function selectDate(date: Date) {
   if (!pendingStartDate.value || (pendingStartDate.value && pendingEndDate.value)) {
     pendingStartDate.value = cloneDate(date);
@@ -149,6 +153,7 @@ function selectDate(date: Date) {
   pendingEndDate.value = cloneDate(date);
 }
 
+// Áp dụng preset vào vùng chọn tạm rồi commit ngay lập tức.
 function applyPreset(preset: DateRangePreset) {
   pendingStartDate.value = parseDate(preset.value.start);
   pendingEndDate.value = parseDate(preset.value.end);
@@ -156,11 +161,13 @@ function applyPreset(preset: DateRangePreset) {
   applySelection();
 }
 
+// Commit vùng chọn và đóng popover sau khi người dùng nhấn Đồng ý.
 function applySelection() {
   commitSelection();
   closePopover();
 }
 
+// Đóng popover khi click bên ngoài root của picker.
 function handleDocumentPointerDown(event: PointerEvent) {
   const target = event.target;
   if (target instanceof Node && rootRef.value?.contains(target)) {

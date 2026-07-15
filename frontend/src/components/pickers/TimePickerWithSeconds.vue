@@ -86,6 +86,7 @@ watch(
   { immediate: true }
 );
 
+// Dùng ngày hiện tại làm giá trị nền vì model chỉ lưu phần thời gian.
 function commitValue() {
   const date = setDateTimeParts(
     today(),
@@ -123,6 +124,7 @@ function handleInput(event: Event) {
   inputValue.value = (event.target as HTMLInputElement).value;
 }
 
+// Parse input thủ công; giá trị sai được trả về giá trị model gần nhất.
 function handleBlur() {
   handleBlurState();
   const parsedTime = parseTime(inputValue.value, true);
@@ -162,11 +164,13 @@ function selectNow() {
   pendingSeconds.value = String(nextDate.getSeconds()).padStart(2, '0');
 }
 
+// Commit các ô giờ/phút/giây đang chọn rồi đóng popover.
 function applySelection() {
   commitValue();
   closePopover();
 }
 
+// Đóng popover khi click bên ngoài component.
 function handleDocumentPointerDown(event: PointerEvent) {
   const target = event.target;
   if (target instanceof Node && rootRef.value?.contains(target)) {
@@ -343,7 +347,6 @@ onBeforeUnmount(() => {
   color: var(--color-text-subtle);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
 }
 
 .time-field__picker :deep(.field input::placeholder) {
@@ -354,7 +357,6 @@ onBeforeUnmount(() => {
 .time-field__picker :deep(.field input:focus),
 .time-field__picker :deep(.field--focus input) {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
 }
 
 .time-field__picker :deep(.picker-field__action) {

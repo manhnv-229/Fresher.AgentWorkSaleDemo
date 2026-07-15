@@ -12,10 +12,21 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Demo.Infrastructure.Services;
 
+/// <summary>
+/// Tạo JWT access token chứa định danh phiên và các quyền hiện hành của người dùng.
+/// Service được gọi sau khi xác thực thành công hoặc khi refresh token còn hợp lệ.
+/// </summary>
 public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenService
 {
     private readonly JwtOptions _options = options.Value;
 
+    /// <summary>
+    /// Chuẩn hóa danh sách quyền và ký access token theo cấu hình JWT của hệ thống.
+    /// <param name="user">Người dùng được cấp token.</param>
+    /// <param name="sessionId">Định danh phiên đăng nhập gắn với token.</param>
+    /// <param name="permissionCodes">Các mã quyền được đưa vào claim.</param>
+    /// <returns>Kết quả gồm token đã ký, thời điểm hết hạn và mã token.</returns>
+    /// </summary>
     public JwtTokenResult CreateAccessToken(User user, Guid sessionId, IEnumerable<string> permissionCodes)
     {
         var now = DateTime.UtcNow;

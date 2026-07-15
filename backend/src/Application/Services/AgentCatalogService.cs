@@ -11,6 +11,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services;
 
+/// <summary>
+/// Điều phối truy vấn và ghi dữ liệu agent theo scope nội bộ hoặc tenant.
+/// Service được API sử dụng để phân trang, xem chi tiết, tạo, cập nhật và xóa agent,
+/// đồng thời duy trì cache đọc và audit log sau các thay đổi nghiệp vụ.
+/// </summary>
 public sealed class AgentCatalogService(
     IAgentQueryRepository agentQueryRepository,
     IAgentRepository agentRepository,
@@ -28,6 +33,8 @@ public sealed class AgentCatalogService(
 
     /// <summary>
     /// Lấy danh sách agent nội bộ theo bộ lọc và phân trang.
+    /// <param name="filters">Bộ lọc trạng thái, từ khóa và thông tin phân trang.</param>
+    /// <returns>Kết quả phân trang các agent nội bộ.</returns>
     /// </summary>
     public async Task<ServiceResult<PagedResult<AgentListItem>>> GetInternalAgentsPagedAsync(
         AgentListFilters filters,
@@ -80,6 +87,9 @@ public sealed class AgentCatalogService(
 
     /// <summary>
     /// Lấy danh sách agent thuộc tenant theo bộ lọc và phân trang.
+    /// <param name="tenantId">Định danh tenant cần truy vấn.</param>
+    /// <param name="filters">Bộ lọc trạng thái, từ khóa và thông tin phân trang.</param>
+    /// <returns>Kết quả phân trang các agent của tenant.</returns>
     /// </summary>
     public async Task<ServiceResult<PagedResult<AgentListItem>>> GetTenantAgentsPagedAsync(
         Guid tenantId,
@@ -133,6 +143,8 @@ public sealed class AgentCatalogService(
 
     /// <summary>
     /// Lấy danh sách toàn bộ agent thuộc scope tenant để quản trị viên quản lý tập trung.
+    /// <param name="filters">Bộ lọc trạng thái, từ khóa và thông tin phân trang.</param>
+    /// <returns>Kết quả phân trang các agent tenant.</returns>
     /// </summary>
     public async Task<ServiceResult<PagedResult<AgentListItem>>> GetExternalAgentsPagedAsync(
         AgentListFilters filters,
@@ -159,6 +171,8 @@ public sealed class AgentCatalogService(
 
     /// <summary>
     /// Lấy thông tin chi tiết của agent nội bộ.
+    /// <param name="agentId">Định danh agent cần xem.</param>
+    /// <returns>Thông tin chi tiết agent hoặc lỗi nếu không tồn tại.</returns>
     /// </summary>
     public async Task<ServiceResult<AgentDetailItem>> GetInternalAgentDetailAsync(
         Guid agentId,
@@ -204,6 +218,9 @@ public sealed class AgentCatalogService(
 
     /// <summary>
     /// Lấy thông tin chi tiết của agent thuộc tenant.
+    /// <param name="tenantId">Định danh tenant sở hữu agent.</param>
+    /// <param name="agentId">Định danh agent cần xem.</param>
+    /// <returns>Thông tin chi tiết agent hoặc lỗi nếu không tồn tại.</returns>
     /// </summary>
     public async Task<ServiceResult<AgentDetailItem>> GetTenantAgentDetailAsync(
         Guid tenantId,

@@ -20,6 +20,7 @@ export const useToastStore = defineStore('toast', () => {
 
   const visibleToasts = computed(() => toasts.value.slice(0, MAX_VISIBLE_TOASTS));
 
+  // Thêm toast ở đầu danh sách và giới hạn số toast được giữ trên màn hình.
   function push(toast: Omit<ToastItem, 'id'>) {
     const item: ToastItem = {
       id: nextId.value++,
@@ -31,6 +32,7 @@ export const useToastStore = defineStore('toast', () => {
     return item.id;
   }
 
+  // Xóa toast và hủy timer tương ứng để timer cũ không tác động lên item mới.
   function remove(id: number) {
     toasts.value = toasts.value.filter((item) => item.id !== id);
     const timer = timers.get(id);
@@ -40,6 +42,7 @@ export const useToastStore = defineStore('toast', () => {
     }
   }
 
+  // Dọn toàn bộ toast và timer khi người dùng đóng stack hoặc store bị reset.
   function clear() {
     for (const timer of timers.values()) {
       window.clearTimeout(timer);
@@ -49,6 +52,7 @@ export const useToastStore = defineStore('toast', () => {
     toasts.value = [];
   }
 
+  // Mỗi toast chỉ có một timer; gọi lại hàm sẽ thay timer cũ bằng timer mới.
   function scheduleRemoval(id: number) {
     const existingTimer = timers.get(id);
     if (existingTimer) {

@@ -8,6 +8,9 @@ using Demo.Domain.Interfaces.Repository;
 
 namespace Demo.Infrastructure.Queries;
 
+/// <summary>
+/// Truy vấn danh sách người dùng phục vụ màn hình quản trị.
+/// </summary>
 public sealed class UserQueryRepository(IDbConnectionFactory connectionFactory) : IUserQueryRepository
 {
     public async Task<PagedResult<AdminUserSummaryRow>> GetFilteredAsync(

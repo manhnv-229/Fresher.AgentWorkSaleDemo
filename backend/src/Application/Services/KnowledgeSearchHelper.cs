@@ -18,6 +18,8 @@ public static class KnowledgeSearchHelper
 
     /// <summary>
     /// Normalize text để so khớp search: trim, chuyển chữ hoa, và trả về chuỗi rỗng nếu null.
+    /// <param name="value">Chuỗi đầu vào cần chuẩn hóa.</param>
+    /// <returns>Chuỗi đã trim và chuyển chữ hoa.</returns>
     /// </summary>
     public static string Normalize(string? value)
     {
@@ -26,6 +28,9 @@ public static class KnowledgeSearchHelper
 
     /// <summary>
     /// Tính điểm khớp tên. Score cao hơn nghĩa là match liên quan hơn.
+    /// <param name="normalizedQuery">Từ khóa đã chuẩn hóa.</param>
+    /// <param name="normalizedTarget">Tên đích đã chuẩn hóa.</param>
+    /// <returns>Điểm exact, contains, subsequence hoặc 0 nếu không khớp.</returns>
     /// </summary>
     public static int GetMatchScore(string? normalizedQuery, string? normalizedTarget)
     {
@@ -49,6 +54,9 @@ public static class KnowledgeSearchHelper
 
     /// <summary>
     /// Kiểm tra query có phải là subsequence của target không.
+    /// <param name="normalizedQuery">Từ khóa đã chuẩn hóa.</param>
+    /// <param name="normalizedTarget">Chuỗi đích đã chuẩn hóa.</param>
+    /// <returns>True nếu query khớp target theo một trong các rule tìm kiếm.</returns>
     /// </summary>
     public static bool IsMatch(string? normalizedQuery, string? normalizedTarget)
     {

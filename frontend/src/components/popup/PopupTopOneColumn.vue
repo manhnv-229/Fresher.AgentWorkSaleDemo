@@ -181,6 +181,7 @@ onBeforeUnmount(() => {
 .popup {
   width: fit-content;
   max-width: calc(100vw - 48px);
+  min-width: 500px;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 12px;

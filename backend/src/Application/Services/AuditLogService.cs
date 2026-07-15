@@ -8,6 +8,10 @@ using AutoMapper;
 
 namespace Demo.Application.Services;
 
+/// <summary>
+/// Điều phối việc truy vấn và ghi audit log của các thao tác nghiệp vụ.
+/// Service được controller sử dụng để lọc log phân trang và các service khác sử dụng để ghi lịch sử thay đổi.
+/// </summary>
 public sealed class AuditLogService(
     IAuditLogQueryRepository auditLogQueryRepository,
     IAuditLogRepository auditLogRepository,
@@ -18,6 +22,8 @@ public sealed class AuditLogService(
 
     /// <summary>
     /// Lấy danh sách audit log theo bộ lọc thời gian và hành động.
+    /// <param name="filter">Bộ lọc tìm kiếm, thời gian, action, target type và phân trang.</param>
+    /// <returns>Kết quả audit log đã phân trang.</returns>
     /// </summary>
     public async Task<ServiceResult<PagedResult<AuditLogEntryResponse>>> GetAuditLogsAsync(
         AuditLogFilterRequest? filter,
@@ -47,6 +53,14 @@ public sealed class AuditLogService(
 
     /// <summary>
     /// Ghi một bản ghi audit log mới xuống cơ sở dữ liệu.
+    /// <param name="action">Tên thao tác nghiệp vụ.</param>
+    /// <param name="userName">Tên người thực hiện thao tác.</param>
+    /// <param name="userId">Định danh người thực hiện, nếu có.</param>
+    /// <param name="tenantId">Định danh tenant liên quan, nếu có.</param>
+    /// <param name="ipAddress">Địa chỉ IP của client, nếu có.</param>
+    /// <param name="description">Mô tả chi tiết thay đổi.</param>
+    /// <param name="targetType">Loại đối tượng bị tác động.</param>
+    /// <param name="targetId">Định danh đối tượng bị tác động.</param>
     /// </summary>
     public async Task RecordAsync(
         string action,

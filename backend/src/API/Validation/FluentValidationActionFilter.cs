@@ -12,6 +12,12 @@ namespace Demo.Api.Validation;
 /// </summary>
 public sealed class FluentValidationActionFilter : IAsyncActionFilter
 {
+    /// <summary>
+    /// Validate argument trước khi chuyển quyền xử lý cho action tiếp theo.
+    /// <param name="context">Context chứa argument và metadata của action.</param>
+    /// <param name="next">Delegate gọi action khi validation thành công.</param>
+    /// <returns>Task hoàn tất sau khi action được thực thi hoặc response lỗi được tạo.</returns>
+    /// </summary>
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         foreach (var argument in context.ActionArguments.Values)

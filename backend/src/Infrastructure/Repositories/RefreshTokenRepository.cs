@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Infrastructure.Repositories;
 
+/// <summary>
+/// Truy vấn và thêm refresh token cùng quan hệ user/session liên quan.
+/// </summary>
 public sealed class RefreshTokenRepository(DemoDbContext dbContext) : IRefreshTokenRepository
 {
     public Task<RefreshToken?> GetByTokenHashWithUserAndSessionAsync(string tokenHash, CancellationToken cancellationToken)

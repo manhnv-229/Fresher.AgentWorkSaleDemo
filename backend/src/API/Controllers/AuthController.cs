@@ -11,6 +11,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Demo.Api.Controllers;
 
+/// <summary>
+/// Cung cấp các endpoint xác thực và quản lý phiên đăng nhập của người dùng.
+/// Controller được sử dụng bởi client đăng nhập, làm mới token, đăng xuất và đổi mật khẩu.
+/// </summary>
 [ApiController]
 [Route("api/auth")]
 public sealed class AuthController(IAuthService authService) : ControllerBase
@@ -19,6 +23,8 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
     /// <summary>
     /// Đăng nhập và ghi refresh token về cookie HTTP-only khi xác thực thành công.
+    /// <param name="request">Thông tin đăng nhập do client gửi.</param>
+    /// <returns>Access token và thông tin hết hạn, hoặc lỗi xác thực.</returns>
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
@@ -36,6 +42,8 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
     /// <summary>
     /// Làm mới access token từ refresh token lấy ưu tiên từ cookie an toàn.
+    /// <param name="request">Refresh token trong body nếu client không gửi cookie.</param>
+    /// <returns>Access token mới và refresh token đã xoay vòng, hoặc lỗi phiên.</returns>
     /// </summary>
     [HttpPost("refresh-token")]
     [AllowAnonymous]
@@ -54,6 +62,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
     /// <summary>
     /// Đăng xuất phiên hiện tại và xóa refresh token cookie phía trình duyệt.
+    /// <param name="request">Refresh token trong body nếu cần dùng thay cho cookie.</param>
     /// </summary>
     [HttpPost("logout")]
     [AllowAnonymous]
@@ -67,6 +76,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
     /// <summary>
     /// Đổi mật khẩu cho người dùng đang đăng nhập.
+    /// <param name="request">Mật khẩu hiện tại và mật khẩu mới.</param>
     /// </summary>
     [HttpPost("change-password")]
     [Authorize]
@@ -98,6 +108,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
     /// <summary>
     /// Trả về hồ sơ cơ bản của người dùng hiện tại.
+    /// <returns>Thông tin người dùng tương ứng với access token hiện tại.</returns>
     /// </summary>
     [HttpGet("me")]
     [Authorize]

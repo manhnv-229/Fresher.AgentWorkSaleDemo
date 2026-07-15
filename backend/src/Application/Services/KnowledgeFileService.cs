@@ -52,6 +52,12 @@ public sealed class KnowledgeFileService(
     /// <summary>
     /// Upload file tri thức lên MinIO và lưu metadata vào database. Kiểm tra quyền ghi, dung lượng, loại file,
     /// chặn trùng nội dung trong cùng thư mục, và tái sử dụng storage object khi cùng agent đã có nội dung đó ở thư mục khác.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu file.</param>
+    /// <param name="userId">Định danh người upload.</param>
+    /// <param name="ipAddress">Địa chỉ IP dùng để ghi audit log.</param>
+    /// <param name="upload">Stream và metadata của file upload.</param>
+    /// <returns>Metadata file mới hoặc lỗi storage/validation.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> UploadFileAsync(
         Guid tenantId,
@@ -197,6 +203,11 @@ public sealed class KnowledgeFileService(
     /// <summary>
     /// Tải file tri thức từ MinIO về. Trả về nội dung file, tên hiển thị, content type, và dung lượng.
     /// Xử lý lỗi storage unreachable và timed-out.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần tải.</param>
+    /// <param name="userId">Định danh người yêu cầu tải file.</param>
+    /// <returns>Nội dung file và metadata download hoặc lỗi storage.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeDownloadResult>> DownloadFileAsync(
         Guid tenantId,
@@ -248,6 +259,11 @@ public sealed class KnowledgeFileService(
 
     /// <summary>
     /// Xem trước file tri thức theo định dạng mà trình duyệt hỗ trợ. Hiện tại backend chuyển đổi PPTX sang PDF.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần preview.</param>
+    /// <param name="userId">Định danh người yêu cầu preview.</param>
+    /// <returns>Nội dung preview và content type hoặc lỗi preview.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgePreviewResult>> PreviewFileAsync(
         Guid tenantId,
@@ -314,6 +330,11 @@ public sealed class KnowledgeFileService(
 
     /// <summary>
     /// Lấy thông tin chi tiết file tri thức bao gồm metadata storage và thông tin người tạo.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần xem.</param>
+    /// <param name="userId">Định danh người yêu cầu.</param>
+    /// <returns>Chi tiết file hoặc lỗi không tìm thấy.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeFileDetail>> GetFileDetailAsync(
         Guid tenantId,
@@ -345,6 +366,13 @@ public sealed class KnowledgeFileService(
 
     /// <summary>
     /// Đổi tên file tri thức. Kiểm tra trùng tên trong cùng thư mục và ghi nhận audit log với tên actor đã resolve.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần đổi tên.</param>
+    /// <param name="userId">Định danh người thực hiện.</param>
+    /// <param name="ipAddress">Địa chỉ IP dùng để ghi audit log.</param>
+    /// <param name="command">Tên mới của file.</param>
+    /// <returns>File sau cập nhật hoặc lỗi nghiệp vụ.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> RenameFileAsync(
         Guid tenantId,
@@ -403,6 +431,13 @@ public sealed class KnowledgeFileService(
 
     /// <summary>
     /// Di chuyển file đến thư mục đích. Kiểm tra thư mục đích tồn tại và trùng tên trong thư mục đích.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần di chuyển.</param>
+    /// <param name="userId">Định danh người thực hiện.</param>
+    /// <param name="ipAddress">Địa chỉ IP dùng để ghi audit log.</param>
+    /// <param name="command">Thư mục đích, có thể là root.</param>
+    /// <returns>File sau di chuyển hoặc lỗi nghiệp vụ.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeFileItem>> MoveFileAsync(
         Guid tenantId,
@@ -464,6 +499,12 @@ public sealed class KnowledgeFileService(
     /// <summary>
     /// Xóa mềm file tri thức. Chỉ xóa vật lý object khỏi MinIO khi file đang xóa là active reference cuối cùng của storage object trong agent.
     /// Nếu xóa vật lý thất bại, metadata vẫn được giữ làm source of truth để rollback an toàn.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần xóa.</param>
+    /// <param name="userId">Định danh người thực hiện.</param>
+    /// <param name="ipAddress">Địa chỉ IP dùng để ghi audit log.</param>
+    /// <returns>True khi xóa thành công hoặc lỗi nghiệp vụ.</returns>
     /// </summary>
     public async Task<ServiceResult<bool>> DeleteFileAsync(
         Guid tenantId,

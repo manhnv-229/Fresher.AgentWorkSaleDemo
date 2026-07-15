@@ -8,6 +8,10 @@ using Demo.Domain.Interfaces.Repository;
 
 namespace Demo.Infrastructure.Queries;
 
+/// <summary>
+/// Truy vấn dữ liệu agent theo scope, tenant, bộ lọc và phân trang.
+/// Repository chỉ đọc dùng bởi application service để tạo danh sách và chi tiết agent.
+/// </summary>
 public sealed class AgentQueryRepository(IDbConnectionFactory connectionFactory) : IAgentQueryRepository
 {
     public Task<PagedResult<AgentListRow>> GetInternalAgentsPagedAsync(

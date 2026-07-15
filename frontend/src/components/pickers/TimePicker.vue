@@ -311,7 +311,6 @@ onBeforeUnmount(() => {
   color: var(--color-text-subtle);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
 }
 
 .time-field__picker :deep(.field input::placeholder) {
@@ -322,7 +321,6 @@ onBeforeUnmount(() => {
 .time-field__picker :deep(.field input:focus),
 .time-field__picker :deep(.field--focus input) {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
 }
 
 .time-field__picker :deep(.picker-field__action) {

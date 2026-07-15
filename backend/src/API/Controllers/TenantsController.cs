@@ -10,10 +10,18 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Demo.Api.Controllers;
 
+/// <summary>
+/// Cung cấp các endpoint quản lý danh mục tenant.
+/// Controller dùng tenant catalog service để đọc, tạo, cập nhật và khóa tenant từ API quản trị.
+/// </summary>
 [ApiController]
 [Route("api/tenants")]
 public sealed class TenantsController(ITenantCatalogService tenantCatalogService) : ControllerBase
 {
+    /// <summary>
+    /// Lấy danh sách tenant để hiển thị trong danh mục quản trị.
+    /// <returns>Danh sách tenant hiện có.</returns>
+    /// </summary>
     [HttpGet]
     [HasPermission(PermissionCodes.TenantView)]
     public async Task<ActionResult<IReadOnlyList<object>>> GetTenants(CancellationToken cancellationToken)
@@ -24,6 +32,11 @@ public sealed class TenantsController(ITenantCatalogService tenantCatalogService
 
     [HttpGet("{tenantId:guid}")]
     [HasPermission(PermissionCodes.TenantView)]
+    /// <summary>
+    /// Lấy thông tin chi tiết của một tenant theo định danh.
+    /// <param name="tenantId">Định danh tenant cần xem.</param>
+    /// <returns>Thông tin tenant hoặc lỗi không tìm thấy.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> GetTenantById(
         Guid tenantId,
         CancellationToken cancellationToken)
@@ -42,6 +55,11 @@ public sealed class TenantsController(ITenantCatalogService tenantCatalogService
 
     [HttpPost]
     [HasPermission(PermissionCodes.TenantCreate)]
+    /// <summary>
+    /// Tạo tenant mới từ dữ liệu request đã được validate.
+    /// <param name="request">Tên và mã tenant cần tạo.</param>
+    /// <returns>Tenant mới hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> CreateTenant(CreateTenantRequest request, CancellationToken cancellationToken)
     {
         var result = await tenantCatalogService.CreateTenantAsync(
@@ -63,6 +81,12 @@ public sealed class TenantsController(ITenantCatalogService tenantCatalogService
 
     [HttpPut("{tenantId:guid}")]
     [HasPermission(PermissionCodes.TenantUpdate)]
+    /// <summary>
+    /// Cập nhật tên và mã của tenant.
+    /// <param name="tenantId">Định danh tenant cần cập nhật.</param>
+    /// <param name="request">Thông tin mới của tenant.</param>
+    /// <returns>Tenant sau cập nhật hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> UpdateTenant(
         Guid tenantId,
         UpdateTenantRequest request,
@@ -92,6 +116,11 @@ public sealed class TenantsController(ITenantCatalogService tenantCatalogService
 
     [HttpPost("{tenantId:guid}/lock")]
     [HasPermission(PermissionCodes.TenantUpdate)]
+    /// <summary>
+    /// Khóa tenant để ngăn các thao tác tiếp theo trong hệ thống.
+    /// <param name="tenantId">Định danh tenant cần khóa.</param>
+    /// <returns>Tenant sau khi khóa hoặc lỗi chuyển trạng thái.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> LockTenant(
         Guid tenantId,
         CancellationToken cancellationToken)

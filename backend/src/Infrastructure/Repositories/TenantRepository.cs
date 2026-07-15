@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Infrastructure.Repositories;
 
+/// <summary>
+/// Đọc và cập nhật tenant catalog trong cơ sở dữ liệu.
+/// </summary>
 public sealed class TenantCatalogRepository(DemoDbContext dbContext) : ITenantCatalogRepository
 {
     public async Task<IReadOnlyList<Tenant>> GetAllAsync(CancellationToken cancellationToken)

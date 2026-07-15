@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Infrastructure.Repositories;
 
+/// <summary>
+/// Truy vấn người dùng cho các luồng xác thực và quản trị tài khoản.
+/// </summary>
 public sealed class AuthUserRepository(DemoDbContext dbContext) : IAuthUserRepository
 {
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken)

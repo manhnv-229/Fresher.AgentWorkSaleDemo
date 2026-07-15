@@ -7,8 +7,15 @@ using Demo.Application.Interfaces.Repository;
 
 namespace Demo.Infrastructure.Queries;
 
+/// <summary>
+/// Truy vấn danh mục tenant và chi tiết tenant từ cơ sở dữ liệu.
+/// </summary>
 public sealed class TenantCatalogQueryRepository(IDbConnectionFactory connectionFactory) : ITenantCatalogQueryRepository
 {
+    /// <summary>
+    /// Lấy toàn bộ tenant theo thứ tự hiển thị.
+    /// <returns>Danh sách tenant.</returns>
+    /// </summary>
     public async Task<IReadOnlyList<TenantListRow>> GetAllAsync(CancellationToken cancellationToken)
     {
         const string sql = """
@@ -22,6 +29,11 @@ public sealed class TenantCatalogQueryRepository(IDbConnectionFactory connection
         return rows.AsList();
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết tenant theo định danh.
+    /// <param name="tenantId">Định danh tenant cần lấy.</param>
+    /// <returns>Chi tiết tenant hoặc null nếu không tồn tại.</returns>
+    /// </summary>
     public async Task<TenantDetailRow?> GetByIdAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         const string sql = """

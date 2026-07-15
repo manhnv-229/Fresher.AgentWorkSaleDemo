@@ -18,6 +18,7 @@ export function usePickerField(props: PickerFieldProps, fallbackId: string, popo
   const inputRef = ref<HTMLInputElement | null>(null);
   const isFocused = ref(false);
 
+  // Ưu tiên id do caller truyền vào, fallback theo name rồi id cố định để aria luôn hợp lệ.
   const inputId = computed(() => props.id || (attrs.id as string | undefined) || props.name || fallbackId);
   const isInvalidState = computed(() => Boolean(props.error) || props.state === 'error');
   const isHoverState = computed(() => props.state === 'hover');
@@ -34,11 +35,13 @@ export function usePickerField(props: PickerFieldProps, fallbackId: string, popo
     return undefined;
   });
 
+  // Chỉ forward attrs hành vi; class/style do component picker tự kiểm soát.
   const inputAttrs = computed(() => {
     const { class: _class, style: _style, ...rest } = attrs;
     return rest;
   });
 
+  // State focus dùng để hiển thị tooltip lỗi và trạng thái viền tương ứng.
   function handleFocus() {
     isFocused.value = true;
   }

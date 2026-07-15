@@ -12,10 +12,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Demo.Api.Controllers;
 
+/// <summary>
+/// Cung cấp các endpoint quản trị agent nội bộ.
+/// Controller chuyển request HTTP thành command cho service catalog và trả response theo contract API.
+/// </summary>
 [ApiController]
 [Route("api/admin/agents/internal")]
 public sealed class AdminAgentsController(IAgentCatalogService agentService) : ControllerBase
 {
+    /// <summary>
+    /// Lấy danh sách agent nội bộ theo bộ lọc và phân trang.
+    /// <param name="status">Trạng thái agent cần lọc.</param>
+    /// <param name="search">Từ khóa tìm kiếm.</param>
+    /// <param name="page">Số trang bắt đầu từ một.</param>
+    /// <param name="pageSize">Số phần tử trên một trang.</param>
+    /// <returns>Danh sách agent hoặc lỗi validation.</returns>
+    /// </summary>
     [HttpGet]
     [HasPermission(PermissionCodes.AgentView)]
     public async Task<ActionResult<IReadOnlyList<object>>> GetInternalAgents(
@@ -41,6 +53,11 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
 
     [HttpGet("{agentId:guid}")]
     [HasPermission(PermissionCodes.AgentView)]
+    /// <summary>
+    /// Lấy chi tiết một agent nội bộ theo định danh.
+    /// <param name="agentId">Định danh agent cần xem.</param>
+    /// <returns>Chi tiết agent hoặc lỗi không tìm thấy.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> GetInternalAgentDetail(
         Guid agentId,
         CancellationToken cancellationToken)
@@ -59,6 +76,11 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
 
     [HttpPost]
     [HasPermission(PermissionCodes.AgentCreate)]
+    /// <summary>
+    /// Tạo agent nội bộ từ dữ liệu request đã được bind và validate.
+    /// <param name="request">Tên, vai trò và thông tin mô tả của agent.</param>
+    /// <returns>Agent mới được tạo hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> CreateInternalAgent(CreateAgentRequest request, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
@@ -85,6 +107,12 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
 
     [HttpPut("{agentId:guid}")]
     [HasPermission(PermissionCodes.AgentUpdate)]
+    /// <summary>
+    /// Cập nhật thông tin và trạng thái của agent nội bộ.
+    /// <param name="agentId">Định danh agent cần cập nhật.</param>
+    /// <param name="request">Dữ liệu mới của agent.</param>
+    /// <returns>Agent sau cập nhật hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     public async Task<ActionResult<object>> UpdateInternalAgent(
         Guid agentId,
         UpdateAgentRequest request,
@@ -122,6 +150,11 @@ public sealed class AdminAgentsController(IAgentCatalogService agentService) : C
 
     [HttpDelete("{agentId:guid}")]
     [HasPermission(PermissionCodes.AgentDelete)]
+    /// <summary>
+    /// Xóa mềm agent nội bộ và ghi nhận thao tác quản trị.
+    /// <param name="agentId">Định danh agent cần xóa.</param>
+    /// <returns>Không có nội dung khi xóa thành công.</returns>
+    /// </summary>
     public async Task<ActionResult> DeleteInternalAgent(
         Guid agentId,
         CancellationToken cancellationToken)

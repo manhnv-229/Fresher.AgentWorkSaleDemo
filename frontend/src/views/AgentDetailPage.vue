@@ -24,6 +24,10 @@ const editName = ref('');
 const editRole = ref('');
 const editDescription = ref('');
 const editIcon = ref('mint');
+const isEditRoleFocused = ref(false);
+const isEditRoleHovered = ref(false);
+const isEditDescriptionFocused = ref(false);
+const isEditDescriptionHovered = ref(false);
 const persistedAgent = ref<AgentDetail | null>(null);
 const { isEditing, isSaving } = editor;
 const {
@@ -80,6 +84,8 @@ const {
 const scope = computed(() => (route.query.scope as string) || 'internal');
 const tenantId = computed(() => (route.query.tenantId as string) || '');
 const shouldStartInEdit = computed(() => route.query.edit === '1');
+const showEditRoleTooltip = computed(() => Boolean(editErrors.value.role) && (isEditRoleFocused.value || isEditRoleHovered.value));
+const showEditDescriptionTooltip = computed(() => Boolean(editErrors.value.description) && (isEditDescriptionFocused.value || isEditDescriptionHovered.value));
 
 const avatarOptions = [
   { id: 'mint', label: 'Mint', accent: 'linear-gradient(135deg, #63e6be, #12b886)' },
@@ -179,6 +185,38 @@ function beginEdit() {
 function cancelEdit() {
   syncFormFromPersistedAgent();
   isEditing.value = false;
+}
+
+function handleEditRoleFocus() {
+  isEditRoleFocused.value = true;
+}
+
+function handleEditRoleBlur() {
+  isEditRoleFocused.value = false;
+}
+
+function handleEditRoleMouseEnter() {
+  isEditRoleHovered.value = true;
+}
+
+function handleEditRoleMouseLeave() {
+  isEditRoleHovered.value = false;
+}
+
+function handleEditDescriptionFocus() {
+  isEditDescriptionFocused.value = true;
+}
+
+function handleEditDescriptionBlur() {
+  isEditDescriptionFocused.value = false;
+}
+
+function handleEditDescriptionMouseEnter() {
+  isEditDescriptionHovered.value = true;
+}
+
+function handleEditDescriptionMouseLeave() {
+  isEditDescriptionHovered.value = false;
 }
 
 // Lưu draft giữ nguyên status hiện tại của agent.
@@ -282,29 +320,69 @@ async function submitSaveWithStatus(status: string) {
         </div>
         <div class="create-agent__group">
         <label class="create-agent__label" for="edit-role">{{ t('agentDetail.role') }}</label>
-          <textarea
-            id="edit-role"
-            v-model="editRole"
-            class="agent-textarea"
-            rows="3"
-          :placeholder="t('agentDetail.role')"
-            :disabled="!isEditing"
-            @input="clearEditFieldError('role')"
-          />
-          <p v-if="editErrors.role" class="message message--error">{{ editErrors.role }}</p>
+          <div
+            class="field field--label-none create-agent__field"
+            :class="{ 'field--invalid': Boolean(editErrors.role) }"
+            @mouseenter="handleEditRoleMouseEnter"
+            @mouseleave="handleEditRoleMouseLeave"
+          >
+            <div class="field__body">
+              <div class="field__control">
+                <textarea
+                  id="edit-role"
+                  v-model="editRole"
+                  class="agent-textarea"
+                  rows="3"
+                  :placeholder="t('agentDetail.role')"
+                  :disabled="!isEditing"
+                  :aria-invalid="editErrors.role ? 'true' : 'false'"
+                  :aria-describedby="editErrors.role ? 'edit-role-error' : undefined"
+                  @focus="handleEditRoleFocus"
+                  @blur="handleEditRoleBlur"
+                  @input="clearEditFieldError('role')"
+                />
+                <div v-if="showEditRoleTooltip" class="field__tooltip" role="tooltip">
+                  {{ editErrors.role }}
+                </div>
+              </div>
+              <span v-if="editErrors.role && !showEditRoleTooltip" id="edit-role-error" class="sr-only">
+                {{ editErrors.role }}
+              </span>
+            </div>
+          </div>
         </div>
         <div class="create-agent__group">
             <label class="create-agent__label" for="edit-desc">{{ t('agentDetail.formDescription') }}</label>
-          <textarea
-            id="edit-desc"
-            v-model="editDescription"
-            class="agent-textarea"
-            rows="4"
-            :placeholder="t('agentDetail.formDescriptionPlaceholder')"
-            :disabled="!isEditing"
-            @input="clearEditFieldError('description')"
-          />
-          <p v-if="editErrors.description" class="message message--error">{{ editErrors.description }}</p>
+          <div
+            class="field field--label-none create-agent__field"
+            :class="{ 'field--invalid': Boolean(editErrors.description) }"
+            @mouseenter="handleEditDescriptionMouseEnter"
+            @mouseleave="handleEditDescriptionMouseLeave"
+          >
+            <div class="field__body">
+              <div class="field__control">
+                <textarea
+                  id="edit-desc"
+                  v-model="editDescription"
+                  class="agent-textarea"
+                  rows="4"
+                  :placeholder="t('agentDetail.formDescriptionPlaceholder')"
+                  :disabled="!isEditing"
+                  :aria-invalid="editErrors.description ? 'true' : 'false'"
+                  :aria-describedby="editErrors.description ? 'edit-description-error' : undefined"
+                  @focus="handleEditDescriptionFocus"
+                  @blur="handleEditDescriptionBlur"
+                  @input="clearEditFieldError('description')"
+                />
+                <div v-if="showEditDescriptionTooltip" class="field__tooltip" role="tooltip">
+                  {{ editErrors.description }}
+                </div>
+              </div>
+              <span v-if="editErrors.description && !showEditDescriptionTooltip" id="edit-description-error" class="sr-only">
+                {{ editErrors.description }}
+              </span>
+            </div>
+          </div>
         </div>
         <p v-if="editFormError" class="message message--error">{{ editFormError }}</p>
       </div>

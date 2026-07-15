@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Infrastructure.Repositories;
 
+/// <summary>
+/// Ghi và truy vấn các phiên đăng nhập của người dùng.
+/// </summary>
 public sealed class UserSessionRepository(DemoDbContext dbContext) : IUserSessionRepository
 {
     public void Add(UserSession session)

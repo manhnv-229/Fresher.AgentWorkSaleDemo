@@ -28,6 +28,12 @@ public sealed class KnowledgeFolderService(
 
     /// <summary>
     /// Tạo mới một thư mục tri thức agent. Kiểm tra quyền ghi, tên hợp lệ, và trùng tên trong cùng thư mục cha trước khi persist.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu thư mục.</param>
+    /// <param name="userId">Định danh người tạo thư mục.</param>
+    /// <param name="ipAddress">Địa chỉ IP dùng để ghi audit log.</param>
+    /// <param name="command">Tên và thư mục cha của thư mục mới.</param>
+    /// <returns>Thư mục mới hoặc lỗi validation/quyền.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> CreateFolderAsync(
         Guid tenantId,
@@ -85,6 +91,13 @@ public sealed class KnowledgeFolderService(
 
     /// <summary>
     /// Đổi tên thư mục tri thức. Kiểm tra trùng tên trong cùng thư mục cha và ghi nhận audit log với tên actor đã resolve.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu thư mục.</param>
+    /// <param name="folderId">Định danh thư mục cần đổi tên.</param>
+    /// <param name="userId">Định danh người thực hiện.</param>
+    /// <param name="ipAddress">Địa chỉ IP dùng để ghi audit log.</param>
+    /// <param name="command">Tên mới của thư mục.</param>
+    /// <returns>Thư mục sau cập nhật hoặc lỗi nghiệp vụ.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> RenameFolderAsync(
         Guid tenantId,
@@ -140,6 +153,13 @@ public sealed class KnowledgeFolderService(
 
     /// <summary>
     /// Di chuyển thư mục đến thư mục đích. Kiểm tra không di chuyển vào chính nó hoặc con cháu, và trùng tên trong thư mục đích.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu thư mục.</param>
+    /// <param name="folderId">Định danh thư mục cần di chuyển.</param>
+    /// <param name="userId">Định danh người thực hiện.</param>
+    /// <param name="ipAddress">Địa chỉ IP dùng để ghi audit log.</param>
+    /// <param name="command">Thư mục đích, có thể là root.</param>
+    /// <returns>Thư mục sau di chuyển hoặc lỗi ràng buộc cây.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeFolderItem>> MoveFolderAsync(
         Guid tenantId,
@@ -209,6 +229,12 @@ public sealed class KnowledgeFolderService(
     /// <summary>
     /// Xóa mềm toàn bộ subtree thư mục: đánh dấu deleted cho thư mục, tất cả con cháu, và file thuộc subtree.
     /// Không xóa vật lý object storage để giữ an toàn rollback.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent sở hữu thư mục.</param>
+    /// <param name="folderId">Định danh thư mục cần xóa.</param>
+    /// <param name="userId">Định danh người thực hiện.</param>
+    /// <param name="ipAddress">Địa chỉ IP dùng để ghi audit log.</param>
+    /// <returns>True khi xóa thành công hoặc lỗi nghiệp vụ.</returns>
     /// </summary>
     public async Task<ServiceResult<bool>> DeleteFolderAsync(
         Guid tenantId,

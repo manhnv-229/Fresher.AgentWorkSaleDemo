@@ -348,14 +348,13 @@ onBeforeUnmount(() => {
 .dropdown-list__anchor {
   position: relative;
   border-radius: var(--field-radius);
-  transition: box-shadow 120ms ease;
 }
 
 .dropdown-list__anchor:hover,
 .field--hover .dropdown-list__anchor,
 .field--focus .dropdown-list__anchor,
 .dropdown-list__anchor:focus-within {
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
+  border-color: var(--color-brand);
 }
 
 .dropdown-list__control {

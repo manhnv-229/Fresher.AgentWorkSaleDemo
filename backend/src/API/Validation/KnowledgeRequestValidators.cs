@@ -4,6 +4,9 @@ using FluentValidation;
 
 namespace Demo.Api.Validation;
 
+/// <summary>
+/// Kiểm tra request tạo thư mục tri thức trước khi xử lý nghiệp vụ.
+/// </summary>
 public sealed class CreateKnowledgeFolderRequestValidator : AbstractValidator<CreateKnowledgeFolderRequest>
 {
     public CreateKnowledgeFolderRequestValidator()
@@ -15,6 +18,9 @@ public sealed class CreateKnowledgeFolderRequestValidator : AbstractValidator<Cr
     }
 }
 
+/// <summary>
+/// Kiểm tra request đổi tên item tri thức.
+/// </summary>
 public sealed class RenameKnowledgeItemRequestValidator : AbstractValidator<RenameKnowledgeItemRequest>
 {
     public RenameKnowledgeItemRequestValidator()
@@ -26,6 +32,9 @@ public sealed class RenameKnowledgeItemRequestValidator : AbstractValidator<Rena
     }
 }
 
+/// <summary>
+/// Kiểm tra request di chuyển item tri thức.
+/// </summary>
 public sealed class MoveKnowledgeItemRequestValidator : AbstractValidator<MoveKnowledgeItemRequest>
 {
     public MoveKnowledgeItemRequestValidator()
@@ -37,6 +46,9 @@ public sealed class MoveKnowledgeItemRequestValidator : AbstractValidator<MoveKn
     }
 }
 
+/// <summary>
+/// Kiểm tra request upload file tri thức và metadata đi kèm.
+/// </summary>
 public sealed class UploadKnowledgeFileRequestValidator : AbstractValidator<UploadKnowledgeFileRequest>
 {
     public UploadKnowledgeFileRequestValidator()

@@ -53,6 +53,7 @@ function selectDate(date: Date) {
 }
 
 function isSelected(date: Date) {
+  // Hỗ trợ cả date đã commit và date đang pending để dùng chung cho nhiều picker.
   return isSameDay(date, props.selectedDate) || isSameDay(date, props.pendingDate);
 }
 
@@ -65,6 +66,7 @@ function isRangeEnd(date: Date) {
 }
 
 function isRangeBetween(date: Date) {
+  // Chỉ đánh dấu vùng giữa hai đầu mút khi cả start và end đã tồn tại.
   return isDateInRange(date, props.rangeStart, props.rangeEnd);
 }
 </script>

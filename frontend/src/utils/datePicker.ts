@@ -12,44 +12,54 @@ const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'] as const;
 const MONTH_LABELS = ['Thg 1', 'Thg 2', 'Thg 3', 'Thg 4', 'Thg 5', 'Thg 6', 'Thg 7', 'Thg 8', 'Thg 9', 'Thg 10', 'Thg 11', 'Thg 12'] as const;
 
+// Trả về nhãn thứ theo thứ tự bắt đầu từ thứ Hai để khớp lịch tiếng Việt.
 export function getWeekdayLabels() {
   return WEEKDAY_LABELS;
 }
 
+// Trả về danh sách nhãn tháng dùng trong các control chọn tháng/năm.
 export function getMonthLabels() {
   return MONTH_LABELS;
 }
 
+// Tạo bản sao độc lập để thao tác trên ngày không làm thay đổi object gốc.
 export function cloneDate(date: Date) {
   return new Date(date.getTime());
 }
 
+// Đưa thời gian về 00:00:00 để so sánh theo ngày, bỏ qua giờ/phút/giây.
 export function startOfDay(date: Date) {
   const nextDate = cloneDate(date);
   nextDate.setHours(0, 0, 0, 0);
   return nextDate;
 }
 
+// Lấy ngày đầu tiên của tháng chứa date.
 export function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
+// Lấy ngày cuối cùng của tháng bằng cách lùi một ngày từ đầu tháng kế tiếp.
 export function endOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0);
 }
 
+// Cộng số ngày theo lịch và để Date tự xử lý chuyển tháng/năm.
 export function addDays(date: Date, days: number) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 }
 
+// Cộng tháng và cố định ngày là mùng một để điều hướng calendar ổn định.
 export function addMonths(date: Date, months: number) {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
 
+// Cộng năm và cố định ngày/tháng hiện tại ở mùng một.
 export function addYears(date: Date, years: number) {
   return new Date(date.getFullYear() + years, date.getMonth(), 1);
 }
 
+// So sánh ngày theo năm/tháng/ngày, không phụ thuộc thời gian trong ngày.
 export function isSameDay(firstDate: Date | null | undefined, secondDate: Date | null | undefined) {
   if (!firstDate || !secondDate) {
     return false;
@@ -60,6 +70,7 @@ export function isSameDay(firstDate: Date | null | undefined, secondDate: Date |
     && firstDate.getDate() === secondDate.getDate();
 }
 
+// Kiểm tra hai ngày có cùng tháng và năm hay không.
 export function isSameMonth(firstDate: Date | null | undefined, secondDate: Date | null | undefined) {
   if (!firstDate || !secondDate) {
     return false;
@@ -69,6 +80,7 @@ export function isSameMonth(firstDate: Date | null | undefined, secondDate: Date
     && firstDate.getMonth() === secondDate.getMonth();
 }
 
+// Kiểm tra date nằm trong range; dùng min/max để vẫn đúng nếu hai đầu mút nhập ngược.
 export function isDateInRange(date: Date, startDate: Date | null | undefined, endDate: Date | null | undefined) {
   if (!startDate || !endDate) {
     return false;
@@ -80,6 +92,7 @@ export function isDateInRange(date: Date, startDate: Date | null | undefined, en
   return time >= Math.min(startTime, endTime) && time <= Math.max(startTime, endTime);
 }
 
+// Format Date thành chuỗi DD/MM/YYYY dùng trong input và label.
 export function formatDate(date: Date | null | undefined) {
   if (!date) {
     return '';
@@ -91,6 +104,7 @@ export function formatDate(date: Date | null | undefined) {
   return `${day}/${month}/${year}`;
 }
 
+// Format tháng/năm thành MM/YYYY.
 export function formatMonthYear(date: Date | null | undefined) {
   if (!date) {
     return '';
@@ -101,6 +115,7 @@ export function formatMonthYear(date: Date | null | undefined) {
   return `${month}/${year}`;
 }
 
+// Format phần thời gian theo HH:mm hoặc HH:mm:ss.
 export function formatTime(date: Date | null | undefined, showSeconds = false) {
   if (!date) {
     return '';
@@ -112,6 +127,7 @@ export function formatTime(date: Date | null | undefined, showSeconds = false) {
   return showSeconds ? `${hours}:${minutes}:${seconds}` : `${hours}:${minutes}`;
 }
 
+// Ghép chuỗi ngày và thời gian theo định dạng hiển thị của picker.
 export function formatDateTime(date: Date | null | undefined, showSeconds = false) {
   if (!date) {
     return '';
@@ -120,6 +136,7 @@ export function formatDateTime(date: Date | null | undefined, showSeconds = fals
   return `${formatDate(date)} ${formatTime(date, showSeconds)}`;
 }
 
+// Parse DD/MM/YYYY và kiểm tra lại Date để loại ngày không tồn tại như 31/02.
 export function parseDate(value: string) {
   const normalizedValue = value.trim();
   const match = normalizedValue.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -139,6 +156,7 @@ export function parseDate(value: string) {
   return date;
 }
 
+// Parse MM/YYYY và từ chối tháng ngoài khoảng 01-12.
 export function parseMonthYear(value: string) {
   const normalizedValue = value.trim();
   const match = normalizedValue.match(/^(\d{2})\/(\d{4})$/);
@@ -155,6 +173,7 @@ export function parseMonthYear(value: string) {
   return new Date(year, month, 1);
 }
 
+// Parse giờ theo HH:mm hoặc HH:mm:ss, đồng thời kiểm tra giới hạn từng thành phần.
 export function parseTime(value: string, showSeconds = false) {
   const normalizedValue = value.trim();
   const match = normalizedValue.match(showSeconds ? /^(\d{2}):(\d{2}):(\d{2})$/ : /^(\d{2}):(\d{2})$/);
@@ -178,6 +197,7 @@ export function parseTime(value: string, showSeconds = false) {
   return { hours, minutes, seconds };
 }
 
+// Tách và parse chuỗi ngày-giờ bằng hai parser riêng để tái sử dụng validation.
 export function parseDateTime(value: string, showSeconds = false) {
   const normalizedValue = value.trim();
   const segments = normalizedValue.split(' ');
@@ -195,6 +215,7 @@ export function parseDateTime(value: string, showSeconds = false) {
   return date;
 }
 
+// Dựng lưới 6 tuần bắt đầu từ thứ Hai để calendar luôn có kích thước cố định.
 export function getCalendarMatrix(baseDate: Date) {
   const monthStart = startOfMonth(baseDate);
   const monthEnd = endOfMonth(baseDate);
@@ -221,16 +242,19 @@ export function getCalendarMatrix(baseDate: Date) {
   };
 }
 
+// Tạo danh sách giá trị 00..limit-1 cho dropdown giờ, phút hoặc giây.
 export function createTimeOptions(limit: number) {
   return Array.from({ length: limit }, (_, index) => String(index).padStart(2, '0'));
 }
 
+// Cập nhật các phần thời gian trên bản sao của date để giữ nguyên ngày gốc.
 export function setDateTimeParts(date: Date, hours: number, minutes: number, seconds = 0) {
   const nextDate = cloneDate(date);
   nextDate.setHours(hours, minutes, seconds, 0);
   return nextDate;
 }
 
+// Đảm bảo start không đứng sau end trước khi ghi range vào model.
 export function normalizeDateRange(startDate: Date | null, endDate: Date | null) {
   if (!startDate || !endDate) {
     return { startDate, endDate };
@@ -243,6 +267,7 @@ export function normalizeDateRange(startDate: Date | null, endDate: Date | null)
   return { startDate: endDate, endDate: startDate };
 }
 
+// Format hai đầu mút range, hỗ trợ cả nhãn ngày và nhãn ngày-giờ.
 export function formatRangeLabel(startDate: Date | null, endDate: Date | null, withTime = false, showSeconds = false) {
   if (!startDate && !endDate) {
     return '';
@@ -255,6 +280,7 @@ export function formatRangeLabel(startDate: Date | null, endDate: Date | null, w
   return `${formatter(startDate)} - ${formatter(endDate)}`.trim();
 }
 
+// Trả về thời điểm hiện tại qua một hàm chung để picker dùng nhất quán.
 export function today() {
   return new Date();
 }

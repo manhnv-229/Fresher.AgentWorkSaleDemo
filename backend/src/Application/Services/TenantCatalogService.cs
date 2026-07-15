@@ -11,6 +11,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services;
 
+/// <summary>
+/// Điều phối việc đọc và cập nhật danh mục tenant.
+/// Service được API quản trị sử dụng để truy vấn, tạo, sửa và khóa tenant, đồng thời invalidation cache liên quan.
+/// </summary>
 public sealed class TenantCatalogService(
     ITenantCatalogQueryRepository tenantQueryRepository,
     ITenantCatalogRepository tenantRepository,
@@ -21,6 +25,10 @@ public sealed class TenantCatalogService(
     ILogger<TenantCatalogService> logger,
     IUnitOfWork unitOfWork) : ITenantCatalogService
 {
+    /// <summary>
+    /// Lấy danh sách tenant, ưu tiên dữ liệu cache khi namespace cache còn hợp lệ.
+    /// <returns>Danh sách tenant hoặc lỗi truy vấn.</returns>
+    /// </summary>
     public async Task<ServiceResult<IReadOnlyList<TenantListItem>>> GetTenantsAsync(CancellationToken cancellationToken)
     {
         if (await TryBuildTenantListCacheKeyAsync(cancellationToken) is { } cacheKey)
@@ -54,6 +62,11 @@ public sealed class TenantCatalogService(
         return ServiceResult<IReadOnlyList<TenantListItem>>.Success(result);
     }
 
+    /// <summary>
+    /// Lấy chi tiết tenant theo định danh và cache kết quả đọc.
+    /// <param name="tenantId">Định danh tenant cần xem.</param>
+    /// <returns>Chi tiết tenant hoặc lỗi không tìm thấy.</returns>
+    /// </summary>
     public async Task<ServiceResult<TenantDetailItem>> GetTenantByIdAsync(
         Guid tenantId,
         CancellationToken cancellationToken)
@@ -96,6 +109,11 @@ public sealed class TenantCatalogService(
         return ServiceResult<TenantDetailItem>.Success(result);
     }
 
+    /// <summary>
+    /// Tạo tenant mới sau khi kiểm tra mã tenant chưa bị trùng.
+    /// <param name="command">Tên và mã tenant cần tạo.</param>
+    /// <returns>Tenant mới hoặc lỗi trùng mã.</returns>
+    /// </summary>
     public async Task<ServiceResult<TenantListItem>> CreateTenantAsync(
         CreateTenantCommand command,
         CancellationToken cancellationToken)
@@ -124,6 +142,12 @@ public sealed class TenantCatalogService(
         return ServiceResult<TenantListItem>.Success(mapper.Map<TenantListItem>(tenant));
     }
 
+    /// <summary>
+    /// Cập nhật tenant và làm mới các cache đọc liên quan.
+    /// <param name="tenantId">Định danh tenant cần cập nhật.</param>
+    /// <param name="command">Tên và mã mới của tenant.</param>
+    /// <returns>Tenant sau cập nhật hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     public async Task<ServiceResult<TenantDetailItem>> UpdateTenantAsync(
         Guid tenantId,
         UpdateTenantCommand command,
@@ -156,6 +180,11 @@ public sealed class TenantCatalogService(
         return ServiceResult<TenantDetailItem>.Success(mapper.Map<TenantDetailItem>(tenant));
     }
 
+    /// <summary>
+    /// Chuyển tenant sang trạng thái khóa nếu tenant chưa bị khóa.
+    /// <param name="tenantId">Định danh tenant cần khóa.</param>
+    /// <returns>Tenant sau khi khóa hoặc lỗi chuyển trạng thái.</returns>
+    /// </summary>
     public async Task<ServiceResult<TenantDetailItem>> LockTenantAsync(
         Guid tenantId,
         CancellationToken cancellationToken)

@@ -6,6 +6,9 @@ using Demo.Domain.Interfaces.Service;
 
 namespace Demo.Infrastructure.Services;
 
+/// <summary>
+/// Tạo hash SHA-256 cho refresh token trước khi lưu hoặc truy vấn trong cơ sở dữ liệu.
+/// </summary>
 public sealed class RefreshTokenHasher : IRefreshTokenHasher
 {
     public RefreshTokenSecret GenerateToken()

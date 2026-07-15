@@ -5,6 +5,9 @@ using FluentValidation;
 
 namespace Demo.Api.Validation;
 
+/// <summary>
+/// Kiểm tra dữ liệu đầu vào khi tạo agent trước khi request vào application service.
+/// </summary>
 public sealed class CreateAgentRequestValidator : AbstractValidator<CreateAgentRequest>
 {
     public CreateAgentRequestValidator()
@@ -29,6 +32,9 @@ public sealed class CreateAgentRequestValidator : AbstractValidator<CreateAgentR
     }
 }
 
+/// <summary>
+/// Kiểm tra dữ liệu đầu vào khi cập nhật agent.
+/// </summary>
 public sealed class UpdateAgentRequestValidator : AbstractValidator<UpdateAgentRequest>
 {
     public UpdateAgentRequestValidator()

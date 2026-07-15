@@ -8,8 +8,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Infrastructure.Repositories;
 
+/// <summary>
+/// Quản lý thao tác ghi và truy vấn agent trong DbContext.
+/// Repository hỗ trợ agent nội bộ và agent thuộc tenant với các ràng buộc scope tương ứng.
+/// </summary>
 public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
 {
+    /// <summary>
+    /// Lấy danh sách agent nội bộ theo bộ lọc và phân trang.
+    /// <param name="filters">Bộ lọc trạng thái, tìm kiếm và phân trang.</param>
+    /// <returns>Kết quả phân trang agent nội bộ.</returns>
+    /// </summary>
     public async Task<PagedResult<Agent>> GetInternalAgentsPagedAsync(
         AgentQueryFilters filters,
         CancellationToken cancellationToken)
@@ -36,6 +45,12 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
             (int)Math.Ceiling((double)totalCount / filters.PageSize));
     }
 
+    /// <summary>
+    /// Lấy danh sách agent của tenant theo bộ lọc và phân trang.
+    /// <param name="tenantId">Định danh tenant sở hữu agent.</param>
+    /// <param name="filters">Bộ lọc trạng thái, tìm kiếm và phân trang.</param>
+    /// <returns>Kết quả phân trang agent của tenant.</returns>
+    /// </summary>
     public async Task<PagedResult<Agent>> GetTenantAgentsPagedAsync(
         Guid tenantId,
         AgentQueryFilters filters,
@@ -63,6 +78,11 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
             (int)Math.Ceiling((double)totalCount / filters.PageSize));
     }
 
+    /// <summary>
+    /// Lấy chi tiết agent nội bộ ở chế độ chỉ đọc.
+    /// <param name="agentId">Định danh agent cần lấy.</param>
+    /// <returns>Agent tương ứng hoặc null nếu không tồn tại.</returns>
+    /// </summary>
     public async Task<Agent?> GetInternalAgentDetailByIdAsync(
         Guid agentId,
         CancellationToken cancellationToken)
@@ -76,6 +96,12 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
                 cancellationToken);
     }
 
+    /// <summary>
+    /// Lấy chi tiết agent thuộc tenant ở chế độ chỉ đọc.
+    /// <param name="tenantId">Định danh tenant sở hữu agent.</param>
+    /// <param name="agentId">Định danh agent cần lấy.</param>
+    /// <returns>Agent tương ứng hoặc null nếu không tồn tại.</returns>
+    /// </summary>
     public async Task<Agent?> GetTenantAgentDetailByIdAsync(
         Guid tenantId,
         Guid agentId,
@@ -91,6 +117,11 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
                 cancellationToken);
     }
 
+    /// <summary>
+    /// Lấy agent nội bộ ở chế độ tracking để phục vụ cập nhật.
+    /// <param name="agentId">Định danh agent cần lấy.</param>
+    /// <returns>Agent đang được tracking hoặc null nếu không tồn tại.</returns>
+    /// </summary>
     public async Task<Agent?> GetInternalAgentByIdAsync(
         Guid agentId,
         CancellationToken cancellationToken)
@@ -103,6 +134,12 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
                 cancellationToken);
     }
 
+    /// <summary>
+    /// Lấy agent tenant ở chế độ tracking để phục vụ cập nhật.
+    /// <param name="tenantId">Định danh tenant sở hữu agent.</param>
+    /// <param name="agentId">Định danh agent cần lấy.</param>
+    /// <returns>Agent đang được tracking hoặc null nếu không tồn tại.</returns>
+    /// </summary>
     public async Task<Agent?> GetTenantAgentByIdAsync(
         Guid tenantId,
         Guid agentId,
@@ -117,11 +154,19 @@ public sealed class AgentRepository(DemoDbContext dbContext) : IAgentRepository
                 cancellationToken);
     }
 
+    /// <summary>
+    /// Đăng ký agent mới vào DbContext để lưu trong unit of work.
+    /// <param name="agent">Entity agent cần thêm.</param>
+    /// </summary>
     public void Add(Agent agent)
     {
         dbContext.Agents.Add(agent);
     }
 
+    /// <summary>
+    /// Đăng ký agent bị xóa trong DbContext.
+    /// <param name="agent">Entity agent cần xóa.</param>
+    /// </summary>
     public void Remove(Agent agent)
     {
         dbContext.Agents.Remove(agent);

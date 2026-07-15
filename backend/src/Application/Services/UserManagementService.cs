@@ -11,6 +11,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Demo.Application.Services;
 
+/// <summary>
+/// Xử lý các thao tác quản trị người dùng như truy vấn, khóa, mở khóa và cập nhật chức vụ.
+/// Service đồng bộ trạng thái phiên, cache quyền và audit log sau các thay đổi tài khoản.
+/// </summary>
 public sealed class UserManagementService(
     IUserQueryRepository userQueryRepository,
     IAuthUserRepository authUserRepository,
@@ -25,6 +29,8 @@ public sealed class UserManagementService(
 
     /// <summary>
     /// Lấy danh sách người dùng theo bộ lọc quản trị.
+    /// <param name="filters">Bộ lọc tìm kiếm, trạng thái và phân trang.</param>
+    /// <returns>Danh sách người dùng đã phân trang.</returns>
     /// </summary>
     public async Task<ServiceResult<PagedResult<AdminUserSummary>>> GetUsersAsync(MemberListFilters? filters, CancellationToken cancellationToken)
     {
@@ -41,7 +47,11 @@ public sealed class UserManagementService(
     }
 
     /// <summary>
-    /// Khóa tài khoản người dùng 
+    /// Khóa tài khoản người dùng.
+    /// <param name="actorUserId">Định danh người thực hiện thao tác.</param>
+    /// <param name="targetUserId">Định danh người dùng cần khóa.</param>
+    /// <param name="ipAddress">Địa chỉ IP của client.</param>
+    /// <returns>Thông tin người dùng sau khi khóa hoặc lỗi nghiệp vụ.</returns>
     /// </summary>
     public Task<ServiceResult<AdminUserSummary>> LockUserAsync(
         Guid actorUserId,
@@ -53,7 +63,11 @@ public sealed class UserManagementService(
     }
 
     /// <summary>
-    /// Mở khóa tài khoản người dùng 
+    /// Mở khóa tài khoản người dùng.
+    /// <param name="actorUserId">Định danh người thực hiện thao tác.</param>
+    /// <param name="targetUserId">Định danh người dùng cần mở khóa.</param>
+    /// <param name="ipAddress">Địa chỉ IP của client.</param>
+    /// <returns>Thông tin người dùng sau khi mở khóa hoặc lỗi nghiệp vụ.</returns>
     /// </summary>
     public Task<ServiceResult<AdminUserSummary>> UnlockUserAsync(
         Guid actorUserId,

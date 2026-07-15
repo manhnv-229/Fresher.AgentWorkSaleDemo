@@ -6,6 +6,7 @@ export function isAuthenticatedRoute() {
 }
 
 export function canAccessPermissions(requiredPermissions: string[] | undefined) {
+  // Không khai báo permission nghĩa là route không yêu cầu quyền bổ sung.
   if (!requiredPermissions || requiredPermissions.length === 0) {
     return true;
   }

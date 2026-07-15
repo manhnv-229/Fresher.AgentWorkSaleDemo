@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Demo.Infrastructure.Repositories;
 
+/// <summary>
+/// Ghi và truy vấn audit log trực tiếp qua Entity Framework Core.
+/// </summary>
 public sealed class AuditLogRepository(DemoDbContext dbContext) : IAuditLogRepository
 {
     public async Task<IReadOnlyList<AuditLogEntry>> GetFilteredAsync(

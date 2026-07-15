@@ -77,7 +77,6 @@ public static class DependencyInjection
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogService, AuditLogService>();
-        services.AddScoped<IAgentKnowledgeService, AgentKnowledgeService>();
         services.AddScoped<IKnowledgeExplorerService, KnowledgeExplorerService>();
         services.AddScoped<IKnowledgeFolderService, KnowledgeFolderService>();
         services.AddScoped<IKnowledgeFileService, KnowledgeFileService>();

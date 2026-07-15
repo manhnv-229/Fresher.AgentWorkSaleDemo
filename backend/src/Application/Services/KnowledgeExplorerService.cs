@@ -25,6 +25,10 @@ public sealed class KnowledgeExplorerService(
 
     /// <summary>
     /// Tải trạng thái explorer hoàn chỉnh cho một agent: cây thư mục, breadcrumb, danh sách thư mục con, và danh sách file trong thư mục được chọn.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent cần truy vấn.</param>
+    /// <param name="folderId">Định danh thư mục đang mở, nếu có.</param>
+    /// <returns>Trạng thái explorer hoặc lỗi truy cập.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeExplorerResponse>> GetExplorerAsync(
         Guid tenantId,
@@ -93,6 +97,10 @@ public sealed class KnowledgeExplorerService(
 
     /// <summary>
     /// Tìm kiếm tri thức theo một contract backend thống nhất cho cả thư mục và file.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent cần tìm kiếm.</param>
+    /// <param name="filters">Bộ lọc tên, thư mục, người tạo và thời gian.</param>
+    /// <returns>Kết quả tìm kiếm folder và file hoặc lỗi truy cập.</returns>
     /// </summary>
     public async Task<ServiceResult<KnowledgeSearchResponse>> SearchAsync(
         Guid tenantId,

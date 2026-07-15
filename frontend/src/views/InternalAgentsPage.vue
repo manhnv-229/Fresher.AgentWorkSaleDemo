@@ -36,6 +36,12 @@ const isDeleteModalOpen = ref(false);
 const agentToDelete = ref<AgentSummary | null>(null);
 const isDeleting = ref(false);
 const loadMoreTrigger = ref<HTMLElement | null>(null);
+const isCreateRoleFocused = ref(false);
+const isCreateRoleHovered = ref(false);
+const showCreateRoleTooltip = computed(() => Boolean(createErrors.value.role) && (isCreateRoleFocused.value || isCreateRoleHovered.value));
+const isCreateDescriptionFocused = ref(false);
+const isCreateDescriptionHovered = ref(false);
+const showCreateDescriptionTooltip = computed(() => Boolean(createErrors.value.description) && (isCreateDescriptionFocused.value || isCreateDescriptionHovered.value));
 // Form tạo agent được giữ tách biệt để validate và reset không làm ảnh hưởng đến danh sách hiện tại.
 const {
   errors: createErrors,
@@ -188,6 +194,38 @@ function requestCloseCreateModal() {
   }
 
   closeCreateModal();
+}
+
+function handleCreateRoleFocus() {
+  isCreateRoleFocused.value = true;
+}
+
+function handleCreateRoleBlur() {
+  isCreateRoleFocused.value = false;
+}
+
+function handleCreateRoleMouseEnter() {
+  isCreateRoleHovered.value = true;
+}
+
+function handleCreateRoleMouseLeave() {
+  isCreateRoleHovered.value = false;
+}
+
+function handleCreateDescriptionFocus() {
+  isCreateDescriptionFocused.value = true;
+}
+
+function handleCreateDescriptionBlur() {
+  isCreateDescriptionFocused.value = false;
+}
+
+function handleCreateDescriptionMouseEnter() {
+  isCreateDescriptionHovered.value = true;
+}
+
+function handleCreateDescriptionMouseLeave() {
+  isCreateDescriptionHovered.value = false;
 }
 
 // Submit tạo agent, sau khi thành công sẽ refresh lại grid.
@@ -379,27 +417,67 @@ onBeforeUnmount(() => {
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="create-role">Vai trò</label>
-        <textarea
-          id="create-role"
-          v-model="createRole"
-          class="agent-textarea"
-          rows="3"
-          placeholder="Nhập mô tả vai trò"
-          @input="clearCreateFieldError('role')"
-        />
-        <p v-if="createErrors.role" class="message message--error">{{ createErrors.role }}</p>
+        <div
+          class="field field--label-none create-agent__field"
+          :class="{ 'field--invalid': Boolean(createErrors.role) }"
+          @mouseenter="handleCreateRoleMouseEnter"
+          @mouseleave="handleCreateRoleMouseLeave"
+        >
+          <div class="field__body">
+            <div class="field__control">
+              <textarea
+                id="create-role"
+                v-model="createRole"
+                class="agent-textarea"
+                rows="3"
+                placeholder="Nhập mô tả vai trò"
+                :aria-invalid="createErrors.role ? 'true' : 'false'"
+                :aria-describedby="createErrors.role ? 'create-role-error' : undefined"
+                @focus="handleCreateRoleFocus"
+                @blur="handleCreateRoleBlur"
+                @input="clearCreateFieldError('role')"
+              />
+              <div v-if="showCreateRoleTooltip" class="field__tooltip" role="tooltip">
+                {{ createErrors.role }}
+              </div>
+            </div>
+            <span v-if="createErrors.role && !showCreateRoleTooltip" id="create-role-error" class="sr-only">
+              {{ createErrors.role }}
+            </span>
+          </div>
+        </div>
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="create-desc">Mô tả</label>
-        <textarea
-          id="create-desc"
-          v-model="createDescription"
-          class="agent-textarea"
-          rows="4"
-          placeholder="Mô tả ngắn về agent"
-          @input="clearCreateFieldError('description')"
-        />
-        <p v-if="createErrors.description" class="message message--error">{{ createErrors.description }}</p>
+        <div
+          class="field field--label-none create-agent__field"
+          :class="{ 'field--invalid': Boolean(createErrors.description) }"
+          @mouseenter="handleCreateDescriptionMouseEnter"
+          @mouseleave="handleCreateDescriptionMouseLeave"
+        >
+          <div class="field__body">
+            <div class="field__control">
+              <textarea
+                id="create-desc"
+                v-model="createDescription"
+                class="agent-textarea"
+                rows="4"
+                placeholder="Mô tả ngắn về agent"
+                :aria-invalid="createErrors.description ? 'true' : 'false'"
+                :aria-describedby="createErrors.description ? 'create-description-error' : undefined"
+                @focus="handleCreateDescriptionFocus"
+                @blur="handleCreateDescriptionBlur"
+                @input="clearCreateFieldError('description')"
+              />
+              <div v-if="showCreateDescriptionTooltip" class="field__tooltip" role="tooltip">
+                {{ createErrors.description }}
+              </div>
+            </div>
+            <span v-if="createErrors.description && !showCreateDescriptionTooltip" id="create-description-error" class="sr-only">
+              {{ createErrors.description }}
+            </span>
+          </div>
+        </div>
       </div>
       <p v-if="createFormError" class="message message--error">{{ createFormError }}</p>
     </div>

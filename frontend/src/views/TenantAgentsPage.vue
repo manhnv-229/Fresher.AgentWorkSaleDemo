@@ -34,6 +34,12 @@ const createRole = ref('');
 const createDescription = ref('');
 const createIcon = ref('mint');
 const isSaving = ref(false);
+const isCreateRoleFocused = ref(false);
+const isCreateRoleHovered = ref(false);
+const showCreateRoleTooltip = computed(() => Boolean(createErrors.value.role) && (isCreateRoleFocused.value || isCreateRoleHovered.value));
+const isCreateDescriptionFocused = ref(false);
+const isCreateDescriptionHovered = ref(false);
+const showCreateDescriptionTooltip = computed(() => Boolean(createErrors.value.description) && (isCreateDescriptionFocused.value || isCreateDescriptionHovered.value));
 const loadMoreTrigger = ref<HTMLElement | null>(null);
 const {
   errors: createErrors,
@@ -207,6 +213,38 @@ function requestCloseCreateModal() {
   }
 
   closeCreateModal();
+}
+
+function handleCreateRoleFocus() {
+  isCreateRoleFocused.value = true;
+}
+
+function handleCreateRoleBlur() {
+  isCreateRoleFocused.value = false;
+}
+
+function handleCreateRoleMouseEnter() {
+  isCreateRoleHovered.value = true;
+}
+
+function handleCreateRoleMouseLeave() {
+  isCreateRoleHovered.value = false;
+}
+
+function handleCreateDescriptionFocus() {
+  isCreateDescriptionFocused.value = true;
+}
+
+function handleCreateDescriptionBlur() {
+  isCreateDescriptionFocused.value = false;
+}
+
+function handleCreateDescriptionMouseEnter() {
+  isCreateDescriptionHovered.value = true;
+}
+
+function handleCreateDescriptionMouseLeave() {
+  isCreateDescriptionHovered.value = false;
 }
 
 // Submit tạo tenant agent và refresh lại danh sách khi thành công.
@@ -427,27 +465,67 @@ onBeforeUnmount(() => {
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="tenant-create-role">{{ t('agentList.createRole') }}</label>
-        <textarea
-          id="tenant-create-role"
-          v-model="createRole"
-          class="agent-textarea"
-          rows="3"
-          :placeholder="t('agentList.createRolePlaceholder')"
-          @input="clearCreateFieldError('role')"
-        />
-        <p v-if="createErrors.role" class="message message--error">{{ createErrors.role }}</p>
+        <div
+          class="field field--label-none create-agent__field"
+          :class="{ 'field--invalid': Boolean(createErrors.role) }"
+          @mouseenter="handleCreateRoleMouseEnter"
+          @mouseleave="handleCreateRoleMouseLeave"
+        >
+          <div class="field__body">
+            <div class="field__control">
+              <textarea
+                id="tenant-create-role"
+                v-model="createRole"
+                class="agent-textarea"
+                rows="3"
+                :placeholder="t('agentList.createRolePlaceholder')"
+                :aria-invalid="createErrors.role ? 'true' : 'false'"
+                :aria-describedby="createErrors.role ? 'tenant-create-role-error' : undefined"
+                @focus="handleCreateRoleFocus"
+                @blur="handleCreateRoleBlur"
+                @input="clearCreateFieldError('role')"
+              />
+              <div v-if="showCreateRoleTooltip" class="field__tooltip" role="tooltip">
+                {{ createErrors.role }}
+              </div>
+            </div>
+            <span v-if="createErrors.role && !showCreateRoleTooltip" id="tenant-create-role-error" class="sr-only">
+              {{ createErrors.role }}
+            </span>
+          </div>
+        </div>
       </div>
       <div class="create-agent__group">
         <label class="create-agent__label" for="tenant-create-desc">{{ t('agentList.createDescription') }}</label>
-        <textarea
-          id="tenant-create-desc"
-          v-model="createDescription"
-          class="agent-textarea"
-          rows="4"
-          :placeholder="t('agentList.createDescriptionPlaceholder')"
-          @input="clearCreateFieldError('description')"
-        />
-        <p v-if="createErrors.description" class="message message--error">{{ createErrors.description }}</p>
+        <div
+          class="field field--label-none create-agent__field"
+          :class="{ 'field--invalid': Boolean(createErrors.description) }"
+          @mouseenter="handleCreateDescriptionMouseEnter"
+          @mouseleave="handleCreateDescriptionMouseLeave"
+        >
+          <div class="field__body">
+            <div class="field__control">
+              <textarea
+                id="tenant-create-desc"
+                v-model="createDescription"
+                class="agent-textarea"
+                rows="4"
+                :placeholder="t('agentList.createDescriptionPlaceholder')"
+                :aria-invalid="createErrors.description ? 'true' : 'false'"
+                :aria-describedby="createErrors.description ? 'tenant-create-description-error' : undefined"
+                @focus="handleCreateDescriptionFocus"
+                @blur="handleCreateDescriptionBlur"
+                @input="clearCreateFieldError('description')"
+              />
+              <div v-if="showCreateDescriptionTooltip" class="field__tooltip" role="tooltip">
+                {{ createErrors.description }}
+              </div>
+            </div>
+            <span v-if="createErrors.description && !showCreateDescriptionTooltip" id="tenant-create-description-error" class="sr-only">
+              {{ createErrors.description }}
+            </span>
+          </div>
+        </div>
       </div>
       <p v-if="createFormError" class="message message--error">{{ createFormError }}</p>
     </div>

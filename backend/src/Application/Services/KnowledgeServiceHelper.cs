@@ -14,10 +14,28 @@ internal static class KnowledgeServiceHelper
 {
 #region Method
 
+    /// <summary>
+    /// Xác định tenant ID đặc biệt đại diện cho phạm vi agent nội bộ.
+    /// <param name="tenantId">Định danh tenant cần kiểm tra.</param>
+    /// <returns>True nếu tenant ID biểu diễn internal scope.</returns>
+    /// </summary>
     public static bool IsInternalScope(Guid tenantId) => tenantId == Guid.Empty;
 
+    /// <summary>
+    /// Chuẩn hóa tenant ID để dùng trong khóa cache hoặc dữ liệu nullable.
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <returns>Tenant ID hoặc null nếu là internal scope.</returns>
+    /// </summary>
     public static Guid? NormalizeTenantId(Guid tenantId) => IsInternalScope(tenantId) ? null : tenantId;
 
+    /// <summary>
+    /// Tạo object key theo scope, agent, file và phần mở rộng của file.
+    /// <param name="tenantId">Định danh tenant, hoặc Guid.Empty cho agent nội bộ.</param>
+    /// <param name="agentId">Định danh agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file dùng trong object key.</param>
+    /// <param name="extension">Phần mở rộng file bao gồm dấu chấm.</param>
+    /// <returns>Object key dùng để lưu file trong storage.</returns>
+    /// </summary>
     public static string BuildStorageObjectKey(Guid tenantId, Guid agentId, Guid fileId, string extension)
     {
         return IsInternalScope(tenantId)
@@ -28,6 +46,9 @@ internal static class KnowledgeServiceHelper
     /// <summary>
     /// Resolve tên actor từ user ID. Ưu tiên FullName, fallback sang Email, và trả về "Unknown" nếu không tìm thấy.
     /// Dùng để hiển thị tên người tạo/sửa trong response và audit log.
+    /// <param name="authUserRepository">Repository dùng để truy vấn người dùng.</param>
+    /// <param name="userId">Định danh người dùng cần resolve.</param>
+    /// <returns>Tên hiển thị của actor hoặc "Unknown".</returns>
     /// </summary>
     public static async Task<string> ResolveActorNameAsync(IAuthUserRepository authUserRepository, Guid userId, CancellationToken cancellationToken)
     {
@@ -37,6 +58,10 @@ internal static class KnowledgeServiceHelper
 
     /// <summary>
     /// Kiểm tra agent tồn tại và có thể đọc được. Trả về null nếu hợp lệ, hoặc error code/message nếu không tìm thấy.
+    /// <param name="agentRepository">Repository dùng để truy vấn agent.</param>
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent cần kiểm tra.</param>
+    /// <returns>Null nếu hợp lệ; ngược lại là mã và thông điệp lỗi.</returns>
     /// </summary>
     public static async Task<(string Code, string Message)?> EnsureReadableAgentAsync(
         IAgentRepository agentRepository,
@@ -52,6 +77,11 @@ internal static class KnowledgeServiceHelper
 
     /// <summary>
     /// Kiểm tra tenant tồn tại, không bị khóa, và agent có thể ghi được. Dùng trước khi thực hiện các thao tác tạo/sửa/xóa.
+    /// <param name="agentRepository">Repository dùng để truy vấn agent.</param>
+    /// <param name="tenantRepository">Repository dùng để kiểm tra tenant.</param>
+    /// <param name="tenantId">Định danh tenant hoặc Guid.Empty cho internal scope.</param>
+    /// <param name="agentId">Định danh agent cần kiểm tra.</param>
+    /// <returns>Null nếu có quyền ghi; ngược lại là mã và thông điệp lỗi.</returns>
     /// </summary>
     public static async Task<(string Code, string Message)?> EnsureWritableAgentAsync(
         IAgentRepository agentRepository,
@@ -81,6 +111,9 @@ internal static class KnowledgeServiceHelper
 
     /// <summary>
     /// Ánh xạ entity folder sang DTO với tên người tạo đã resolve trước từ service caller.
+    /// <param name="folder">Entity thư mục cần ánh xạ.</param>
+    /// <param name="createdByUserName">Tên người tạo đã resolve.</param>
+    /// <returns>DTO thư mục tri thức.</returns>
     /// </summary>
     public static KnowledgeFolderItem MapFolder(AgentKnowledgeFolder folder, string createdByUserName) => new(
         folder.Id,
@@ -94,6 +127,8 @@ internal static class KnowledgeServiceHelper
 
     /// <summary>
     /// Ánh xạ entity folder sang DTO. Dùng navigation property CreatedByUser để lấy tên người tạo.
+    /// <param name="folder">Entity thư mục cần ánh xạ.</param>
+    /// <returns>DTO thư mục tri thức.</returns>
     /// </summary>
     public static KnowledgeFolderItem MapFolder(AgentKnowledgeFolder folder) => new(
         folder.Id,
@@ -107,6 +142,9 @@ internal static class KnowledgeServiceHelper
 
     /// <summary>
     /// Ánh xạ entity file sang DTO với tên người tạo đã resolve trước.
+    /// <param name="file">Entity file cần ánh xạ.</param>
+    /// <param name="createdByUserName">Tên người tạo đã resolve.</param>
+    /// <returns>DTO file tri thức.</returns>
     /// </summary>
     public static KnowledgeFileItem MapFile(AgentKnowledgeFile file, string createdByUserName) => new(
         file.Id,
@@ -124,6 +162,8 @@ internal static class KnowledgeServiceHelper
 
     /// <summary>
     /// Ánh xạ entity file sang DTO. Dùng navigation property CreatedByUser để lấy tên người tạo.
+    /// <param name="file">Entity file cần ánh xạ.</param>
+    /// <returns>DTO file tri thức.</returns>
     /// </summary>
     public static KnowledgeFileItem MapFile(AgentKnowledgeFile file) => new(
         file.Id,

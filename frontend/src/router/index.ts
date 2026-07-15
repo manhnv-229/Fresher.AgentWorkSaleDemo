@@ -134,6 +134,7 @@ export const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
+  // Kiểm tra public route trước để trang login/forbidden không bị ép refresh phiên.
   const authStore = useAuthStore();
 
   if (to.matched.some((record) => record.meta.public)) {
@@ -141,6 +142,7 @@ router.beforeEach(async (to) => {
   }
 
   if (authStore.getAccessToken()) {
+    // Có access token thì kiểm tra quyền ngay, tránh gọi refresh không cần thiết.
     if (!canAccessPermissions(to.meta.requiredPermissions)) {
       return {
         name: 'forbidden',
@@ -165,6 +167,7 @@ router.beforeEach(async (to) => {
 
     return true;
   } catch (error) {
+    // Mọi lỗi khôi phục phiên đều đưa về login; redirect giữ lại URL người dùng muốn mở.
     if (error instanceof ApiError && error.status === 401) {
       return {
         name: 'login',

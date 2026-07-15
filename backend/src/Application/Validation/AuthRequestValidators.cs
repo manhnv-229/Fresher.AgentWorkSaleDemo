@@ -4,6 +4,9 @@ using FluentValidation;
 
 namespace Demo.Application.Validation;
 
+/// <summary>
+/// Kiểm tra thông tin đăng nhập trước khi chuyển vào auth service.
+/// </summary>
 public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
     public LoginRequestValidator()

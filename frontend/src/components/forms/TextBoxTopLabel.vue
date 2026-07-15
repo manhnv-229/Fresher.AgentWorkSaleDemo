@@ -58,7 +58,8 @@ const { t } = useI18n();
 // Textbox gói toàn bộ trạng thái visual của field: focus, validate, loading và clear button.
 const inputId = computed(() => props.id || (attrs.id as string | undefined) || props.name || 'field');
 const isFocused = ref(false);
-const showTooltip = computed(() => isFocused.value && Boolean(props.error));
+const isHovered = ref(false);
+const showTooltip = computed(() => Boolean(props.error) && (isFocused.value || isHovered.value));
 const hasLabel = computed(() => props.labelPosition !== 'none' && Boolean(props.label));
 const isReadonlyState = computed(() => props.state === 'readonly');
 const isFocusState = computed(() => props.state === 'focus');
@@ -89,6 +90,14 @@ function handleFocus(event: FocusEvent) {
 function handleBlur(event: FocusEvent) {
   isFocused.value = false;
   emit('blur', event);
+}
+
+function handleMouseEnter() {
+  isHovered.value = true;
+}
+
+function handleMouseLeave() {
+  isHovered.value = false;
 }
 
 function handleInput(event: Event) {
@@ -131,7 +140,7 @@ function clearValue() {
     </span>
 
     <div class="field__body">
-      <div class="field__control">
+      <div class="field__control" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <input
           :id="inputId"
           v-model="model"
@@ -183,12 +192,7 @@ function clearValue() {
         </div>
       </div>
 
-      <span
-        v-if="isInvalidState && !showTooltip"
-        :id="`${inputId}-error`"
-        class="field__feedback field__feedback--error"
-        role="alert"
-      >
+      <span v-if="isInvalidState && !showTooltip" :id="`${inputId}-error`" class="sr-only">
         {{ error }}
       </span>
       <span v-else-if="isValidateState" :id="`${inputId}-hint`" class="field__feedback field__feedback--success">
@@ -221,7 +225,7 @@ function clearValue() {
     ]"
   >
     <div class="field__body">
-      <div class="field__control">
+      <div class="field__control" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <input
           :id="inputId"
           v-model="model"
@@ -273,12 +277,7 @@ function clearValue() {
         </div>
       </div>
 
-      <span
-        v-if="isInvalidState && !showTooltip"
-        :id="`${inputId}-error`"
-        class="field__feedback field__feedback--error"
-        role="alert"
-      >
+      <span v-if="isInvalidState && !showTooltip" :id="`${inputId}-error`" class="sr-only">
         {{ error }}
       </span>
       <span v-else-if="isValidateState" :id="`${inputId}-hint`" class="field__feedback field__feedback--success">

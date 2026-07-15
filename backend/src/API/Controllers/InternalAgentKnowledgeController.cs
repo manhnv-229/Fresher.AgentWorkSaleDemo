@@ -24,6 +24,12 @@ public sealed class InternalAgentKnowledgeController(
 {
 #region Method
 
+    /// <summary>
+    /// Tải explorer tri thức của internal agent, gồm cây thư mục và nội dung thư mục hiện tại.
+    /// <param name="agentId">Định danh internal agent cần truy vấn.</param>
+    /// <param name="folderId">Định danh thư mục đang mở, nếu có.</param>
+    /// <returns>Trạng thái explorer hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     [HttpGet("explorer")]
     [HasPermission(PermissionCodes.DocumentView)]
     public async Task<ActionResult<KnowledgeExplorerResponse>> GetExplorer(
@@ -35,6 +41,16 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Tìm kiếm thư mục và file tri thức trong internal agent.
+    /// <param name="agentId">Định danh internal agent cần tìm kiếm.</param>
+    /// <param name="name">Tên hoặc từ khóa cần tìm.</param>
+    /// <param name="folderId">Giới hạn kết quả trong thư mục, nếu có.</param>
+    /// <param name="createdByUserId">Lọc theo người tạo, nếu có.</param>
+    /// <param name="createdFrom">Mốc thời gian tạo bắt đầu, nếu có.</param>
+    /// <param name="createdTo">Mốc thời gian tạo kết thúc, nếu có.</param>
+    /// <returns>Kết quả tìm kiếm gồm folder và file.</returns>
+    /// </summary>
     [HttpGet("search")]
     [HasPermission(PermissionCodes.DocumentView)]
     public async Task<ActionResult<KnowledgeSearchResponse>> Search(
@@ -54,6 +70,12 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Tạo thư mục tri thức trong internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu thư mục.</param>
+    /// <param name="request">Tên và thư mục cha của thư mục mới.</param>
+    /// <returns>Thư mục mới hoặc lỗi quyền/nghiệp vụ.</returns>
+    /// </summary>
     [HttpPost("folders")]
     [HasPermission(PermissionCodes.DocumentCreate)]
     public async Task<ActionResult<KnowledgeFolderItem>> CreateFolder(
@@ -77,6 +99,13 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Đổi tên thư mục tri thức của internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu thư mục.</param>
+    /// <param name="folderId">Định danh thư mục cần đổi tên.</param>
+    /// <param name="request">Tên mới của thư mục.</param>
+    /// <returns>Thư mục sau cập nhật hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     [HttpPut("folders/{folderId:guid}/rename")]
     [HasPermission(PermissionCodes.DocumentUpdate)]
     public async Task<ActionResult<KnowledgeFolderItem>> RenameFolder(
@@ -102,6 +131,13 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Di chuyển thư mục tri thức trong cây thư mục của internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu thư mục.</param>
+    /// <param name="folderId">Định danh thư mục cần di chuyển.</param>
+    /// <param name="request">Thư mục đích, có thể là root.</param>
+    /// <returns>Thư mục sau di chuyển hoặc lỗi ràng buộc cây.</returns>
+    /// </summary>
     [HttpPut("folders/{folderId:guid}/move")]
     [HasPermission(PermissionCodes.DocumentUpdate)]
     public async Task<ActionResult<KnowledgeFolderItem>> MoveFolder(
@@ -127,6 +163,12 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Xóa mềm thư mục và toàn bộ subtree của internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu thư mục.</param>
+    /// <param name="folderId">Định danh thư mục cần xóa.</param>
+    /// <returns>Không có nội dung khi xóa thành công.</returns>
+    /// </summary>
     [HttpDelete("folders/{folderId:guid}")]
     [HasPermission(PermissionCodes.DocumentDelete)]
     public async Task<ActionResult> DeleteFolder(
@@ -144,6 +186,12 @@ public sealed class InternalAgentKnowledgeController(
         return result.Succeeded ? NoContent() : ToErrorResult(result.ErrorCode, result.ErrorMessage);
     }
 
+    /// <summary>
+    /// Upload file tri thức lên storage và lưu metadata cho internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu file.</param>
+    /// <param name="request">File upload và thư mục đích tùy chọn.</param>
+    /// <returns>Metadata file mới hoặc lỗi upload.</returns>
+    /// </summary>
     [HttpPost("files")]
     [HasPermission(PermissionCodes.DocumentCreate)]
     [RequestSizeLimit(50 * 1024 * 1024)]
@@ -169,6 +217,12 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Lấy chi tiết file tri thức của internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần xem.</param>
+    /// <returns>Chi tiết file hoặc lỗi không tìm thấy.</returns>
+    /// </summary>
     [HttpGet("files/{fileId:guid}")]
     [HasPermission(PermissionCodes.DocumentView)]
     public async Task<ActionResult<KnowledgeFileDetail>> GetFileDetail(
@@ -186,6 +240,12 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Tải nội dung file tri thức của internal agent về client.
+    /// <param name="agentId">Định danh internal agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần tải.</param>
+    /// <returns>Nội dung file hoặc response lỗi.</returns>
+    /// </summary>
     [HttpGet("files/{fileId:guid}/download")]
     [HasPermission(PermissionCodes.DocumentView)]
     public async Task<IActionResult> DownloadFile(
@@ -208,6 +268,12 @@ public sealed class InternalAgentKnowledgeController(
         return File(result.Value.Content, result.Value.ContentType, result.Value.FileName);
     }
 
+    /// <summary>
+    /// Tạo nội dung preview cho file tri thức của internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần preview.</param>
+    /// <returns>Nội dung preview hoặc response lỗi.</returns>
+    /// </summary>
     [HttpGet("files/{fileId:guid}/preview")]
     [HasPermission(PermissionCodes.DocumentView)]
     public async Task<IActionResult> PreviewFile(
@@ -230,6 +296,13 @@ public sealed class InternalAgentKnowledgeController(
         return File(result.Value.Content, result.Value.ContentType);
     }
 
+    /// <summary>
+    /// Đổi tên file tri thức của internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần đổi tên.</param>
+    /// <param name="request">Tên mới của file.</param>
+    /// <returns>File sau cập nhật hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     [HttpPut("files/{fileId:guid}/rename")]
     [HasPermission(PermissionCodes.DocumentUpdate)]
     public async Task<ActionResult<KnowledgeFileItem>> RenameFile(
@@ -255,6 +328,13 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Di chuyển file tri thức trong cây thư mục của internal agent.
+    /// <param name="agentId">Định danh internal agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần di chuyển.</param>
+    /// <param name="request">Thư mục đích, có thể là root.</param>
+    /// <returns>File sau di chuyển hoặc lỗi nghiệp vụ.</returns>
+    /// </summary>
     [HttpPut("files/{fileId:guid}/move")]
     [HasPermission(PermissionCodes.DocumentUpdate)]
     public async Task<ActionResult<KnowledgeFileItem>> MoveFile(
@@ -280,6 +360,12 @@ public sealed class InternalAgentKnowledgeController(
         return ToActionResult(result, value => Ok(value));
     }
 
+    /// <summary>
+    /// Xóa mềm metadata file và xóa object vật lý khỏi storage.
+    /// <param name="agentId">Định danh internal agent sở hữu file.</param>
+    /// <param name="fileId">Định danh file cần xóa.</param>
+    /// <returns>Không có nội dung khi xóa thành công.</returns>
+    /// </summary>
     [HttpDelete("files/{fileId:guid}")]
     [HasPermission(PermissionCodes.DocumentDelete)]
     public async Task<ActionResult> DeleteFile(
@@ -297,18 +383,32 @@ public sealed class InternalAgentKnowledgeController(
         return result.Succeeded ? NoContent() : ToErrorResult(result.ErrorCode, result.ErrorMessage);
     }
 
+    /// <summary>
+    /// Lấy user ID của người đang gọi request từ access token.
+    /// <returns>User ID hợp lệ hoặc null nếu claim không hợp lệ.</returns>
+    /// </summary>
     private Guid? CurrentUserId()
     {
         var userIdValue = User.FindFirstValue("userId") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(userIdValue, out var userId) ? userId : null;
     }
 
+    /// <summary>
+    /// Lấy địa chỉ IP client để ghi audit log.
+    /// <returns>Địa chỉ IP hoặc null nếu không xác định được.</returns>
+    /// </summary>
     private string? ClientIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
 #endregion
 
 #region Declaration
 
+    /// <summary>
+    /// Chuyển ServiceResult thành ActionResult thành công hoặc response lỗi chuẩn.
+    /// <param name="result">Kết quả từ application service.</param>
+    /// <param name="success">Hàm tạo response khi result thành công.</param>
+    /// <returns>HTTP response tương ứng với kết quả nghiệp vụ.</returns>
+    /// </summary>
     private ActionResult<T> ToActionResult<T>(ServiceResult<T> result, Func<T, ActionResult<T>> success)
     {
         if (result.Succeeded && result.Value is not null)
@@ -319,6 +419,12 @@ public sealed class InternalAgentKnowledgeController(
         return ToErrorResult(result.ErrorCode, result.ErrorMessage);
     }
 
+    /// <summary>
+    /// Ánh xạ mã lỗi tri thức thành HTTP status code và error response.
+    /// <param name="errorCode">Mã lỗi từ application service.</param>
+    /// <param name="message">Thông điệp lỗi tùy chọn.</param>
+    /// <returns>ActionResult chứa mã HTTP và nội dung lỗi.</returns>
+    /// </summary>
     private ActionResult ToErrorResult(string? errorCode, string? message)
     {
         var code = errorCode ?? KnowledgeErrorCodes.ValidationError;

@@ -103,12 +103,14 @@ watch(
   }
 );
 
+// Đồng bộ các ô giờ/phút/giây từ Date pending hiện tại.
 function syncTimeParts() {
   pendingHours.value = String(pendingDateTime.value.getHours()).padStart(2, '0');
   pendingMinutes.value = String(pendingDateTime.value.getMinutes()).padStart(2, '0');
   pendingSeconds.value = String(pendingDateTime.value.getSeconds()).padStart(2, '0');
 }
 
+// Chuẩn hóa Date thành chuỗi model và giữ một bản sao để tránh mutate ngược state.
 function commitValue(date: Date | null) {
   const nextValue = formatDateTime(date, props.showSeconds);
   model.value = nextValue;
@@ -144,6 +146,7 @@ function handleInput(event: Event) {
   inputValue.value = (event.target as HTMLInputElement).value;
 }
 
+// Khi rời input, chỉ commit giá trị nhập tay nếu parser xác nhận đúng định dạng.
 function handleBlur() {
   handleBlurState();
   const nextDateTime = parseDateTime(inputValue.value, props.showSeconds);
@@ -162,6 +165,7 @@ function handleBlur() {
   }
 }
 
+// Đổi ngày nhưng bảo toàn giờ/phút/giây đang chọn trong popover.
 function updatePendingDate(date: Date) {
   pendingDateTime.value = setDateTimeParts(
     date,
@@ -172,6 +176,7 @@ function updatePendingDate(date: Date) {
   displayDate.value = startOfMonth(date);
 }
 
+// Gộp các ô thời gian hiện tại vào ngày pending đang hiển thị.
 function updatePendingTime() {
   pendingDateTime.value = setDateTimeParts(
     pendingDateTime.value,
@@ -203,6 +208,7 @@ function selectNow() {
   syncTimeParts();
 }
 
+// Commit lựa chọn tạm sau khi người dùng hoàn tất chọn ngày và thời gian.
 function applySelection() {
   updatePendingTime();
   commitValue(pendingDateTime.value);
@@ -217,6 +223,7 @@ function isTodayDate(date: Date) {
   return isSameDay(date, today());
 }
 
+// Đóng popover khi click ra ngoài vùng picker.
 function handleDocumentPointerDown(event: PointerEvent) {
   const target = event.target;
   if (target instanceof Node && rootRef.value?.contains(target)) {

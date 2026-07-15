@@ -797,7 +797,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--color-border);
   border-radius: var(--field-radius);
   background: var(--color-surface);
-  transition: box-shadow 120ms ease;
+  transition: border-color 120ms ease, background 120ms ease;
 }
 
 .combobox__anchor:hover,
@@ -805,12 +805,10 @@ onBeforeUnmount(() => {
 .field--focus .combobox__anchor,
 .combobox__anchor:focus-within {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(53, 99, 255, 0.08);
 }
 
 .field--invalid .combobox__anchor {
   border-color: var(--color-danger);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
 }
 
 .field--disabled .combobox__anchor {

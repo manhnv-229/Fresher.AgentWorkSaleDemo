@@ -7,6 +7,7 @@ export interface KnowledgeSearchTextSegment {
   highlighted: boolean;
 }
 
+// Chuẩn hóa query và tên file để tìm kiếm không phân biệt khoảng trắng/chữ hoa.
 export function normalizeKnowledgeSearchText(value?: string | null): string {
   return (value ?? '').trim().toUpperCase();
 }
@@ -15,6 +16,7 @@ export function getKnowledgeSearchMatchScore(
   query: string | null | undefined,
   target: string | null | undefined
 ): number {
+  // Điểm ưu tiên: trùng tuyệt đối > chứa chuỗi > khớp theo subsequence.
   const normalizedQuery = normalizeKnowledgeSearchText(query);
   const normalizedTarget = normalizeKnowledgeSearchText(target);
 
@@ -37,6 +39,7 @@ export function isKnowledgeSearchMatch(
   query: string | null | undefined,
   target: string | null | undefined
 ): boolean {
+  // Tách quy tắc tính điểm khỏi nơi sử dụng để các màn chỉ cần kiểm tra có khớp hay không.
   return getKnowledgeSearchMatchScore(query, target) > 0;
 }
 
@@ -44,6 +47,7 @@ export function getKnowledgeSearchTextSegments(
   text: string | null | undefined,
   query: string | null | undefined
 ): KnowledgeSearchTextSegment[] {
+  // Trả về các đoạn text có cờ highlighted để template render mà không thay đổi nội dung gốc.
   const sourceText = text ?? '';
   const normalizedText = normalizeKnowledgeSearchText(sourceText);
   const normalizedQuery = normalizeKnowledgeSearchText(query);
@@ -69,6 +73,7 @@ export function getKnowledgeSearchTextSegments(
   return buildSubsequenceSegments(sourceText, normalizedQuery, normalizedText);
 }
 
+// Kiểm tra các ký tự query xuất hiện đúng thứ tự trong target, không nhất thiết liền nhau.
 function isSubsequence(query: string, target: string): boolean {
   let queryIndex = 0;
   for (let targetIndex = 0; targetIndex < target.length && queryIndex < query.length; targetIndex++) {
@@ -80,6 +85,7 @@ function isSubsequence(query: string, target: string): boolean {
   return queryIndex === query.length;
 }
 
+// Tách một vùng liên tiếp thành trước đoạn khớp, đoạn khớp và sau đoạn khớp.
 function buildRangeSegments(text: string, startIndex: number, length: number): KnowledgeSearchTextSegment[] {
   const segments: KnowledgeSearchTextSegment[] = [];
   const before = text.slice(0, startIndex);
@@ -106,6 +112,7 @@ function buildSubsequenceSegments(
   normalizedQuery: string,
   normalizedText: string
 ): KnowledgeSearchTextSegment[] {
+  // Gom các ký tự subsequence liền nhau thành segment để giảm số node render.
   const highlightIndexes = new Set<number>();
   let queryIndex = 0;
   for (let textIndex = 0; textIndex < normalizedText.length && queryIndex < normalizedQuery.length; textIndex++) {
