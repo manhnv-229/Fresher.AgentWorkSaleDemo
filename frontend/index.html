@@ -1,19 +1,14 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Usage Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"
-  />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
   <style>
     :root {
@@ -287,11 +282,25 @@
       min-height: 1px;
     }
 
-    .seg-purple { background: var(--purple); }
-    .seg-pink { background: var(--pink); }
-    .seg-rose { background: var(--rose); }
-    .seg-yellow { background: var(--yellow); }
-    .seg-lime { background: var(--lime); }
+    .seg-purple {
+      background: var(--purple);
+    }
+
+    .seg-pink {
+      background: var(--pink);
+    }
+
+    .seg-rose {
+      background: var(--rose);
+    }
+
+    .seg-yellow {
+      background: var(--yellow);
+    }
+
+    .seg-lime {
+      background: var(--lime);
+    }
 
     .x-label {
       position: absolute;
@@ -373,7 +382,7 @@
       overflow: hidden;
     }
 
-    .usage-summary-card + .usage-summary-card {
+    .usage-summary-card+.usage-summary-card {
       border-top: 0;
     }
 
@@ -494,7 +503,7 @@
         gap: 5px;
       }
 
-      .usage-summary-card + .usage-summary-card {
+      .usage-summary-card+.usage-summary-card {
         border-top: 1px solid #323232;
         border-left: 0;
       }
@@ -535,7 +544,7 @@
         min-height: 360px;
       }
 
-      .usage-summary-card + .usage-summary-card {
+      .usage-summary-card+.usage-summary-card {
         border-top: 0;
         border-left: 1px solid #323232;
       }
@@ -550,6 +559,7 @@
     }
   </style>
 </head>
+
 <body>
   <main class="usage-page">
     <header class="page-title">Usage</header>
@@ -662,7 +672,7 @@
       </div>
 
       <div class="token-detail-chart">
-        <div class="token-detail-bars" id="cachedTokenChart"></div>
+        <div class="token-detail-bars" id="tokenDetailChart"></div>
         <span class="x-label start">Jul 01</span>
         <span class="x-label end">Jul 16</span>
       </div>
@@ -755,8 +765,8 @@
       series: [{ type: "bar", barWidth: "80%", itemStyle: { color: "#7568df" }, data: requestData }]
     });
 
-    const cachedTokenChart = echarts.init(document.getElementById("cachedTokenChart"));
-    cachedTokenChart.setOption({
+    const tokenDetailChart = echarts.init(document.getElementById("tokenDetailChart"));
+    tokenDetailChart.setOption({
       ...chartDefaults,
       yAxis: { type: "value", show: false, max: Math.ceil(cachedTokenPeak * 1.1) },
       series: [{
@@ -784,8 +794,9 @@
       totalSpendChart.resize();
       totalTokensChart.resize();
       totalRequestsChart.resize();
-      cachedTokenChart.resize();
+      tokenDetailChart.resize();
     });
   </script>
 </body>
+
 </html>
